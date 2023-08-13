@@ -80,8 +80,8 @@ private:
   std::map<int, std::string> keyPressToNote = {
       {static_cast<int>('a'), "C4"}, {static_cast<int>('s'), "D4"},
       {static_cast<int>('d'), "E4"}, {static_cast<int>('f'), "F4"},
-      {static_cast<int>('g'), "G4"}, {static_cast<int>('h'), "A5"},
-      {static_cast<int>('j'), "B5"}, {static_cast<int>('k'), "C5"}};
+      {static_cast<int>('g'), "G4"}, {static_cast<int>('h'), "A4"},
+      {static_cast<int>('j'), "B4"}, {static_cast<int>('k'), "C5"}};
 };
 
 #endif
