@@ -27,7 +27,7 @@ have multiple rows also.
 
 You need OpenAL and ncurses installed.
 
-````bash
+```bash
 # On OSX
 brew install openal-soft
 brew install ncurses
