@@ -12,6 +12,25 @@ find_package(Curses REQUIRED)
 # Find OpenAL package
 find_package(OpenAL REQUIRED)
 
+include(CheckIncludeFile)
+
+# Check what Open AL headers look like
+check_include_file("OpenAL/al.h" HAVE_OPENAL_AL_H)
+check_include_file("AL/al.h" HAVE_AL_AL_H)
+
+if(HAVE_OPENAL_AL_H)
+    add_definitions(-DUSE_OPENAL_PREFIX)
+elseif(HAVE_AL_AL_H)
+    add_definitions(-DUSE_AL_PREFIX)
+else()
+    message(FATAL_ERROR "Neither OpenAL/al.h nor AL/al.h found!")
+endif()
+
+
+
+
+
+
 # Define the executable
 add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp main.cpp)
 add_executable(play_note play_note.cpp)

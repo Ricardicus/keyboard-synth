@@ -1,8 +1,17 @@
 #ifndef KEYBOARD_HPP
 #define KEYBOARD_HPP
 
+#ifdef USE_OPENAL_PREFIX
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
+#elif USE_AL_PREFIX
+#include <AL/al.h>
+#include <AL/alc.h>
+#else
+#include <OpenAL/al.h>  // Guessing. Use the definitions above for compilation.
+#include <OpenAL/alc.h> // Guessing. Use the definitions above for compilation.
+#endif
+
 #include <chrono> // for std::chrono::seconds
 #include <cmath>
 #include <condition_variable>
