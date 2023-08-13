@@ -1,6 +1,6 @@
 # Keyboard synth
 
-A little experimentation with OpenAL and audio signal processing in general lead me to this
+A little experimentation with OpenAL and audio signal processing in general led me to this
 project idea. Play music with the computer keyboard.
 
 
