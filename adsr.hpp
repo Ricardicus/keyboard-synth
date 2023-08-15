@@ -11,7 +11,7 @@ public:
     this->quantas = quantas_a + quantas_d + quantas_s + quantas_r;
     this->length = length;
     this->quantas_length = length / this->quantas;
-    this->sustain_level = (short)sustain_level * amplitude;
+    this->sustain_level = (short)(sustain_level * amplitude);
 
     this->qadsr[0] = quantas_a;
     this->qadsr[1] = quantas_d;
@@ -24,23 +24,17 @@ public:
     int value = 0;
     int i;
     int q_acc = 0;
-    for (i = 0; i < 4; i++) {
-      q_acc += this->quantas_length * this->qadsr[i];
-      if (x <= q_acc) {
-        switch (i) {
-        case 0:
-          value = attack(x); break;
-        case 1:
-          value = decay(x); break;
-        case 2:
-          value = sustain(x); break;
-        case 3:
-          value = release(x); break;
-        }
-        break;
-      }
-    }
-    return value;
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    int release_end = sustain_end + this->quantas_length * this->qadsr[3];
+    if ( x < attack_end )
+      return attack(x);
+    if ( x < decay_end )
+      return decay(x);
+    if ( x < sustain_end )
+      return sustain(x);
+    return release(x);
   }
 
   int getLength() { return this->length; };
@@ -63,9 +57,9 @@ public:
   short release(int x) {
     int sustain_end = this->quantas_length *
                       (this->qadsr[0] + this->qadsr[1] + this->qadsr[2]);
-    int release_length = this->quantas_length * this->qadsr[3];
+    int release_length = this->length - sustain_end;
     return (short)this->sustain_level -
-           (((float)x - this->sustain_level) / release_length) * this->sustain_level;
+           (((float)x - sustain_end) / release_length) * this->sustain_level;
   }
 
 private:

@@ -67,6 +67,7 @@ public:
   void registerNote(std::string &note);
   void registerButtonPress(int note);
   void playNote(std::string &note);
+  void printInstructions();
 
 private:
   ALCdevice *device;

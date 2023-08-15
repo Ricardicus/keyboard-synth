@@ -1,12 +1,10 @@
-#include <OpenAL/al.h>
-#include <OpenAL/alc.h>
+#include <cassert>
 #include <chrono> // for std::chrono::seconds
 #include <cmath>
 #include <iostream>
+#include <ncurses.h>
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
-
-#include <ncurses.h>
 
 #include "keyboard.hpp"
 #include "notes.hpp"
@@ -40,6 +38,28 @@ void Keyboard::playNote(std::string &note) {
   }
 }
 
+void Keyboard::printInstructions() {
+  bool first = true;
+  printw("These keys are available on you keyboard:\n");
+  for (const auto &kvp : this->keyPressToNote) {
+    int press = kvp.first;
+    std::string note = kvp.second;
+    std::string note_info = "";
+    auto it = this->notes.find(note);
+
+    if (it != this->notes.end()) {
+      Note &n = it->second;
+      note_info = ", freq: " + std::to_string(n.frequency) + " hz, length: " +
+                  std::to_string((float)n.length / (float)n.sampleRate) + " s)";
+    }
+
+    printw("%s'%c' -> %s%s", (first ? "" : "\n"), static_cast<char>(press),
+           note.c_str(), note_info.c_str());
+    first = false;
+  }
+  printw("\n\n");
+}
+
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f) {
   int length = adsr.getLength();
   std::vector<std::string> notes = notes::getNotes();
@@ -57,9 +77,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f) {
   }
 }
 
-void Keyboard::registerNote(std::string &note) {
-  playNote(note);
-}
+void Keyboard::registerNote(std::string &note) { playNote(note); }
 
 void Keyboard::registerButtonPress(int pressed) {
   if (this->keyPressToNote.find(pressed) != this->keyPressToNote.end()) {
