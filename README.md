@@ -35,3 +35,8 @@ sudo apt-get install libopenal-dev
 sudo apt-get install libncurses5-dev
 ```
 
+# Todo
+
+- Effects
+- API
+- Wave for keys
