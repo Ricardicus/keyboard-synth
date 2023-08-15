@@ -84,4 +84,7 @@ void Keyboard::registerButtonPress(int pressed) {
     std::string note = this->keyPressToNote[pressed];
     playNote(note);
   }
+  if (this->keyPressToAction.find(pressed) != this->keyPressToAction.end()) {
+    this->keyPressToAction[pressed]();
+  }
 }

@@ -15,6 +15,7 @@
 #include <chrono> // for std::chrono::seconds
 #include <cmath>
 #include <condition_variable>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -63,6 +64,36 @@ public:
     alcCloseDevice(this->device);
   }
 
+  void changeOctave(int delta) {
+
+    // Prevent going higher if there's a note with octave 8
+    if (delta > 0) {
+      for (const auto &kv : keyPressToNote) {
+        if (kv.second.back() == '8') {
+          return; // We have an octave 8, can't increase further
+        }
+      }
+    }
+
+    // Prevent going lower if there's a note with octave 1
+    if (delta < 0) {
+      for (const auto &kv : keyPressToNote) {
+        if (kv.second.back() == '1') {
+          return; // We have an octave 1, can't decrease further
+        }
+      }
+    }
+
+    // Modify the octaves
+    for (auto &kv : keyPressToNote) {
+      std::string note = kv.second;
+      int currentOctave = note.back() - '0'; // Convert char to int
+      currentOctave += delta;
+      note.back() = currentOctave + '0'; // Convert int back to char
+      kv.second = note;
+    }
+  }
+
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f);
   void registerNote(std::string &note);
   void registerButtonPress(int note);
@@ -79,10 +110,21 @@ private:
   std::map<std::string, Note> notes;
 
   std::map<int, std::string> keyPressToNote = {
-      {static_cast<int>('a'), "C4"}, {static_cast<int>('s'), "D4"},
-      {static_cast<int>('d'), "E4"}, {static_cast<int>('f'), "F4"},
-      {static_cast<int>('g'), "G4"}, {static_cast<int>('h'), "A4"},
-      {static_cast<int>('j'), "B4"}, {static_cast<int>('k'), "C5"}};
-};
+      {static_cast<int>('w'), "C#4"}, {static_cast<int>('e'), "D#4"},
+      {static_cast<int>('t'), "F#4"}, {static_cast<int>('y'), "G#4"},
+      {static_cast<int>('u'), "A#4"}, {static_cast<int>('y'), "C#5"},
+      {static_cast<int>('u'), "D#5"}, {static_cast<int>('a'), "C4"},
+      {static_cast<int>('s'), "D4"},  {static_cast<int>('d'), "E4"},
+      {static_cast<int>('f'), "F4"},  {static_cast<int>('g'), "G4"},
+      {static_cast<int>('h'), "A4"},  {static_cast<int>('j'), "B4"},
+      {static_cast<int>('k'), "C5"},  {static_cast<int>('z'), "C3"},
+      {static_cast<int>('x'), "D3"},  {static_cast<int>('c'), "E3"},
+      {static_cast<int>('v'), "F3"},  {static_cast<int>('b'), "G3"},
+      {static_cast<int>('n'), "A3"},  {static_cast<int>('m'), "B3"},
+      {static_cast<int>(','), "C4"}};
 
+  std::map<int, std::function<void()>> keyPressToAction = {
+      {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},
+      {static_cast<int>('p'), [this]() { this->changeOctave(1); }}};
+};
 #endif

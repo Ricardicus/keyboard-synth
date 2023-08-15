@@ -19,9 +19,8 @@ make
 ./keyboard
 ```
 
-Now you can press the keys a, s, d, f, g, h, j, k, l to make some sound.
-But this is just the beginning. I want to add so that you can change octave and
-have multiple rows also.
+Now you can press the keys on the a -> l and z -> , keys. Sharp notes: w, e, t, y, u. 
+Change octaves with o (down) and p (up).
 
 # Dependencies
 
