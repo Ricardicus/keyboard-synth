@@ -26,22 +26,12 @@ else()
     message(FATAL_ERROR "Neither OpenAL/al.h nor AL/al.h found!")
 endif()
 
-
-
-
-
-
 # Define the executable
 add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp main.cpp)
-add_executable(play_note play_note.cpp)
 
 # Link OpenAL to the executables
 target_link_libraries(keyboard ${OPENAL_LIBRARY})
 target_link_libraries(keyboard ${CURSES_LIBRARIES})
 target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR})
 target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR})
-target_link_libraries(play_note ${OPENAL_LIBRARY})
-target_link_libraries(play_note ${CURSES_LIBRARIES})
-target_include_directories(play_note PRIVATE ${OPENAL_INCLUDE_DIR})
-target_include_directories(play_note PUBLIC ${CURSES_INCLUDE_DIR})
 
