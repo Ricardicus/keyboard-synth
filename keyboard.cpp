@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "keyboard.hpp"
+#include "fir.hpp"
 #include "notes.hpp"
 
 void Keyboard::playNote(std::string &note) {
@@ -40,7 +41,7 @@ void Keyboard::playNote(std::string &note) {
 
 void Keyboard::printInstructions() {
   bool first = true;
-  printw("These keys are available on you keyboard:\n");
+  printw("These keys are available on your keyboard:\n");
   for (const auto &kvp : this->keyPressToNote) {
     int press = kvp.first;
     std::string note = kvp.second;
@@ -67,8 +68,13 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f) {
   int bufferIndex = 0;
   for (const auto &key : notes) {
     Note n = Note(key, length, sampleRate);
-    std::vector<short> buffer = Sound::generateWave(f, n, adsr);
+    std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
+
+    FIR fir(buffer_raw, sampleRate);
+    fir.setResonance({1.0, 0.6, 0.4, 0.2}, 0.1);
+    std::vector<short> buffer = fir.convolute(buffer_raw.size());
     n.setBuffer(buffer);
+
     alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
                  n.buffer.size() * sizeof(short), n.sampleRate);
     this->keyToBufferIndex[key] = bufferIndex;

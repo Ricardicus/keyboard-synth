@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
   } else if (c > 0) {
     return 1;
   }
+
   keyboard.prepareSound(sampleRate, adsr, waveForm);
 
   initscr();            // Initialize the library

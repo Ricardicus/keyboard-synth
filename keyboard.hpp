@@ -65,7 +65,6 @@ public:
   }
 
   void changeOctave(int delta) {
-
     // Prevent going higher if there's a note with octave 8
     if (delta > 0) {
       for (const auto &kv : keyPressToNote) {
