@@ -2,13 +2,13 @@
 #include <fftw3.h>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 
 #include "dft.hpp"
 
 using Complex = std::complex<double>;
 
-std::vector<Complex>
-FourierTransform::DFT(const std::vector<short> &data) {
+std::vector<Complex> FourierTransform::DFT(const std::vector<short> &data) {
   int N = data.size();
 
   // Allocate memory for input and output
@@ -41,8 +41,7 @@ FourierTransform::DFT(const std::vector<short> &data) {
   return result;
 }
 
-std::vector<short>
-FourierTransform::IDFT(const std::vector<Complex> &X) {
+std::vector<short> FourierTransform::IDFT(const std::vector<Complex> &X) {
   int N = X.size();
 
   fftw_complex *in =
@@ -60,7 +59,10 @@ FourierTransform::IDFT(const std::vector<Complex> &X) {
 
   std::vector<short> result(N);
   for (int i = 0; i < N; ++i) {
-    result[i] = static_cast<short>(out[i][0] / N); // Normalize by dividing by N
+    double val = out[i][0] / N; // Normalize by dividing by N
+    result[i] = std::clamp(
+        std::round(val), static_cast<double>(std::numeric_limits<short>::min()),
+        static_cast<double>(std::numeric_limits<short>::max()));
   }
 
   fftw_destroy_plan(p);
@@ -69,4 +71,3 @@ FourierTransform::IDFT(const std::vector<Complex> &X) {
 
   return result;
 }
-

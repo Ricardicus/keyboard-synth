@@ -65,9 +65,17 @@ int main() {
 
   FIR fir(waveData, sampleRate);
   fir.setResonance({1.0, 0.6, 0.4, 0.2}, 1);
-
   std::vector<short> impulse = fir.getIR();
-  while (impulse.size() < waveData.size()) {
+
+  size_t paddedSize = waveData.size() + impulse.size() - 1;
+  size_t nearestPowerOfTwo = std::pow(2, std::ceil(std::log2(paddedSize)));
+
+  // Pad waveData and impulse response to nearestPowerOfTwo
+  while (waveData.size() < nearestPowerOfTwo) {
+    waveData.push_back(0);
+  }
+
+  while (impulse.size() < nearestPowerOfTwo) {
     impulse.push_back(0);
   }
 
