@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(OpenAL_C4Note)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find the ncurses package
@@ -26,12 +26,34 @@ else()
     message(FATAL_ERROR "Neither OpenAL/al.h nor AL/al.h found!")
 endif()
 
+# Look for FFTW
+add_subdirectory(fftw-3.3.10)
+
+find_path(FFTW_INCLUDE_DIR fftw3.h
+          HINTS ${CMAKE_SOURCE_DIR}/fftw-3.3.10
+          PATH_SUFFIXES api include)
+
+if(FFTW_INCLUDE_DIR)
+    include_directories(${FFTW_INCLUDE_DIR})
+else()
+    message(FATAL_ERROR "Cannot find fftw3.h!")
+endif()
+
 # Define the executable
-add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp main.cpp)
+add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp effects.cpp main.cpp)
 
 # Link OpenAL to the executables
-target_link_libraries(keyboard ${OPENAL_LIBRARY})
-target_link_libraries(keyboard ${CURSES_LIBRARIES})
-target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR})
-target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR})
+target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
+target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
+target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
 
+
+
+# Define the executable
+add_executable(play_note play_note.cpp fir.cpp adsr.cpp dft.cpp effects.cpp)
+
+# Link OpenAL to the executables
+target_link_libraries(play_note ${OPENAL_LIBRARY})
+target_link_libraries(play_note ${CURSES_LIBRARIES} fftw3)
+target_include_directories(play_note PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
+target_include_directories(play_note PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})

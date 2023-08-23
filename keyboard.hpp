@@ -22,6 +22,7 @@
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
 
+#include "effects.hpp"
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
@@ -65,7 +66,6 @@ public:
   }
 
   void changeOctave(int delta) {
-
     // Prevent going higher if there's a note with octave 8
     if (delta > 0) {
       for (const auto &kv : keyPressToNote) {
@@ -94,7 +94,12 @@ public:
     }
   }
 
-  void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f);
+  void setLoaderFunc(void (*func)(unsigned, unsigned)) {
+    this->loaderFunc = func;
+  }
+
+  void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
+                    Effects &effects);
   void registerNote(std::string &note);
   void registerButtonPress(int note);
   void playNote(std::string &note);
@@ -105,6 +110,7 @@ private:
   ALCcontext *context;
   std::vector<ALuint> buffers;
   std::vector<ALuint> sources;
+  void (*loaderFunc)(unsigned, unsigned) = nullptr;
 
   std::map<std::string, int> keyToBufferIndex;
   std::map<std::string, Note> notes;
