@@ -11,16 +11,6 @@ std::vector<short> FIR::convolute(int max_size) {
   return result;
 }
 
-std::vector<short> FIR::getIR() {
-  std::vector<short> result;
-  int i = 0;
-  while (i < this->impulseResponse.size()) {
-    result.push_back(static_cast<short>(32767/1000 * this->impulseResponse[i]));
-    ++i;
-  }
-  return result;
-}
-
 short FIR::calc(int index) {
   short sum = 0;
   int i = 0;

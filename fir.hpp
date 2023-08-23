@@ -16,7 +16,7 @@ public:
   }
   short calc(int index);
   std::vector<short> convolute(int max_size);
-  std::vector<short> getIR();
+  std::vector<float> getIR() { return this->impulseResponse; };
 
 private:
   float ir(int index);

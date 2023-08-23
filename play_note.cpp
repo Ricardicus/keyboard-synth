@@ -69,9 +69,9 @@ int main() {
   }
 
   FIR fir(waveData, sampleRate);
-  fir.setResonance({1.0, 0.8, 0.6, 0.4}, 1.0);
+  fir.setResonance({1.0, 0.8, 0.6, 0.4, 0.2, 0.1}, 1.0);
 
-  std::vector<short> impulse = fir.getIR();
+  std::vector<float> impulse = fir.getIR();
 
   size_t paddedSize = waveData.size() + impulse.size() - 1;
   size_t nearestPowerOfTwo = std::pow(2, std::ceil(std::log2(paddedSize)));

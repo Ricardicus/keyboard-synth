@@ -8,6 +8,40 @@
 
 using Complex = std::complex<double>;
 
+std::vector<Complex> FourierTransform::DFT(const std::vector<float> &data) {
+  int N = data.size();
+
+  // Allocate memory for input and output
+  fftw_complex *in =
+      reinterpret_cast<fftw_complex *>(fftw_malloc(sizeof(fftw_complex) * N));
+  fftw_complex *out =
+      reinterpret_cast<fftw_complex *>(fftw_malloc(sizeof(fftw_complex) * N));
+
+  // Copy input data to fftw input
+  for (int i = 0; i < N; ++i) {
+    in[i][0] = data[i];
+    in[i][1] = 0.0;
+  }
+
+  // Plan and execute the FFT
+  fftw_plan p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+  fftw_execute(p);
+
+  // Copy fftw output to std::vector<Complex>
+  std::vector<Complex> result(N);
+  for (int i = 0; i < N; ++i) {
+    result[i] = Complex(out[i][0], out[i][1]);
+  }
+
+  // Cleanup
+  fftw_destroy_plan(p);
+  fftw_free(in);
+  fftw_free(out);
+
+  return result;
+}
+
+
 std::vector<Complex> FourierTransform::DFT(const std::vector<short> &data) {
   int N = data.size();
 

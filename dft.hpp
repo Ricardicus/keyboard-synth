@@ -11,7 +11,7 @@ private:
 public:
     // Computes the Discrete Fourier Transform of the input data
     static std::vector<Complex> DFT(const std::vector<short>& data);
-
+    static std::vector<Complex> DFT(const std::vector<float>& data);
     // Computes the Inverse Discrete Fourier Transform of the input data
     static std::vector<short> IDFT(const std::vector<Complex>& X);
 };
