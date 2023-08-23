@@ -55,7 +55,7 @@ int main() {
 
   // Generate C4 sine wave
   int sampleRate = 44100; // 44.1 kHz
-  float duration = 3.0f;  // 1 second
+  float duration = 1.0f;  // 1 second
   short amplitude = 32767;
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(sampleRate * duration));
@@ -63,8 +63,14 @@ int main() {
   std::vector<short> waveData =
       generateSineWave(261.63f, adsr, duration, sampleRate);
 
+  size_t padded_size = waveData.size() * 4;
+  while ( waveData.size() < padded_size ) {
+    waveData.push_back(0);
+  }
+
   FIR fir(waveData, sampleRate);
-  fir.setResonance({1.0, 0.6, 0.4, 0.2}, 1);
+  fir.setResonance({1.0, 0.8, 0.6, 0.4}, 1.0);
+
   std::vector<short> impulse = fir.getIR();
 
   size_t paddedSize = waveData.size() + impulse.size() - 1;
