@@ -19,6 +19,7 @@
 #include "adsr.hpp"
 #include "dft.hpp"
 #include "fir.hpp"
+#include "effects.hpp"
 
 const float PI = 3.14159265358979323846f;
 using Complex = std::complex<double>;
@@ -63,42 +64,16 @@ int main() {
   std::vector<short> waveData =
       generateSineWave(261.63f, adsr, duration, sampleRate);
 
-  size_t padded_size = waveData.size() * 4;
-  while ( waveData.size() < padded_size ) {
-    waveData.push_back(0);
-  }
+  FIR fir1(sampleRate);
+  fir1.setResonance({1.0, 0.8, 0.6, 0.4, 0.2, 0.1}, 1.0);
+  FIR fir2(sampleRate);
+  fir2.setResonance({0.5, 0.4, 0.3, 0.2, 0.1}, 0.5);
 
-  FIR fir(waveData, sampleRate);
-  fir.setResonance({1.0, 0.8, 0.6, 0.4, 0.2, 0.1}, 1.0);
-
-  std::vector<float> impulse = fir.getIR();
-
-  size_t paddedSize = waveData.size() + impulse.size() - 1;
-  size_t nearestPowerOfTwo = std::pow(2, std::ceil(std::log2(paddedSize)));
-
-  // Pad waveData and impulse response to nearestPowerOfTwo
-  while (waveData.size() < nearestPowerOfTwo) {
-    waveData.push_back(0);
-  }
-
-  while (impulse.size() < nearestPowerOfTwo) {
-    impulse.push_back(0);
-  }
-
-  FourierTransform ft;
-
-  printf("Fourier transforming..\n");
-  std::vector<Complex> dft_ir = ft.DFT(impulse);
-  std::vector<Complex> dft_buffer = ft.DFT(waveData);
-  std::vector<Complex> dft_multiplied;
-  int i = 0;
-  while (i < dft_buffer.size()) {
-    dft_multiplied.push_back(dft_ir[i] * dft_buffer[i]);
-    i++;
-  }
-
-  std::vector<short> result = ft.IDFT(dft_multiplied);
-  printf("Fourier transformed!\n");
+  Effects effects;
+  effects.addFIR(fir1);
+  effects.addFIR(fir2);
+  
+  std::vector<short> result = effects.apply(waveData);
 
   // Create buffer and source
   ALuint buffer;

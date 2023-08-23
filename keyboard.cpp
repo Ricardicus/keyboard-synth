@@ -6,8 +6,9 @@
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
 
-#include "keyboard.hpp"
+#include "effects.hpp"
 #include "fir.hpp"
+#include "keyboard.hpp"
 #include "notes.hpp"
 
 void Keyboard::playNote(std::string &note) {
@@ -61,19 +62,24 @@ void Keyboard::printInstructions() {
   printw("\n\n");
 }
 
-void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f) {
+void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
+                            Effects &effects) {
   int length = adsr.getLength();
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
   int bufferIndex = 0;
+  unsigned ticks = notes.size();
+  unsigned tick = 1;
   for (const auto &key : notes) {
     Note n = Note(key, length, sampleRate);
     std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
-
-    FIR fir(buffer_raw, sampleRate);
-    fir.setResonance({1.0, 0.6, 0.4, 0.2}, 0.1);
-    std::vector<short> buffer = fir.convolute(buffer_raw.size());
+    std::vector<short> buffer = effects.apply(buffer_raw);
     n.setBuffer(buffer);
+
+    if (this->loaderFunc) {
+      this->loaderFunc(ticks, tick);
+      tick++;
+    }
 
     alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
                  n.buffer.size() * sizeof(short), n.sampleRate);

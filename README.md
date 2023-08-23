@@ -20,7 +20,8 @@ make
 ```
 
 Now you can press the keys on the a -> l and z -> , keys. Sharp notes: w, e, t, y, u. 
-Change octaves with o (down) and p (up).
+Change octaves with o (down) and p (up). Echo effect added with argument -e.
+Use -h or --help for more info.
 
 # Dependencies
 
@@ -37,6 +38,5 @@ sudo apt-get install libncurses5-dev
 
 # Todo
 
-- Effects
 - API
 - Wave for keys

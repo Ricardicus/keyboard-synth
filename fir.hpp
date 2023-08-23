@@ -10,6 +10,9 @@ public:
     this->sampleRate = sampleRate_;
   }
 
+  FIR(int sampleRate_) { this->sampleRate = sampleRate_; }
+
+  void setBuffer(std::vector<short> buffer_) { this->buffer = buffer_; }
   void setResonance(std::vector<float> alphas, float seconds);
   void setIR(std::vector<float> impulseResponse_) {
     this->impulseResponse = impulseResponse_;
