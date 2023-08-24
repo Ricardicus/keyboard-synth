@@ -40,7 +40,7 @@ else()
 endif()
 
 # Define the executable
-add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp effects.cpp main.cpp)
+add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp waveread.cpp effects.cpp main.cpp)
 
 # Link OpenAL to the executables
 target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)

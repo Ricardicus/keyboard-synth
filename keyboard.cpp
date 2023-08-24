@@ -10,6 +10,7 @@
 #include "fir.hpp"
 #include "keyboard.hpp"
 #include "notes.hpp"
+#include "waveread.hpp"
 
 void Keyboard::playNote(std::string &note) {
   if (this->keyToBufferIndex.find(note) == this->keyToBufferIndex.end()) {
@@ -70,19 +71,32 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
   int bufferIndex = 0;
   unsigned ticks = notes.size();
   unsigned tick = 1;
-  for (const auto &key : notes) {
-    Note n = Note(key, length, sampleRate);
-    std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
-    std::vector<short> buffer = effects.apply(buffer_raw);
-    n.setBuffer(buffer);
 
+  for (const auto &key : notes) {
+
+    Note n = Note(key, length, sampleRate);
+    if (f == Sound::WaveForm::WaveFile &&
+        this->soundMap.find(key) != this->soundMap.end()) {
+      int sampleRate;
+      std::vector<char> waveData = readWavData(this->soundMap[key], sampleRate);
+
+      alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
+                   waveData.data(), waveData.size() * sizeof(short),
+                   44100);
+    } else {
+      std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
+      std::vector<short> buffer = effects.apply(buffer_raw);
+      n.setBuffer(buffer);
+
+      alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
+                   n.buffer.data(), n.buffer.size() * sizeof(short),
+                   n.sampleRate);
+    }
     if (this->loaderFunc) {
       this->loaderFunc(ticks, tick);
       tick++;
     }
 
-    alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
-                 n.buffer.size() * sizeof(short), n.sampleRate);
     this->keyToBufferIndex[key] = bufferIndex;
     this->notes.insert(std::make_pair(key, n));
     bufferIndex++;

@@ -13,6 +13,8 @@ void printHelp(char *argv0) {
   printf(
       "   --form: form of sound [sine (default), triangular, saw, square]\n");
   printf("       -e: Add an echo effect\n");
+  printf("   --file: Instead of notes, use .wav file with this mapping as "
+         "provided in this file\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -25,7 +27,8 @@ void loaderFunc(unsigned ticks, unsigned tick) {
   fflush(stdout);
 }
 int parseArguments(int argc, char *argv[], ADSR &adsr,
-                   Sound::WaveForm &waveForm, Effects &effects) {
+                   Sound::WaveForm &waveForm, Effects &effects,
+                   std::string &waveFile) {
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "--form") {
@@ -39,6 +42,8 @@ int parseArguments(int argc, char *argv[], ADSR &adsr,
           waveForm = Sound::WaveForm::Square;
         }
       }
+    } else if (arg == "--file" && i + 1 < argc) {
+      waveFile = argv[i + 1];
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(sampleRate);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
@@ -62,7 +67,8 @@ int main(int argc, char *argv[]) {
 
   Sound::WaveForm waveForm = Sound::WaveForm::Sine; // default waveform
   Effects effects;
-  int c = parseArguments(argc, argv, adsr, waveForm, effects);
+  std::string waveFile;
+  int c = parseArguments(argc, argv, adsr, waveForm, effects, waveFile);
   if (c < 0) {
     return 0;
   } else if (c > 0) {
@@ -70,6 +76,10 @@ int main(int argc, char *argv[]) {
   }
 
   printf("Processing buffers... preparing sound..\n");
+  if (waveFile.size() > 0) {
+    keyboard.loadSoundMap(waveFile);
+    waveForm = Sound::WaveForm::WaveFile;
+  }
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.prepareSound(sampleRate, adsr, waveForm, effects);
   printf("Sound OK!\n");

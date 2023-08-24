@@ -5,7 +5,7 @@
 #include "note.hpp"
 #include <vector>
 namespace Sound {
-enum WaveForm { Sine, Triangular, Square, Saw };
+enum WaveForm { Sine, Triangular, Square, Saw, WaveFile };
 
 std::string typeOfWave(WaveForm form);
 std::vector<short> generateWave(WaveForm f, Note &note, ADSR &adsr);

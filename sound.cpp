@@ -16,6 +16,8 @@ std::string Sound::typeOfWave(Sound::WaveForm form) {
     return "square";
   case Saw:
     return "saw";
+  case WaveFile:
+    return "file";
   }
   return "none";
 }
@@ -31,6 +33,8 @@ std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
     return Sound::generateSquareWave(note, adsr);
   case Sound::WaveForm::Saw:
     return Sound::generateSawWave(note, adsr);
+  case Sound::WaveForm::WaveFile:
+    break;
   }
 
   return {};
