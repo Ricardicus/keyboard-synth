@@ -22,7 +22,6 @@ int convertToInt(char *buffer, int len) {
 
 char *loadWAV(std::string filename, int &chan, int &samplerate, int &bps,
               int &size) {
-  printf("filename: %s\n", filename.c_str());
   const char *fn = filename.c_str();
   char buffer[4];
   std::ifstream in(fn, std::ios::binary);
@@ -35,7 +34,28 @@ char *loadWAV(std::string filename, int &chan, int &samplerate, int &bps,
   }
   in.read(buffer, 4);
   in.read(buffer, 4); // WAVE
-  in.read(buffer, 4); // fmt
+  bool fmtRead = false;
+  do {
+    in.read(buffer, 4); // fmt
+    if (buffer[0] == 'J' && buffer[1] == 'U' && buffer[2] == 'N' &&
+        buffer[3] == 'K') {
+      // Skip this (JUNK)
+      in.read(buffer, 4);
+      int junkSize = convertToInt(buffer, 4);
+      if (junkSize % 2 == 1)
+        ++junkSize;
+      // Skip this
+      while (junkSize > 0) {
+        in.read(buffer, 2);
+        junkSize -= 2;
+      }
+    } else if (buffer[0] == 'f' && buffer[1] == 'm' && buffer[2] == 't') {
+      fmtRead = true;
+    } else {
+      fprintf(stderr, "Error reading wave file\n");
+      exit(1);
+    }
+  } while (!fmtRead);
   in.read(buffer, 4); // 16
   in.read(buffer, 2); // 1
   in.read(buffer, 2);
