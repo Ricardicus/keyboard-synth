@@ -15,10 +15,12 @@
 #include <chrono> // for std::chrono::seconds
 #include <cmath>
 #include <condition_variable>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <string>
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
 
@@ -26,6 +28,8 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
+
+#include "json.hpp"
 
 class Keyboard {
 public:
@@ -105,11 +109,31 @@ public:
   void playNote(std::string &note);
   void printInstructions();
 
+  void loadSoundMap(std::string soundMapFile) {
+    // Open the file for reading
+    std::ifstream file(soundMapFile);
+    if (!file.is_open()) {
+      std::cerr << "Failed to open sound map file: " << soundMapFile
+                << std::endl;
+      return;
+    }
+
+    // Parse the JSON content
+    nlohmann::json j;
+    file >> j;
+
+    // Map the content to soundMap
+    for (const auto &[key, value] : j.items()) {
+      soundMap[key] = value.get<std::string>();
+    }
+  }
+
 private:
   ALCdevice *device;
   ALCcontext *context;
   std::vector<ALuint> buffers;
   std::vector<ALuint> sources;
+  std::map<std::string, std::string> soundMap;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
 
   std::map<std::string, int> keyToBufferIndex;
