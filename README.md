@@ -23,6 +23,12 @@ Now you can press the keys on the a -> l and z -> , keys. Sharp notes: w, e, t, 
 Change octaves with o (down) and p (up). Echo effect added with argument -e.
 Use -h or --help for more info.
 
+## Map keys to wave files
+
+```bash
+./build/keyboard --file media/notes.json
+```
+
 # Dependencies
 
 You need OpenAL and ncurses installed.
@@ -39,4 +45,4 @@ sudo apt-get install libncurses5-dev
 # Todo
 
 - API
-- Wave for keys
+
