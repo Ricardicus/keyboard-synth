@@ -1,21 +1,49 @@
 #ifndef KEYBOARD_WAVEREAD_HPP
 #define KEYBOARD_WAVEREAD_HPP
-struct WavHeader {
-  char riff[4];
-  int32_t chunkSize;
-  char wave[4];
-  char fmt[4];
-  int32_t subChunkSize;
-  int16_t audioFormat;
-  int16_t numChannels;
-  int32_t sampleRate;
-  int32_t byteRate;
-  int16_t blockAlign;
-  int16_t bitsPerSample;
-  char data[4];
-  int32_t dataSize;
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <vector>
+
+#ifdef USE_OPENAL_PREFIX
+#include <OpenAL/al.h>
+#include <OpenAL/alc.h>
+#elif USE_AL_PREFIX
+#include <AL/al.h>
+#include <AL/alc.h>
+#else
+#include <OpenAL/al.h>  // Guessing. Use the definitions above for compilation.
+#include <OpenAL/alc.h> // Guessing. Use the definitions above for compilation.
+#endif
+
+struct RIFF_Header {
+  char chunkID[4];
+  long chunkSize; // size not including chunkSize or chunkID
+  char format[4];
 };
 
-std::vector<char> readWavData(const std::string &filename, int &sampleRate);
+/*
+ * Struct to hold fmt subchunk data for WAVE files.
+ */
+struct WAVE_Format {
+  char subChunkID[4];
+  long subChunkSize;
+  short audioFormat;
+  short numChannels;
+  long sampleRate;
+  long byteRate;
+  short blockAlign;
+  short bitsPerSample;
+};
+
+/*
+ * Struct to hold the data of the wave file
+ */
+struct WAVE_Data {
+  char subChunkID[4]; // should contain the word data
+  long subChunk2Size; // Stores the size of the data block
+};
+
+char *loadWAV(std::string filename, int& chan, int& samplerate, int& bps, int& size);
 
 #endif

@@ -77,12 +77,37 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
     Note n = Note(key, length, sampleRate);
     if (f == Sound::WaveForm::WaveFile &&
         this->soundMap.find(key) != this->soundMap.end()) {
+      int channels;
       int sampleRate;
-      std::vector<char> waveData = readWavData(this->soundMap[key], sampleRate);
+      int bps;
+      char *data;
+      int size;
+      ALenum format = AL_FORMAT_MONO8;
+      if ((data = loadWAV(this->soundMap[key], channels, sampleRate, bps,
+                          size)) != NULL) {
+        if (channels == 1) {
+          if (bps == 8) {
+            format = AL_FORMAT_MONO8;
+          } else {
+            format = AL_FORMAT_MONO16;
+          }
+        } else {
+          if (bps == 8) {
+            format = AL_FORMAT_STEREO8;
+          } else {
+            format = AL_FORMAT_STEREO16;
+          }
+        }
+        printf("channels: %d, sampleRate: %d, bps: %d, data size: %d\n",
+               channels, sampleRate, bps, size);
 
-      alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
-                   waveData.data(), waveData.size() * sizeof(short),
-                   44100);
+        alBufferData(this->buffers[bufferIndex], format, data, size,
+                     sampleRate);
+      } else {
+        fprintf(stderr, "Error loading file: %s\n",
+                this->soundMap[key].c_str());
+      }
+
     } else {
       std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
       std::vector<short> buffer = effects.apply(buffer_raw);
