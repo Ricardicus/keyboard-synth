@@ -43,6 +43,9 @@ std::map<std::string, double> frequencies = {
     {"A7", 3520.00},  {"A#7", 3729.31}, {"Bb7", 3729.31}, {"B7", 3951.07},
 
     {"C8", 4186.01},
+
+    {"Db1", 34.65},   {"Db2", 69.30},   {"Db3", 138.59},  {"Db4", 277.18},
+    {"Db5", 554.37},  {"Db6", 1108.73}, {"Db7", 2217.46}
 };
 
 double getFrequency(std::string &note) {
@@ -64,8 +67,6 @@ std::vector<std::string> getNotes() {
   return notes;
 }
 
-int getNumberOfNotes() {
-  return frequencies.size();
-}
+int getNumberOfNotes() { return frequencies.size(); }
 
 }; // namespace notes

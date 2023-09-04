@@ -140,10 +140,10 @@ private:
   std::map<std::string, Note> notes;
 
   std::map<int, std::string> keyPressToNote = {
-      {static_cast<int>('w'), "C#4"}, {static_cast<int>('e'), "D#4"},
-      {static_cast<int>('t'), "F#4"}, {static_cast<int>('y'), "G#4"},
-      {static_cast<int>('u'), "A#4"}, {static_cast<int>('y'), "C#5"},
-      {static_cast<int>('u'), "D#5"}, {static_cast<int>('a'), "C4"},
+      {static_cast<int>('w'), "Db4"}, {static_cast<int>('e'), "Eb4"},
+      {static_cast<int>('t'), "Gb4"}, {static_cast<int>('y'), "Ab4"},
+      {static_cast<int>('u'), "Bb4"}, {static_cast<int>('y'), "Db5"},
+      {static_cast<int>('u'), "Eb5"}, {static_cast<int>('a'), "C4"},
       {static_cast<int>('s'), "D4"},  {static_cast<int>('d'), "E4"},
       {static_cast<int>('f'), "F4"},  {static_cast<int>('g'), "G4"},
       {static_cast<int>('h'), "A4"},  {static_cast<int>('j'), "B4"},
@@ -151,7 +151,7 @@ private:
       {static_cast<int>('x'), "D3"},  {static_cast<int>('c'), "E3"},
       {static_cast<int>('v'), "F3"},  {static_cast<int>('b'), "G3"},
       {static_cast<int>('n'), "A3"},  {static_cast<int>('m'), "B3"},
-      {static_cast<int>(','), "C4"}};
+      {static_cast<int>(','), "C4"},  {static_cast<int>('l'), "D5"}};
 
   std::map<int, std::function<void()>> keyPressToAction = {
       {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},

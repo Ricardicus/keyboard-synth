@@ -27,7 +27,8 @@ char *loadWAV(std::string filename, int &chan, int &samplerate, int &bps,
   std::ifstream in(fn, std::ios::binary);
   in.read(buffer, 4);
   if (strncmp(buffer, "RIFF", 4) != 0) {
-    std::cout << "this is not a valid WAVE file" << std::endl;
+    std::cout << "this file: " << filename << " is not a valid WAVE file"
+              << std::endl;
     printf("Buffer: '%c' '%c' '%c' '%c'\n", buffer[0], buffer[1], buffer[2],
            buffer[3]);
     return NULL;
