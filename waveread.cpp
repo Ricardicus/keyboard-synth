@@ -86,3 +86,36 @@ char *loadWAV(std::string filename, int &chan, int &samplerate, int &bps,
   } while (!dataRead);
   return buff;
 }
+
+std::vector<short> convertToVector(const char *data, int numSamples) {
+  // Cast the char pointer to a short pointer.
+  const short *shortData = reinterpret_cast<const short *>(data);
+  return std::vector<short>(shortData, shortData + numSamples);
+}
+
+void splitChannels(const char *data, size_t dataSize, std::vector<short> &left,
+                   std::vector<short> &right) {
+  // Ensure the data is a multiple of 4 bytes (2 channels * 2 bytes per sample)
+  if (dataSize % 4 != 0) {
+    std::cerr << "Invalid data size!" << std::endl;
+    return;
+  }
+
+  size_t numStereoPairs = dataSize / 4; // Total number of left-right pairs
+  size_t numSamplesPerChannel =
+      dataSize / 2 / 2; // Number of samples for each channel
+
+  left.resize(numSamplesPerChannel);
+  right.resize(numSamplesPerChannel);
+
+  for (size_t i = 0, j = 0; i < dataSize; i += 4, j++) {
+
+    left[j] =
+        static_cast<short>((static_cast<unsigned char>(data[i + 1]) << 8) |
+                           static_cast<unsigned char>(data[i]));
+    right[j] =
+        static_cast<short>((static_cast<unsigned char>(data[i + 3]) << 8) |
+                           static_cast<unsigned char>(data[i + 2]));
+  }
+}
+

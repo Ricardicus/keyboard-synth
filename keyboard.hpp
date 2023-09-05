@@ -69,6 +69,8 @@ public:
     alcCloseDevice(this->device);
   }
 
+  void setVolume(float volume_) { this->volume = volume_; } 
+
   void changeOctave(int delta) {
     // Prevent going higher if there's a note with octave 8
     if (delta > 0) {
@@ -138,6 +140,8 @@ private:
 
   std::map<std::string, int> keyToBufferIndex;
   std::map<std::string, Note> notes;
+
+  float volume = 1.0;
 
   std::map<int, std::string> keyPressToNote = {
       {static_cast<int>('w'), "Db4"}, {static_cast<int>('e'), "Eb4"},

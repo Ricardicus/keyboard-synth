@@ -50,7 +50,7 @@ target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIE
 
 
 # Define the executable
-add_executable(play_note play_note.cpp fir.cpp adsr.cpp dft.cpp effects.cpp)
+add_executable(play_note play_note.cpp fir.cpp adsr.cpp dft.cpp waveread.cpp effects.cpp)
 
 # Link OpenAL to the executables
 target_link_libraries(play_note ${OPENAL_LIBRARY})

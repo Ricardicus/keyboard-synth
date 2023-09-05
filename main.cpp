@@ -4,17 +4,21 @@
 #include "adsr.hpp"
 #include "effects.hpp"
 #include "keyboard.hpp"
+#include "waveread.hpp"
 
 constexpr int sampleRate = 44100;
 
 void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
   printf("flags:\n");
-  printf(
-      "   --form: form of sound [sine (default), triangular, saw, square]\n");
-  printf("       -e: Add an echo effect\n");
-  printf("   --file: Instead of notes, use .wav file with this mapping as "
+  printf("   --form: form of sound [sine (default), triangular, saw, "
+         "square]\n");
+  printf("   -e|--echo: Add an echo effect\n");
+  printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
+         "this wav file\n");
+  printf("   --file [file]: Use .wav files for notes with this mapping as "
          "provided in this file\n");
+  printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -28,7 +32,7 @@ void loaderFunc(unsigned ticks, unsigned tick) {
 }
 int parseArguments(int argc, char *argv[], ADSR &adsr,
                    Sound::WaveForm &waveForm, Effects &effects,
-                   std::string &waveFile) {
+                   std::string &waveFile, float &volume) {
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "--form") {
@@ -48,6 +52,13 @@ int parseArguments(int argc, char *argv[], ADSR &adsr,
       FIR fir(sampleRate);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
       effects.addFIR(fir);
+    } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
+      FIR fir(sampleRate);
+      fir.loadFromFile(argv[i + 1]);
+      fir.setNormalization(true);
+      effects.addFIR(fir);
+    } else if (arg == "--volume" && i + 1 < argc) {
+      volume = std::stof(argv[i + 1]);
     } else if (arg == "-h" || arg == "--help") {
       printHelp(argv[0]);
       return -1;
@@ -68,7 +79,8 @@ int main(int argc, char *argv[]) {
   Sound::WaveForm waveForm = Sound::WaveForm::Sine; // default waveform
   Effects effects;
   std::string waveFile;
-  int c = parseArguments(argc, argv, adsr, waveForm, effects, waveFile);
+  float volume = 1.0;
+  int c = parseArguments(argc, argv, adsr, waveForm, effects, waveFile, volume);
   if (c < 0) {
     return 0;
   } else if (c > 0) {
@@ -81,6 +93,7 @@ int main(int argc, char *argv[]) {
     waveForm = Sound::WaveForm::WaveFile;
   }
   keyboard.setLoaderFunc(loaderFunc);
+  keyboard.setVolume(volume);
   keyboard.prepareSound(sampleRate, adsr, waveForm, effects);
   printf("Sound OK!\n");
 

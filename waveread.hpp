@@ -44,6 +44,12 @@ struct WAVE_Data {
   long subChunk2Size; // Stores the size of the data block
 };
 
-char *loadWAV(std::string filename, int& chan, int& samplerate, int& bps, int& size);
+char *loadWAV(std::string filename, int &chan, int &samplerate, int &bps,
+              int &size);
+
+std::vector<short> convertToVector(const char *data, int numSamples);
+
+void splitChannels(const char *data, size_t dataSize, std::vector<short> &left,
+                   std::vector<short> &right);
 
 #endif

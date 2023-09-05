@@ -52,3 +52,34 @@ short FIR::buf(int index) {
   }
   return this->buffer[index];
 }
+
+bool FIR::loadFromFile(std::string file) {
+  float maxValue = 1;
+  int channels;
+  int sampleRate;
+  int bps;
+  char *data;
+  int size;
+  if ((data = loadWAV(file.c_str(), channels, sampleRate, bps, size)) != NULL) {
+    if (channels == 2) {
+      std::vector<short> buffer_right;
+
+      // Only take the left channels IR
+      const float maxShortValue =
+          static_cast<float>(std::numeric_limits<short>::max());
+      splitChannels(data, size, this->buffer, buffer_right);
+      (void)buffer_right;
+    } else {
+      this->buffer = convertToVector(data, size);
+    }
+
+    this->impulseResponse.clear();
+    this->impulseResponse.reserve(this->buffer.size());
+    for (short sample : this->buffer) {
+      this->impulseResponse.push_back(sample);
+    }
+  } else {
+    return false;
+  }
+  return true;
+}

@@ -2,6 +2,7 @@
 #define KEYBOARD_EFFECTS_HPP
 
 #include <vector>
+#include <map>
 
 #include "fir.hpp"
 
@@ -15,7 +16,9 @@ public:
   std::vector<short> apply(std::vector<short> &buffer, size_t maxLen);
 
 private:
+  using Complex = std::complex<double>;
   std::vector<FIR> firs;
+
 };
 
 #endif

@@ -1,4 +1,5 @@
 #include <complex>
+#include <math.h>
 #include <fftw3.h>
 #include <iostream>
 #include <vector>
@@ -8,7 +9,7 @@
 
 using Complex = std::complex<double>;
 
-std::vector<Complex> FourierTransform::DFT(const std::vector<float> &data) {
+std::vector<Complex> FourierTransform::DFT(const std::vector<float> &data, bool normalize) {
   int N = data.size();
 
   // Allocate memory for input and output
@@ -29,8 +30,9 @@ std::vector<Complex> FourierTransform::DFT(const std::vector<float> &data) {
 
   // Copy fftw output to std::vector<Complex>
   std::vector<Complex> result(N);
+  double scale = normalize ? N : 1.0;
   for (int i = 0; i < N; ++i) {
-    result[i] = Complex(out[i][0], out[i][1]);
+    result[i] = Complex(out[i][0]/scale, out[i][1]/scale);
   }
 
   // Cleanup
@@ -42,7 +44,7 @@ std::vector<Complex> FourierTransform::DFT(const std::vector<float> &data) {
 }
 
 
-std::vector<Complex> FourierTransform::DFT(const std::vector<short> &data) {
+std::vector<Complex> FourierTransform::DFT(const std::vector<short> &data, bool normalize) {
   int N = data.size();
 
   // Allocate memory for input and output
@@ -63,8 +65,9 @@ std::vector<Complex> FourierTransform::DFT(const std::vector<short> &data) {
 
   // Copy fftw output to std::vector<Complex>
   std::vector<Complex> result(N);
+  double scale = normalize ? N : 1.0;
   for (int i = 0; i < N; ++i) {
-    result[i] = Complex(out[i][0], out[i][1]);
+    result[i] = Complex(out[i][0]/scale, out[i][1]/scale);
   }
 
   // Cleanup

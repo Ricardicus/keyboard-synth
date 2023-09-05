@@ -23,9 +23,8 @@ std::vector<short> Effects::apply(std::vector<short> &buffer) {
     while (impulse.size() < nearestPowerOfTwo) {
       impulse.push_back(0);
     }
-
-    std::vector<Complex> dft_ir = ft.DFT(impulse);
-    std::vector<Complex> dft_buffer = ft.DFT(buffer_);
+    std::vector<Complex> dft_ir = ft.DFT(impulse, this->firs[i].getNormalization());
+    std::vector<Complex> dft_buffer = ft.DFT(buffer_, false);
     std::vector<Complex> dft_multiplied;
     int q = 0;
     while (q < dft_buffer.size()) {
@@ -58,9 +57,8 @@ std::vector<short> Effects::apply(std::vector<short> &buffer, size_t maxLen) {
     while (impulse.size() < nearestPowerOfTwo) {
       impulse.push_back(0);
     }
-
-    std::vector<Complex> dft_ir = ft.DFT(impulse);
-    std::vector<Complex> dft_buffer = ft.DFT(buffer_);
+    std::vector<Complex> dft_ir = ft.DFT(impulse, this->firs[i].getNormalization());
+    std::vector<Complex> dft_buffer = ft.DFT(buffer_, false);
     std::vector<Complex> dft_multiplied;
     int q = 0;
     while (q < dft_buffer.size()) {
