@@ -25,7 +25,7 @@ Use -h or --help for more info.
 
 In general, for more help use -h:
 
-```bash
+```text
 ./keyboard -h
 Usage: ./keyboard [flags]
 flags:
@@ -51,8 +51,8 @@ by the University of Iowa.
 ## Map IR to wave files
 
 Include your own impulse responses to create reverb effects.
-I have included the impulse response fro Kalvträsks kyrka (church in Sweden) uploaded by
-someone here: https://familjenpalo.se/vpo/kalvtrask/ .
+I have included the impulse response from Kalvträsks kyrka (church in Sweden) uploaded by
+someone named Lars here: https://familjenpalo.se/vpo/kalvtrask/ .
 
 You can test this reverb on the piano like this:
 
