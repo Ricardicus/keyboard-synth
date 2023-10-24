@@ -23,18 +23,15 @@ typedef struct QOALMSState {
   int16_t weights[4]; // most recent last
 } QOALMSState;
 
-#pragma pack(push, 1)
-
 typedef struct QOASlice {
-  uint8_t sliceData[8];
+  uint64_t sliceData;
 } QOASlice;
-
-#pragma pack(pop)
 
 class QOA {
 public:
   QOA(){};
-  std::vector<short> loadFile(std::string file);
+  std::vector<short> loadFile(std::string file, int &nbrChannels,
+                              int &sampleRate);
 };
 
 #endif

@@ -32,6 +32,78 @@ void loaderFunc(unsigned ticks, unsigned tick) {
   }
   fflush(stdout);
 }
+
+void playSound(std::vector<short> sound, int sampleRate, int numChannels) {
+  // Initialize OpenAL
+  ALCdevice *device = alcOpenDevice(NULL);
+  if (!device) {
+    std::cerr << "Failed to open device!" << std::endl;
+    return;
+  }
+  
+  printf("Sound size: %u, sampleRate %u, numChannels: %u\n", sound.size() * 2,
+         sampleRate, numChannels);
+
+  ALCcontext *context = alcCreateContext(device, NULL);
+  if (!context || !alcMakeContextCurrent(context)) {
+    std::cerr << "Failed to create or set context!" << std::endl;
+    alcCloseDevice(device);
+    return;
+  }
+  ALuint buffer;
+  alGenBuffers(1, &buffer);
+  int bps = 16;
+  int size = sound.size() * 2;
+
+  ALenum format = AL_FORMAT_MONO8;
+  if (numChannels == 1) {
+    if (bps == 8) {
+      format = AL_FORMAT_MONO8;
+    } else {
+      format = AL_FORMAT_MONO16;
+    }
+  } else {
+    if (bps == 8) {
+      format = AL_FORMAT_STEREO8;
+    } else {
+      format = AL_FORMAT_STEREO16;
+    }
+  }
+
+  alBufferData(buffer, format, sound.data(), size, sampleRate);
+
+  ALuint source;
+  alGenSources(1, &source);
+  alSourcei(source, AL_BUFFER, buffer);
+
+  // Play source
+  alSourcePlay(source);
+  while (true) {
+    ALint state;
+    alGetSourcei(source, AL_SOURCE_STATE, &state);
+    if (state != AL_PLAYING) {
+      break; // Exit loop if source is no longer playing
+    }
+
+    ALint sampleOffset = 0;
+    alGetSourcei(source, AL_SAMPLE_OFFSET, &sampleOffset);
+    std::cout << "Currently playing at sample: " << sampleOffset << std::endl;
+
+    // Sleep for a short duration before checking again
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  // Cleanup
+  alDeleteSources(1, &source);
+  alDeleteBuffers(1, &buffer);
+
+  alcMakeContextCurrent(NULL);
+  alcDestroyContext(context);
+  alcCloseDevice(device);
+
+  printf("Played!\n");
+}
+
 int parseArguments(int argc, char *argv[], ADSR &adsr,
                    Sound::WaveForm &waveForm, Effects &effects,
                    std::string &waveFile, float &volume) {
@@ -53,7 +125,16 @@ int parseArguments(int argc, char *argv[], ADSR &adsr,
     } else if (arg == "--qoa" && i + 1 < argc) {
       std::string qoaFile(argv[i + 1]);
       QOA qoa;
-      qoa.loadFile(qoaFile);
+      int nbr_channels, sample_rate;
+      std::vector<short> fileSound =
+          qoa.loadFile(qoaFile, nbr_channels, sample_rate);
+
+      printf("File loaded, nbr of samples: %lu\n", fileSound.size());
+      printf("Playing this file.. sample_rate: %d, nbr_channels: %d\n", sample_rate, nbr_channels);
+
+      playSound(fileSound, sample_rate, nbr_channels);
+
+      exit(0);
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(sampleRate);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
