@@ -40,14 +40,12 @@ else()
 endif()
 
 # Define the executable
-add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp waveread.cpp effects.cpp main.cpp)
+add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp waveread.cpp effects.cpp qoa.cpp main.cpp)
 
 # Link OpenAL to the executables
 target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
 target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
 target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
-
-
 
 # Define the executable
 add_executable(play_note play_note.cpp fir.cpp adsr.cpp dft.cpp waveread.cpp effects.cpp)

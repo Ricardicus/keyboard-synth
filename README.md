@@ -76,4 +76,4 @@ sudo apt-get install libncurses5-dev
 # Todo
 
 - API
-
+- QOA support

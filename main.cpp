@@ -4,6 +4,7 @@
 #include "adsr.hpp"
 #include "effects.hpp"
 #include "keyboard.hpp"
+#include "qoa.hpp"
 #include "waveread.hpp"
 
 constexpr int sampleRate = 44100;
@@ -18,6 +19,7 @@ void printHelp(char *argv0) {
          "this wav file\n");
   printf("   --file [file]: Use .wav files for notes with this mapping as "
          "provided in this file\n");
+  printf("   --qoa [file]: DEBUG FLAG: test .qoa file");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
@@ -48,6 +50,10 @@ int parseArguments(int argc, char *argv[], ADSR &adsr,
       }
     } else if (arg == "--file" && i + 1 < argc) {
       waveFile = argv[i + 1];
+    } else if (arg == "--qoa" && i + 1 < argc) {
+      std::string qoaFile(argv[i + 1]);
+      QOA qoa;
+      qoa.loadFile(qoaFile);
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(sampleRate);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
