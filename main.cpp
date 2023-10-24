@@ -53,7 +53,7 @@ void playSound(std::vector<short> sound, int sampleRate, int numChannels) {
   ALuint buffer;
   alGenBuffers(1, &buffer);
   int bps = 16;
-  int size = sound.size();
+  int size = sound.size() * 2;
 
   ALenum format = AL_FORMAT_MONO8;
   if (numChannels == 1) {
