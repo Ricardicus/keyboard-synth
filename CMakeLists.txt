@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(OpenAL_C4Note)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find the ncurses package
@@ -39,11 +39,14 @@ else()
     message(FATAL_ERROR "Cannot find fftw3.h!")
 endif()
 
+# Add QOA library
+add_subdirectory(qoa)
+
 # Define the executable
 add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp waveread.cpp effects.cpp qoa.cpp main.cpp)
 
 # Link OpenAL to the executables
-target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
+target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3 QOA)
 target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
 target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
 

@@ -4,7 +4,7 @@
 #include "adsr.hpp"
 #include "effects.hpp"
 #include "keyboard.hpp"
-#include "qoa.hpp"
+#include "qoa.h"
 #include "waveread.hpp"
 
 constexpr int sampleRate = 44100;
@@ -53,7 +53,7 @@ void playSound(std::vector<short> sound, int sampleRate, int numChannels) {
   ALuint buffer;
   alGenBuffers(1, &buffer);
   int bps = 16;
-  int size = sound.size() * 2;
+  int size = sound.size();
 
   ALenum format = AL_FORMAT_MONO8;
   if (numChannels == 1) {
@@ -124,15 +124,14 @@ int parseArguments(int argc, char *argv[], ADSR &adsr,
       waveFile = argv[i + 1];
     } else if (arg == "--qoa" && i + 1 < argc) {
       std::string qoaFile(argv[i + 1]);
-      QOA qoa;
-      int nbr_channels, sample_rate;
-      std::vector<short> fileSound =
-          qoa.loadFile(qoaFile, nbr_channels, sample_rate);
 
-      printf("File loaded, nbr of samples: %lu\n", fileSound.size());
-      printf("Playing this file.. sample_rate: %d, nbr_channels: %d\n", sample_rate, nbr_channels);
+      std::ifstream qoaFileSteam(qoaFile, std::ifstream::in | std::ifstream::binary);
 
-      playSound(fileSound, sample_rate, nbr_channels);
+      qoa::Qoa q = qoa::Qoa::parse(qoaFileSteam).value();
+
+      std::vector<int16_t> sound = q.audio_frames;
+ 
+      playSound(sound, 44100, q.nbr_channels);
 
       exit(0);
     } else if (arg == "-e" || arg == "--echo") {

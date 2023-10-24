@@ -68,7 +68,7 @@ std::vector<short> QOA::loadFile(std::string file, int &nbrChannels,
 
   // Frames
   double divisionResult = static_cast<double>(header.samples) / (256.0 * 20.0);
-  uint16_t numberOfFrames = header.samples / (256 * 20);
+  uint16_t numberOfFrames = std::ceil(header.samples / (256 * 20));
 
   printf("Number of frames: %u\n", numberOfFrames);
 
@@ -139,7 +139,7 @@ std::vector<short> QOA::loadFile(std::string file, int &nbrChannels,
       int sf_quant;
       double sf = std::round(std::pow(sf_quant + 1, 2.75));
       for (int qq = 0; qq < slices; qq++) {
-        //qoaSlice[qq].sliceData = 
+        qoaSlice[qq].sliceData = swapEndianness(qoaSlice[qq].sliceData);
         std::vector<int> qrNN = parseQOASlice(qoaSlice[qq], sf_quant);
         printf("qrNN.size(): %lu\n", qrNN.size());
         // Lets try to parse the samples
@@ -188,7 +188,7 @@ std::vector<short> QOA::loadFile(std::string file, int &nbrChannels,
         printf("      qr01: %d\n", qrNN[1]);
         printf("      qr02: %d\n", qrNN[2]);
         printf("      ....\n");
-        exit(0);
+        //exit(0);
         qq++;
       }
 
