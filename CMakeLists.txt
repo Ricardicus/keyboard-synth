@@ -39,31 +39,26 @@ else()
     message(FATAL_ERROR "Cannot find fftw3.h!")
 endif()
 
-# Define the executable
-add_executable(keyboard keyboard.cpp note.cpp notes.cpp sound.cpp fir.cpp dft.cpp waveread.cpp effects.cpp main.cpp)
+# Define the keylib library
+add_library(keylib STATIC
+    keyboard.cpp
+    note.cpp
+    notes.cpp
+    sound.cpp
+    fir.cpp
+    dft.cpp
+    waveread.cpp
+    effects.cpp
+)
 
-# Link OpenAL to the executables
-target_link_libraries(keyboard ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
-target_include_directories(keyboard PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
-target_include_directories(keyboard PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
+# Link dependencies to the keylib library
+target_link_libraries(keylib ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
+target_include_directories(keylib PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
+target_include_directories(keylib PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
 
+# Define the keyboard executable
+add_executable(keyboard main.cpp)
 
+# Link keylib to the keyboard executable
+target_link_libraries(keyboard keylib)
 
-# Define the executable
-add_executable(play_note play_note.cpp fir.cpp adsr.cpp dft.cpp waveread.cpp effects.cpp)
-
-# Link OpenAL to the executables
-target_link_libraries(play_note ${OPENAL_LIBRARY})
-target_link_libraries(play_note ${CURSES_LIBRARIES} fftw3)
-target_include_directories(play_note PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
-target_include_directories(play_note PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
-
-
-# Define the executable
-add_executable(play_wav play_wave.cpp waveread.cpp)
-
-# Link OpenAL to the executables
-target_link_libraries(play_wav ${OPENAL_LIBRARY})
-target_link_libraries(play_wav ${CURSES_LIBRARIES} fftw3)
-target_include_directories(play_wav PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
-target_include_directories(play_wav PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
