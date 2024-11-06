@@ -30,7 +30,7 @@ endif()
 add_subdirectory(fftw-3.3.10)
 
 find_path(FFTW_INCLUDE_DIR fftw3.h
-          HINTS ${CMAKE_SOURCE_DIR}/fftw-3.3.10
+          HINTS ${CMAKE_CURRENT_SOURCE_DIR}/fftw-3.3.10
           PATH_SUFFIXES api include)
 
 if(FFTW_INCLUDE_DIR)
