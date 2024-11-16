@@ -27,10 +27,12 @@ void FIR::setResonance(std::vector<float> alphas, float seconds) {
   int size = alphas.size() * interval;
   int i = 0;
   int alpha_index = 0;
+  const float maxShortValue =
+      static_cast<float>(std::numeric_limits<short>::max());
   while (i < size) {
     if (i % interval == 0) {
       this->impulseResponse.push_back((-1 ? i % 1 == 0 : 1) *
-                                      alphas[alpha_index]);
+                                      alphas[alpha_index] * maxShortValue);
       ++alpha_index;
     } else {
       this->impulseResponse.push_back(0);
