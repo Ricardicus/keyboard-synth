@@ -12,7 +12,7 @@
 #include "notes.hpp"
 #include "waveread.hpp"
 
-void Keyboard::playNote(std::string &note) {
+void Keyboard::playNote(const std::string &note) {
   if (this->keyToBufferIndex.find(note) == this->keyToBufferIndex.end()) {
     // Failed to find the note
     return;
@@ -160,7 +160,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
   }
 }
 
-void Keyboard::registerNote(std::string &note) { playNote(note); }
+void Keyboard::registerNote(const std::string &note) { playNote(note); }
 
 void Keyboard::registerButtonPress(int pressed) {
   if (this->keyPressToNote.find(pressed) != this->keyPressToNote.end()) {

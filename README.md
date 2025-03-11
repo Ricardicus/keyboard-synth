@@ -32,7 +32,7 @@ flags:
    --form: form of sound [sine (default), triangular, saw, square]
    -e|--echo: Add an echo effect
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
-   --file [file]: Use .wav files for notes with this mapping as provided in this file
+   --notes [file]: Use .wav files for notes with this mapping as provided in this file
    --volume [float]: Set the volume knob (default 1.0)
 
 ./keyboard compiled Sep  5 2023 18:45:28
@@ -41,7 +41,7 @@ flags:
 ## Map keys to wave files
 
 ```bash
-./build/keyboard --file media/notes.json
+./build/keyboard --notes media/notes.json
 ```
 
 Inspect the media/notes.json file to see how it is structured.
@@ -57,7 +57,7 @@ someone named Lars here: https://familjenpalo.se/vpo/kalvtrask/ .
 You can test this reverb on the piano like this:
 
 ```bash
-./build/keyboard --file media/notes.json -r media/ir/KalvtraskStereo16bps-44100.wav
+./build/keyboard --notes media/notes.json -r media/ir/KalvtraskStereo16bps-44100.wav
 ```
 
 # Dependencies

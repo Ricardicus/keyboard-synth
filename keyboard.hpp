@@ -106,9 +106,9 @@ public:
 
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                     Effects &effects);
-  void registerNote(std::string &note);
+  void registerNote(const std::string &note);
   void registerButtonPress(int note);
-  void playNote(std::string &note);
+  void playNote(const std::string &note);
   void printInstructions();
 
   void loadSoundMap(std::string soundMapFile) {

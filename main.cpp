@@ -16,8 +16,8 @@ void printHelp(char *argv0) {
   printf("   -e|--echo: Add an echo effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
-  printf("   --file [file]: Use .wav files for notes with this mapping as "
-         "provided in this file\n");
+  printf("   --notes [file]: Provie a .json file to use .wav files for notes "
+         "with the note-to-wavefile mapping provided in this file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
