@@ -28,6 +28,7 @@ endif()
 
 # Look for FFTW
 add_subdirectory(fftw-3.3.10)
+add_subdirectory(midifile)
 
 find_path(FFTW_INCLUDE_DIR fftw3.h
           HINTS ${CMAKE_CURRENT_SOURCE_DIR}/fftw-3.3.10
@@ -51,6 +52,9 @@ add_library(keylib STATIC
     effects.cpp
 )
 
+# Include directories
+include_directories(midifile/include)
+
 # Link dependencies to the keylib library
 target_link_libraries(keylib ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
 target_include_directories(keylib PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
@@ -60,5 +64,5 @@ target_include_directories(keylib PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES}
 add_executable(keyboard main.cpp)
 
 # Link keylib to the keyboard executable
-target_link_libraries(keyboard keylib)
+target_link_libraries(keyboard keylib midifile)
 

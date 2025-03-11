@@ -1,0 +1,9 @@
+commit 51eec11fe4f8e05bf4ce36ccc7d7e179f174291a (HEAD -> master, origin/master, origin/HEAD)
+Author: Craig Stuart Sapp <craigsapp@gmail.com>
+Date:   Sun Feb 16 09:21:23 2025 -0800
+
+    Sort note-ons before note-offs by defualt, but allow sorting note-offs first with alternate sorting function.
+
+
+
+But also some changes
