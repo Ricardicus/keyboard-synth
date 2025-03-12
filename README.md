@@ -32,10 +32,11 @@ flags:
    --form: form of sound [sine (default), triangular, saw, square]
    -e|--echo: Add an echo effect
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
-   --notes [file]: Use .wav files for notes with this mapping as provided in this file
+   --file [file]: Use .wav files for notes with this mapping as provided in this file
+   --midi [file]: Play this MIDI (.mid) file
    --volume [float]: Set the volume knob (default 1.0)
 
-./keyboard compiled Sep  5 2023 18:45:28
+./keyboard compiled Mar 12 2025 07:43:15
 ```
 
 ## Map keys to wave files
