@@ -50,6 +50,7 @@ add_library(keylib STATIC
     src/dft.cpp
     src/waveread.cpp
     src/effects.cpp
+    src/adsr.cpp
 )
 
 # Link dependencies to the keylib library

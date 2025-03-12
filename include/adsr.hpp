@@ -1,7 +1,8 @@
 #ifndef KEYBOARD_ADSR_HPP
 #define KEYBOARD_ADSR_HPP
-#include <stdio.h>
 #include <ncurses.h>
+#include <stdio.h>
+#include <string>
 
 class ADSR {
 public:
@@ -28,11 +29,11 @@ public:
     int decay_end = attack_end + this->quantas_length * this->qadsr[1];
     int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
     int release_end = sustain_end + this->quantas_length * this->qadsr[3];
-    if ( x < attack_end )
+    if (x < attack_end)
       return attack(x);
-    if ( x < decay_end )
+    if (x < decay_end)
       return decay(x);
-    if ( x < sustain_end )
+    if (x < sustain_end)
       return sustain(x);
     return release(x);
   }
@@ -61,6 +62,8 @@ public:
     return (short)this->sustain_level -
            (((float)x - sustain_end) / release_length) * this->sustain_level;
   }
+
+  std::string getCoolASCIVisualization(const std::string &prefix);
 
   short amplitude;
   int quantas;

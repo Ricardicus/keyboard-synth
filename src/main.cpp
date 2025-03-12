@@ -53,6 +53,8 @@ public:
           "    quantas_length: " + std::to_string(adsr->quantas_length) + "\n";
       result +=
           "    sustain_level: " + std::to_string(adsr->sustain_level) + "\n";
+      result += "    visualization: [see below]\n";
+      result += adsr->getCoolASCIVisualization("    ");
     }
     result += "  FIRs: " + std::to_string(effects.firs.size()) + "\n";
     for (int i = 0; i < effects.firs.size(); i++) {
