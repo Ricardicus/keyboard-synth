@@ -37,8 +37,7 @@ void printHelp(char *argv0) {
   printf("   -e|--echo: Add an echo effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
-  printf("   --file [file]: Use .wav files for notes with this mapping as "
-         "provided in this file\n");
+  printf("   --notes [file]: Map notes to .wav files as mapped in this .json file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
@@ -67,7 +66,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
           config.waveForm = Sound::WaveForm::Square;
         }
       }
-    } else if (arg == "--file" && i + 1 < argc) {
+    } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(SAMPLERATE);
