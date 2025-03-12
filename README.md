@@ -61,6 +61,19 @@ You can test this reverb on the piano like this:
 ./build/keyboard --notes media/notes.json -r media/ir/KalvtraskStereo16bps-44100.wav
 ```
 
+## Play MIDI files
+
+Instead of taking input from the keyboard, the keyboard can also be configured to
+receive input events from MIDI files.
+
+This in ebabled with the support of the ![midifile project](https://github.com/craigsapp/midifile).
+I have included an example midi-file of Bach under media/midi/bmv988.mid
+taken from the ![jsbash.net webpage](http://www.jsbach.net/midi/midi_goldbergvariations.html)
+
+```bash
+./build/keyboard --midi media/midi/bwv988.mid
+```
+
 # Dependencies
 
 You need OpenAL and ncurses installed.

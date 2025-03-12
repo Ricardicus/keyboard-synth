@@ -29,6 +29,7 @@ public:
   bool getNormalization() { return this->normalize; };
   std::vector<short> convolute(int max_size);
   std::vector<float> getIR() { return this->impulseResponse; };
+  size_t getIRLen() { return this->impulseResponse.size(); };
 
 private:
   float ir(int index);

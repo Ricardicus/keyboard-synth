@@ -62,7 +62,6 @@ public:
            (((float)x - sustain_end) / release_length) * this->sustain_level;
   }
 
-private:
   short amplitude;
   int quantas;
   int qadsr[4];

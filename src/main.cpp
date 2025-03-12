@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <ncurses.h>
 #include <thread>
@@ -18,16 +19,51 @@
 // MIDI note number to frequency
 float noteToFreq(int note) { return 440.0f * pow(2, (note - 69) / 12.0f); }
 
+bool fileExists(const std::string &file) {
+  return std::filesystem::exists(file);
+}
+
 constexpr int SAMPLERATE = 44100;
 
-typedef struct PlayConfig {
+class PlayConfig {
+public:
   ADSR *adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Effects effects;
   std::string waveFile;
   std::string midiFile;
   float volume = 1.0;
-} PlayConfig;
+  std::string getPrintableConfig() {
+    std::string result;
+    result += "Keyboard sound configuration:\n";
+    result += "  volume: " + std::to_string(volume) + "\n";
+    result +=
+        "  notes-wave-map: " + (waveFile.size() > 0 ? waveFile : "none") + "\n";
+    result += "  waveform: " + Sound::typeOfWave(waveForm) + "\n";
+    if (adsr != NULL) {
+      result += "  ADSR:\n";
+      result += "    amplitude: " + std::to_string(adsr->amplitude) + "\n";
+      result += "    quantas: " + std::to_string(adsr->quantas) + "\n";
+      result += "    qadsr: " + std::to_string(adsr->qadsr[0]) + " " +
+                std::to_string(adsr->qadsr[1]) + " " +
+                std::to_string(adsr->qadsr[2]) + " " +
+                std::to_string(adsr->qadsr[3]) + "\n";
+      result += "    length: " + std::to_string(adsr->length) + "\n";
+      result +=
+          "    quantas_length: " + std::to_string(adsr->quantas_length) + "\n";
+      result +=
+          "    sustain_level: " + std::to_string(adsr->sustain_level) + "\n";
+    }
+    result += "  FIRs: " + std::to_string(effects.firs.size()) + "\n";
+    for (int i = 0; i < effects.firs.size(); i++) {
+      result += "    [" + std::to_string(i + 1) +
+                "] IR length: " + std::to_string(effects.firs[i].getIRLen()) +
+                ", normalized: " +
+                (effects.firs[i].getNormalization() ? "true" : "false") + "\n";
+    }
+    return result;
+  }
+};
 
 void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
@@ -37,7 +73,8 @@ void printHelp(char *argv0) {
   printf("   -e|--echo: Add an echo effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
-  printf("   --notes [file]: Map notes to .wav files as mapped in this .json file\n");
+  printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
+         "file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
@@ -117,10 +154,19 @@ int main(int argc, char *argv[]) {
                         config.effects);
   printf("\nSound OK!\n");
 
-  printf("Keyboard sound: %s\n",
-         Sound::typeOfWave(config.waveForm).c_str());
+  std::string printableConfig = config.getPrintableConfig();
 
   if (config.midiFile.size() > 0) {
+
+    printf("%s", printableConfig.c_str());
+
+    if (!fileExists(config.midiFile)) {
+      printf("error: MIDI file provided, '%s', does not seem to exist?\nPlease "
+             "check, maybe there was a spelling error?\n",
+             config.midiFile.c_str());
+      return 1;
+    }
+
     smf::MidiFile midiFile;
     midiFile.read(config.midiFile);
     midiFile.doTimeAnalysis();
@@ -168,11 +214,18 @@ int main(int argc, char *argv[]) {
     keypad(stdscr, TRUE); // Enable special keys
     noecho();             // Don't show the key being pressed
     scrollok(stdscr, TRUE);
+
+    printw("%s", printableConfig.c_str());
     keyboard.printInstructions();
 
     while (true) {
       int ch = getch();
       keyboard.registerButtonPress(ch);
+      if (ch == 'o' || ch == 'p') {
+        clear();
+        printw("%s", printableConfig.c_str());
+        keyboard.printInstructions();
+      }
     }
 
     endwin(); // End curses mode

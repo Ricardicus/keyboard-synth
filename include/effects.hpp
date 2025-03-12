@@ -15,9 +15,9 @@ public:
   std::vector<short> apply(std::vector<short> &buffer);
   std::vector<short> apply(std::vector<short> &buffer, size_t maxLen);
 
+  std::vector<FIR> firs;
 private:
   using Complex = std::complex<double>;
-  std::vector<FIR> firs;
 
 };
 

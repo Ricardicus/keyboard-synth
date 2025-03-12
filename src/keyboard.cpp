@@ -60,7 +60,8 @@ void Keyboard::printInstructions() {
            note.c_str(), note_info.c_str());
     first = false;
   }
-  printf("\n\nVolume knob set to: %f\n\n", this->volume);
+  printw("\nVolume knob set to: %f\n", this->volume);
+  printw("Press 'o'/'p' to +/- one octave\n");
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
