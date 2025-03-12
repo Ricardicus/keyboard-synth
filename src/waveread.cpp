@@ -118,4 +118,3 @@ void splitChannels(const char *data, size_t dataSize, std::vector<short> &left,
                            static_cast<unsigned char>(data[i + 2]));
   }
 }
-

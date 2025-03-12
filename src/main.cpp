@@ -27,12 +27,13 @@ constexpr int SAMPLERATE = 44100;
 
 class PlayConfig {
 public:
-  ADSR *adsr;
+  ADSR adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Effects effects;
   std::string waveFile;
   std::string midiFile;
   float volume = 1.0;
+  float duration = 0.8f;
   std::string getPrintableConfig() {
     std::string result;
     result += "Keyboard sound configuration:\n";
@@ -40,22 +41,19 @@ public:
     result +=
         "  notes-wave-map: " + (waveFile.size() > 0 ? waveFile : "none") + "\n";
     result += "  waveform: " + Sound::typeOfWave(waveForm) + "\n";
-    if (adsr != NULL) {
-      result += "  ADSR:\n";
-      result += "    amplitude: " + std::to_string(adsr->amplitude) + "\n";
-      result += "    quantas: " + std::to_string(adsr->quantas) + "\n";
-      result += "    qadsr: " + std::to_string(adsr->qadsr[0]) + " " +
-                std::to_string(adsr->qadsr[1]) + " " +
-                std::to_string(adsr->qadsr[2]) + " " +
-                std::to_string(adsr->qadsr[3]) + "\n";
-      result += "    length: " + std::to_string(adsr->length) + "\n";
-      result +=
-          "    quantas_length: " + std::to_string(adsr->quantas_length) + "\n";
-      result +=
-          "    sustain_level: " + std::to_string(adsr->sustain_level) + "\n";
-      result += "    visualization: [see below]\n";
-      result += adsr->getCoolASCIVisualization("    ");
-    }
+    result += "  ADSR:\n";
+    result += "    amplitude: " + std::to_string(adsr.amplitude) + "\n";
+    result += "    quantas: " + std::to_string(adsr.quantas) + "\n";
+    result += "    qadsr: " + std::to_string(adsr.qadsr[0]) + " " +
+              std::to_string(adsr.qadsr[1]) + " " +
+              std::to_string(adsr.qadsr[2]) + " " +
+              std::to_string(adsr.qadsr[3]) + "\n";
+    result += "    length: " + std::to_string(adsr.length) + "\n";
+    result +=
+        "    quantas_length: " + std::to_string(adsr.quantas_length) + "\n";
+    result += "    sustain_level: " + std::to_string(adsr.sustain_level) + "\n";
+    result += "    visualization: [see below]\n";
+    result += adsr.getCoolASCIVisualization("    ");
     result += "  FIRs: " + std::to_string(effects.firs.size()) + "\n";
     for (int i = 0; i < effects.firs.size(); i++) {
       result += "    [" + std::to_string(i + 1) +
@@ -79,6 +77,10 @@ void printHelp(char *argv0) {
          "file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
+  printf("   --duration [float]: Note duration in seconds (default 0.8)\n");
+  printf("   --adsr [int,int,int,int]: Set the ADSR quant intervals "
+         "comma-separated (default 1,1,3,3)\n");
+  printf("   --sustain [float]: Set the sustain level [0,1] (default 0.8)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -107,6 +109,25 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       }
     } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
+    } else if (arg == "--adsr" && (i + 1 < argc)) {
+      std::string adsrArg = argv[i + 1];
+      std::stringstream ss(adsrArg);
+      std::string number;
+      int idx = 0;
+
+      while (std::getline(ss, number, ',') && idx < 4) {
+        config.adsr.qadsr[idx++] = std::stoi(number);
+      }
+
+      if (idx != 4) {
+        printf("Error: Expected 4 ADSR parameters separated by commas.\n");
+        printHelp(argv[0]);
+        return -1;
+        return 1;
+      }
+
+      config.adsr.update_len();
+      ++i; // skip the next argument as it's already processed
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(SAMPLERATE);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
@@ -118,8 +139,14 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
       config.effects.addFIR(fir);
+    } else if (arg == "--sustain" && i + 1 < argc) {
+      config.adsr.sustain_level =
+          std::stof(argv[i + 1]) * config.adsr.amplitude;
     } else if (arg == "--volume" && i + 1 < argc) {
       config.volume = std::stof(argv[i + 1]);
+    } else if (arg == "--duration" && i + 1 < argc) {
+      config.duration = std::stof(argv[i + 1]);
+      config.adsr.setLength(static_cast<int>(SAMPLERATE * config.duration));
     } else if (arg == "-h" || arg == "--help") {
       printHelp(argv[0]);
       return -1;
@@ -137,7 +164,7 @@ int main(int argc, char *argv[]) {
   Keyboard keyboard(maxPolyphony);
 
   PlayConfig config;
-  config.adsr = &adsr;
+  config.adsr = adsr;
   int c = parseArguments(argc, argv, config);
   if (c < 0) {
     return 0;
@@ -152,7 +179,7 @@ int main(int argc, char *argv[]) {
   }
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.setVolume(config.volume);
-  keyboard.prepareSound(SAMPLERATE, *config.adsr, config.waveForm,
+  keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm,
                         config.effects);
   printf("\nSound OK!\n");
 

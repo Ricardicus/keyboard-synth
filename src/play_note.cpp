@@ -18,8 +18,8 @@
 
 #include "adsr.hpp"
 #include "dft.hpp"
-#include "fir.hpp"
 #include "effects.hpp"
+#include "fir.hpp"
 
 const float PI = 3.14159265358979323846f;
 using Complex = std::complex<double>;
@@ -72,7 +72,7 @@ int main() {
   Effects effects;
   effects.addFIR(fir1);
   effects.addFIR(fir2);
-  
+
   std::vector<short> result = effects.apply(waveData);
 
   // Create buffer and source

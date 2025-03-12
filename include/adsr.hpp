@@ -6,6 +6,21 @@
 
 class ADSR {
 public:
+  ADSR() {
+    float duration = 0.8f;
+    int samplerate = 44100;
+    short amplitude = 32767;
+    this->length = static_cast<int>(samplerate * duration);
+    this->amplitude = amplitude;
+    this->qadsr[0] = 1;
+    this->qadsr[1] = 1;
+    this->qadsr[2] = 3;
+    this->qadsr[3] = 3;
+    this->quantas = 8;
+    this->quantas_length = length / this->quantas;
+    this->sustain_level = 0.8 * amplitude;
+    this->quantas = 1 + 1 + 3 + 3;
+  }
   ADSR(short amplitude, int quantas_a, int quantas_d, int quantas_s,
        int quantas_r, float sustain_level, int length) {
     this->amplitude = amplitude;
@@ -18,6 +33,22 @@ public:
     this->qadsr[1] = quantas_d;
     this->qadsr[2] = quantas_s;
     this->qadsr[3] = quantas_r;
+  }
+  ADSR &operator=(const ADSR &other) {
+    if (this != &other) { // Check for self-assignment
+      this->amplitude = other.amplitude;
+      this->quantas =
+          other.qadsr[0] + other.qadsr[1] + other.qadsr[2] + other.qadsr[3];
+      this->length = other.length;
+      this->quantas_length = other.quantas_length;
+      this->sustain_level = other.sustain_level;
+
+      this->qadsr[0] = other.qadsr[0];
+      this->qadsr[1] = other.qadsr[1];
+      this->qadsr[2] = other.qadsr[2];
+      this->qadsr[3] = other.qadsr[3];
+    }
+    return *this;
   }
 
 public:
@@ -39,6 +70,10 @@ public:
   }
 
   int getLength() { return this->length; };
+  void setLength(int length) {
+    this->length = length;
+    this->update_len();
+  }
 
   short attack(int x) {
     return (short)this->amplitude *
@@ -61,6 +96,12 @@ public:
     int release_length = this->length - sustain_end;
     return (short)this->sustain_level -
            (((float)x - sustain_end) / release_length) * this->sustain_level;
+  }
+
+  void update_len() {
+    this->quantas =
+        this->qadsr[0] + this->qadsr[1] + this->qadsr[2] + this->qadsr[3];
+    this->quantas_length = this->length / this->quantas;
   }
 
   std::string getCoolASCIVisualization(const std::string &prefix);
