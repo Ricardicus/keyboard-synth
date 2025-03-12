@@ -42,26 +42,23 @@ endif()
 
 # Define the keylib library
 add_library(keylib STATIC
-    keyboard.cpp
-    note.cpp
-    notes.cpp
-    sound.cpp
-    fir.cpp
-    dft.cpp
-    waveread.cpp
-    effects.cpp
+    src/keyboard.cpp
+    src/note.cpp
+    src/notes.cpp
+    src/sound.cpp
+    src/fir.cpp
+    src/dft.cpp
+    src/waveread.cpp
+    src/effects.cpp
 )
-
-# Include directories
-include_directories(midifile/include)
 
 # Link dependencies to the keylib library
 target_link_libraries(keylib ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
-target_include_directories(keylib PRIVATE ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
-target_include_directories(keylib PUBLIC ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
+target_include_directories(keylib PRIVATE include midifile/include ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
+target_include_directories(keylib PUBLIC include midifile/include ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
 
 # Define the keyboard executable
-add_executable(keyboard main.cpp)
+add_executable(keyboard src/main.cpp)
 
 # Link keylib to the keyboard executable
 target_link_libraries(keyboard keylib midifile)

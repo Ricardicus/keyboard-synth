@@ -39,7 +39,7 @@ void printHelp(char *argv0) {
          "this wav file\n");
   printf("   --file [file]: Use .wav files for notes with this mapping as "
          "provided in this file\n");
-  printf("   --midi [file]: Play this MIDI (.mid) file");
+  printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
@@ -116,9 +116,9 @@ int main(int argc, char *argv[]) {
   keyboard.setVolume(config.volume);
   keyboard.prepareSound(SAMPLERATE, *config.adsr, config.waveForm,
                         config.effects);
-  printf("Sound OK!\n");
+  printf("\nSound OK!\n");
 
-  printf("Keyboard sound: %s\n\nUse the keyboard buttons to play.\n\n",
+  printf("Keyboard sound: %s\n",
          Sound::typeOfWave(config.waveForm).c_str());
 
   if (config.midiFile.size() > 0) {
