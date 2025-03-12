@@ -63,6 +63,117 @@ public:
     }
     return result;
   }
+
+  void printConfig() {
+    start_color(); // Enable color functionality
+
+    // Define color pairs
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);  // Green for visualization
+    init_pair(4, COLOR_WHITE, COLOR_BLACK);  // White Bold (Section Titles)
+    init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Orange/Yellow (Values)
+
+    // Print configuration details
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("Keyboard sound configuration:\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Volume: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", volume);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Notes-wave-map: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", waveFile.size() > 0 ? waveFile.c_str() : "none");
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Waveform: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", Sound::typeOfWave(waveForm).c_str());
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  ADSR:\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Amplitude: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%f\n", adsr.amplitude);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Quantas: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.quantas);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    QADSR: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%f %f %f %f\n", adsr.qadsr[0], adsr.qadsr[1], adsr.qadsr[2],
+           adsr.qadsr[3]);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.length);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Quantas_length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.quantas_length);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Sustain_level: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%f\n", adsr.sustain_level);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Visualization: [see below]\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    // Print the cool ASCII visualization in **green**
+    attron(COLOR_PAIR(2) | A_BOLD);
+    printw("%s\n", adsr.getCoolASCIVisualization("    ").c_str());
+    attroff(COLOR_PAIR(2) | A_BOLD);
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  FIRs: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%lu\n", effects.firs.size());
+    attroff(COLOR_PAIR(5));
+
+    for (size_t i = 0; i < effects.firs.size(); i++) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("    [%lu] IR length: ", i + 1);
+      attroff(A_BOLD | COLOR_PAIR(4));
+
+      attron(COLOR_PAIR(5));
+      printw("%d, Normalized: %s\n", effects.firs[i].getIRLen(),
+             effects.firs[i].getNormalization() ? "true" : "false");
+      attroff(COLOR_PAIR(5));
+    }
+
+    refresh(); // Refresh the screen to apply changes
+  }
 };
 
 void printHelp(char *argv0) {
@@ -182,12 +293,17 @@ int main(int argc, char *argv[]) {
   keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm,
                         config.effects);
   printf("\nSound OK!\n");
+  initscr();            // Initialize the library
+  cbreak();             // Line buffering disabled
+  keypad(stdscr, TRUE); // Enable special keys
+  noecho();             // Don't show the key being pressed
+  scrollok(stdscr, TRUE);
 
   std::string printableConfig = config.getPrintableConfig();
 
   if (config.midiFile.size() > 0) {
 
-    printf("%s", printableConfig.c_str());
+    config.printConfig();
 
     if (!fileExists(config.midiFile)) {
       printf("error: MIDI file provided, '%s', does not seem to exist?\nPlease "
@@ -223,7 +339,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    printf("Playing the midi file %s\n", config.midiFile.c_str());
+    printw("Playing the midi file %s\n", config.midiFile.c_str());
 
     int playPin = 0;
     for (const auto &entry : notesMap) {
@@ -238,13 +354,8 @@ int main(int argc, char *argv[]) {
     }
 
   } else {
-    initscr();            // Initialize the library
-    cbreak();             // Line buffering disabled
-    keypad(stdscr, TRUE); // Enable special keys
-    noecho();             // Don't show the key being pressed
-    scrollok(stdscr, TRUE);
 
-    printw("%s", printableConfig.c_str());
+    config.printConfig();
     keyboard.printInstructions();
 
     while (true) {
@@ -252,13 +363,13 @@ int main(int argc, char *argv[]) {
       keyboard.registerButtonPress(ch);
       if (ch == 'o' || ch == 'p') {
         clear();
-        printw("%s", printableConfig.c_str());
+        config.printConfig();
         keyboard.printInstructions();
       }
     }
-
-    endwin(); // End curses mode
   }
+
+  endwin(); // End curses mode
 
   return 0;
 }
