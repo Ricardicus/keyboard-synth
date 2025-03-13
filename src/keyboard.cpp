@@ -6,7 +6,7 @@
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
 
-#include "effects.hpp"
+#include "effect.hpp"
 #include "fir.hpp"
 #include "keyboard.hpp"
 #include "notes.hpp"
@@ -98,12 +98,12 @@ void Keyboard::printInstructions() {
   attroff(COLOR_PAIR(5));
 
   attron(COLOR_PAIR(4) | A_BOLD);
-  printw("Press 'o'/'p' to +/- one octave\n");
+  printw("Press 'p'/'o' to +/- one octave\n");
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                            Effects &effects) {
+                            std::vector<Effect> &effects) {
   int length = adsr.getLength();
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
@@ -139,21 +139,34 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
         }
 
         if (channels == 2) {
-          std::vector<short> buffer_left;
-          std::vector<short> buffer_right;
+          std::vector<short> buffer_left_in;
+          std::vector<short> buffer_right_in;
 
-          splitChannels(data, size, buffer_left, buffer_right);
+          splitChannels(data, size, buffer_left_in, buffer_right_in);
 
-          std::vector<short> buffer_left_effect = effects.apply(buffer_left);
-          std::vector<short> buffer_right_effect = effects.apply(buffer_right);
+          std::vector<short> buffer_left_effect_out;
+          for (int i = 0; i < effects.size(); i++) {
+            buffer_left_effect_out = effects[i].apply(buffer_left_in);
+            if (effects.size() != i + 1) {
+              buffer_left_in = buffer_left_effect_out;
+            }
+          }
+
+          std::vector<short> buffer_right_effect_out;
+          for (int i = 0; i < effects.size(); i++) {
+            buffer_right_effect_out = effects[i].apply(buffer_right_in);
+            if (effects.size() != i + 1) {
+              buffer_right_in = buffer_right_effect_out;
+            }
+          }
 
           std::vector<short> interleaved;
-          interleaved.reserve(buffer_left_effect.size() *
+          interleaved.reserve(buffer_left_effect_out.size() *
                               2); // Reserve space to optimize performance
 
-          for (size_t i = 0; i < buffer_left_effect.size(); ++i) {
-            interleaved.push_back(buffer_left_effect[i] * this->volume);
-            interleaved.push_back(buffer_right_effect[i] * this->volume);
+          for (size_t i = 0; i < buffer_left_effect_out.size(); ++i) {
+            interleaved.push_back(buffer_left_effect_out[i] * this->volume);
+            interleaved.push_back(buffer_right_effect_out[i] * this->volume);
           }
 
           alBufferData(this->buffers[bufferIndex], format, interleaved.data(),
@@ -161,14 +174,18 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
 
         } else {
 
-          std::vector<short> buffer_mono = convertToVector(data, size);
-          std::vector<short> buffer = effects.apply(buffer_mono);
-          for (size_t i = 0; i < buffer.size(); ++i) {
-            buffer[i] = buffer[i] * this->volume;
+          std::vector<short> buffer_in = convertToVector(data, size);
+          std::vector<short> buffer_out;
+
+          for (int i = 0; i < effects.size(); i++) {
+            buffer_out = effects[i].apply(buffer_in);
+            if (effects.size() != i + 1) {
+              buffer_in = buffer_out;
+            }
           }
 
-          alBufferData(this->buffers[bufferIndex], format, buffer.data(), size,
-                       sampleRate);
+          alBufferData(this->buffers[bufferIndex], format, buffer_out.data(),
+                       size, sampleRate);
         }
 
       } else {
@@ -177,12 +194,19 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
       }
 
     } else {
-      std::vector<short> buffer_raw = Sound::generateWave(f, n, adsr);
-      std::vector<short> buffer = effects.apply(buffer_raw);
-      for (size_t i = 0; i < buffer.size(); ++i) {
-        buffer[i] = buffer[i] * this->volume;
+      std::vector<short> buffer_in = Sound::generateWave(f, n, adsr);
+      std::vector<short> buffer_out;
+
+      for (int i = 0; i < effects.size(); i++) {
+        buffer_out = effects[i].apply(buffer_in);
+        if (effects.size() != i + 1) {
+          buffer_in = buffer_out;
+        }
       }
-      n.setBuffer(buffer);
+      for (size_t i = 0; i < buffer_out.size(); ++i) {
+        buffer_out[i] = buffer_out[i] * this->volume;
+      }
+      n.setBuffer(buffer_out);
 
       alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
                    n.buffer.data(), n.buffer.size() * sizeof(short),
@@ -200,7 +224,8 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
-                            Sound::Rank::Preset preset, Effects &effects) {
+                            Sound::Rank::Preset preset,
+                            std::vector<Effect> &effects) {
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
   int bufferIndex = 0;
@@ -219,12 +244,19 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
     }
     r.adsr = adsr;
 
-    std::vector<short> buffer_raw = Sound::generateWave(r);
-    std::vector<short> buffer = effects.apply(buffer_raw);
-    for (size_t i = 0; i < buffer.size(); ++i) {
-      buffer[i] = buffer[i] * this->volume;
+    std::vector<short> buffer_in = Sound::generateWave(r);
+    std::vector<short> buffer_out;
+
+    for (int i = 0; i < effects.size(); i++) {
+      buffer_out = effects[i].apply(buffer_in);
+      if (effects.size() != i + 1) {
+        buffer_in = buffer_out;
+      }
     }
-    n.setBuffer(buffer);
+    for (size_t i = 0; i < buffer_out.size(); ++i) {
+      buffer_out[i] = buffer_out[i] * this->volume;
+    }
+    n.setBuffer(buffer_out);
 
     alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
                  n.buffer.size() * sizeof(short), n.sampleRate);

@@ -24,7 +24,7 @@
 #include <thread> // for std::this_thread::sleep_for
 #include <vector>
 
-#include "effects.hpp"
+#include "effect.hpp"
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
@@ -105,9 +105,9 @@ public:
   }
 
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                    Effects &effects);
+                    std::vector<Effect> &effects);
   void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
-                    Effects &effects);
+                    std::vector<Effect> &effects);
   void registerNote(const std::string &note);
   void registerButtonPress(int note);
   void playNote(const std::string &note);
@@ -146,42 +146,26 @@ private:
   float volume = 1.0;
 
   std::map<int, std::string> keyPressToNote = {
-      {static_cast<int>('1'), "C5"},
-      {static_cast<int>('2'), "D5"},
-      {static_cast<int>('3'), "E5"},
-      {static_cast<int>('4'), "F5"},
-      {static_cast<int>('5'), "G5"},
-      {static_cast<int>('6'), "A5"},
-      {static_cast<int>('7'), "B5"},
-      {static_cast<int>('8'), "C6"},
-      {static_cast<int>('9'), "D6"},
-      {static_cast<int>('0'), "E6"},
+      {static_cast<int>('1'), "C5"}, {static_cast<int>('2'), "D5"},
+      {static_cast<int>('3'), "E5"}, {static_cast<int>('4'), "F5"},
+      {static_cast<int>('5'), "G5"}, {static_cast<int>('6'), "A5"},
+      {static_cast<int>('7'), "B5"}, {static_cast<int>('8'), "C6"},
+      {static_cast<int>('9'), "D6"}, {static_cast<int>('0'), "E6"},
 
-      {static_cast<int>('q'), "C4"},
-      {static_cast<int>('w'), "D4"},
-      {static_cast<int>('e'), "E4"},
-      {static_cast<int>('r'), "F4"},
-      {static_cast<int>('t'), "G4"},
-      {static_cast<int>('y'), "A4"},
-      {static_cast<int>('u'), "B4"},
-      {static_cast<int>('i'), "C5"},
+      {static_cast<int>('q'), "C4"}, {static_cast<int>('w'), "D4"},
+      {static_cast<int>('e'), "E4"}, {static_cast<int>('r'), "F4"},
+      {static_cast<int>('t'), "G4"}, {static_cast<int>('y'), "A4"},
+      {static_cast<int>('u'), "B4"}, {static_cast<int>('i'), "C5"},
 
-      {static_cast<int>('a'), "C3"},
-      {static_cast<int>('s'), "D3"},
-      {static_cast<int>('d'), "E3"},
-      {static_cast<int>('f'), "F3"},
-      {static_cast<int>('g'), "G3"},
-      {static_cast<int>('h'), "A3"},
-      {static_cast<int>('j'), "B3"},
-      {static_cast<int>('k'), "C4"},
+      {static_cast<int>('a'), "C3"}, {static_cast<int>('s'), "D3"},
+      {static_cast<int>('d'), "E3"}, {static_cast<int>('f'), "F3"},
+      {static_cast<int>('g'), "G3"}, {static_cast<int>('h'), "A3"},
+      {static_cast<int>('j'), "B3"}, {static_cast<int>('k'), "C4"},
       {static_cast<int>('l'), "D4"},
 
-      {static_cast<int>('z'), "C2"},
-      {static_cast<int>('x'), "D2"},
-      {static_cast<int>('c'), "E2"},
-      {static_cast<int>('v'), "F2"},
-      {static_cast<int>('b'), "G2"},
-      {static_cast<int>('n'), "A2"},
+      {static_cast<int>('z'), "C2"}, {static_cast<int>('x'), "D2"},
+      {static_cast<int>('c'), "E2"}, {static_cast<int>('v'), "F2"},
+      {static_cast<int>('b'), "G2"}, {static_cast<int>('n'), "A2"},
       {static_cast<int>('m'), "B2"}};
 
   std::map<int, std::function<void()>> keyPressToAction = {

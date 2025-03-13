@@ -49,7 +49,7 @@ add_library(keylib STATIC
     src/fir.cpp
     src/dft.cpp
     src/waveread.cpp
-    src/effects.cpp
+    src/effect.cpp
     src/adsr.cpp
 )
 

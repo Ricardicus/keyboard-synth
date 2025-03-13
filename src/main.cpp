@@ -5,13 +5,14 @@
 #include <filesystem>
 #include <iostream>
 #include <ncurses.h>
+#include <optional>
 #include <thread>
 #include <vector>
 
 #include <stdio.h>
 
 #include "adsr.hpp"
-#include "effects.hpp"
+#include "effect.hpp"
 #include "keyboard.hpp"
 
 #define SAMPLE_RATE 44100
@@ -30,9 +31,10 @@ public:
   ADSR adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
-  Effects effects;
+  Effect effectFIR;
   std::string waveFile;
   std::string midiFile;
+  std::optional<Effect> effectChorus = std::nullopt;
   float volume = 1.0;
   float duration = 0.8f;
   std::string getPrintableConfig() {
@@ -59,12 +61,13 @@ public:
     result += "    sustain_level: " + std::to_string(adsr.sustain_level) + "\n";
     result += "    visualization: [see below]\n";
     result += adsr.getCoolASCIVisualization("    ");
-    result += "  FIRs: " + std::to_string(effects.firs.size()) + "\n";
-    for (int i = 0; i < effects.firs.size(); i++) {
+    result += "  FIRs: " + std::to_string(effectFIR.firs.size()) + "\n";
+    for (int i = 0; i < effectFIR.firs.size(); i++) {
       result += "    [" + std::to_string(i + 1) +
-                "] IR length: " + std::to_string(effects.firs[i].getIRLen()) +
+                "] IR length: " + std::to_string(effectFIR.firs[i].getIRLen()) +
                 ", normalized: " +
-                (effects.firs[i].getNormalization() ? "true" : "false") + "\n";
+                (effectFIR.firs[i].getNormalization() ? "true" : "false") +
+                "\n";
     }
     return result;
   }
@@ -165,17 +168,17 @@ public:
     printw("  FIRs: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%lu\n", effects.firs.size());
+    printw("%lu\n", effectFIR.firs.size());
     attroff(COLOR_PAIR(5));
 
-    for (size_t i = 0; i < effects.firs.size(); i++) {
+    for (size_t i = 0; i < effectFIR.firs.size(); i++) {
       attron(A_BOLD | COLOR_PAIR(4));
       printw("    [%lu] IR length: ", i + 1);
       attroff(A_BOLD | COLOR_PAIR(4));
 
       attron(COLOR_PAIR(5));
-      printw("%zu, Normalized: %s\n", effects.firs[i].getIRLen(),
-             effects.firs[i].getNormalization() ? "true" : "false");
+      printw("%zu, Normalized: %s\n", effectFIR.firs[i].getIRLen(),
+             effectFIR.firs[i].getNormalization() ? "true" : "false");
       attroff(COLOR_PAIR(5));
     }
 
@@ -203,6 +206,7 @@ void printHelp(char *argv0) {
   printf("   --form: form of sound [sine (default), triangular, saw, supersaw,"
          "square]\n");
   printf("   -e|--echo: Add an echo effect\n");
+  printf("   --chorus: Add a chorus effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
@@ -265,14 +269,18 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(SAMPLERATE);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
-      config.effects.addFIR(fir);
+      config.effectFIR.addFIR(fir);
+    } else if (arg == "--chorus") {
+      Effect effect;
+      effect.effectType = Effect::EffectType::Chorus;
+      config.effectChorus = effect;
     } else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
       FIR fir(SAMPLERATE);
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
-      config.effects.addFIR(fir);
+      config.effectFIR.addFIR(fir);
     } else if (arg == "--sustain" && i + 1 < argc) {
       config.adsr.sustain_level =
           std::stof(argv[i + 1]) * config.adsr.amplitude;
@@ -313,12 +321,16 @@ int main(int argc, char *argv[]) {
   }
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.setVolume(config.volume);
+  std::vector<Effect> effects;
+  effects.push_back(config.effectFIR);
+  if (config.effectChorus) {
+    effects.push_back(*config.effectChorus);
+  }
   if (config.rankPreset != Sound::Rank::Preset::None) {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset,
-                          config.effects);
+
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects);
   } else {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm,
-                          config.effects);
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm, effects);
   }
   printf("\nSound OK!\n");
   initscr();            // Initialize the library

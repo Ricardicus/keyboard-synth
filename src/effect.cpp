@@ -1,12 +1,35 @@
+#include <algorithm>
 #include <complex>
 #include <vector>
 
 #include "dft.hpp"
-#include "effects.hpp"
+#include "effect.hpp"
 
 using Complex = std::complex<double>;
 
-std::vector<short> Effects::apply(std::vector<short> &buffer) {
+std::vector<short> Effect::apply(std::vector<short> &buffer) {
+  switch (this->effectType) {
+  case EffectType::FIR: {
+    return this->apply_fir(buffer);
+  }
+  case EffectType::Chorus: {
+    return this->apply_chorus(buffer);
+  }
+  }
+}
+
+std::vector<short> Effect::apply(std::vector<short> &buffer, size_t maxLen) {
+  switch (this->effectType) {
+  case EffectType::FIR: {
+    return this->apply_fir(buffer, maxLen);
+  }
+  case EffectType::Chorus: {
+    return this->apply_chorus(buffer);
+  }
+  }
+}
+
+std::vector<short> Effect::apply_fir(std::vector<short> &buffer) {
   FourierTransform ft;
   std::vector<short> output;
   std::vector<short> buffer_ = buffer;
@@ -38,7 +61,8 @@ std::vector<short> Effects::apply(std::vector<short> &buffer) {
   return buffer_;
 }
 
-std::vector<short> Effects::apply(std::vector<short> &buffer, size_t maxLen) {
+std::vector<short> Effect::apply_fir(std::vector<short> &buffer,
+                                     size_t maxLen) {
   FourierTransform ft;
   std::vector<short> output;
   std::vector<short> buffer_ = buffer;
@@ -71,4 +95,36 @@ std::vector<short> Effects::apply(std::vector<short> &buffer, size_t maxLen) {
     buffer_ = ft.IDFT(dft_multiplied);
   }
   return buffer_;
+}
+
+std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
+  int numSamples = buffer.size();
+  std::vector<short> processedBuffer = buffer; // Copy input for modification
+
+  for (int i = 0; i < numSamples; i++) {
+    // 🌀 Modulate delay using LFO
+    float lfo = sinf(2.0f * M_PI * chorusConfig.lfoRate * (float)i /
+                     sampleRate); // LFO modulation
+
+    int mixedSample = buffer[i]; // Dry signal (original)
+
+    for (int j = 0; j < chorusConfig.numVoices; j++) {
+      // Calculate delay in samples
+      float voiceDelayMs =
+          (j + 1) * chorusConfig.depthMs / chorusConfig.numVoices;
+      int delaySamples =
+          (voiceDelayMs + lfo * chorusConfig.depthMs) * sampleRate / 1000.0f;
+      int delayedIndex = i - delaySamples;
+
+      if (delayedIndex >= 0) {
+        mixedSample += processedBuffer[delayedIndex]; // Mix delayed voices
+      }
+    }
+
+    // Prevent clipping
+    processedBuffer[i] = static_cast<short>(
+        std::clamp(mixedSample / chorusConfig.numVoices, -32768, 32767));
+  }
+
+  return processedBuffer;
 }

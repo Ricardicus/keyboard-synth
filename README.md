@@ -31,6 +31,7 @@ Usage: ./keyboard [flags]
 flags:
    --form: form of sound [sine (default), triangular, saw, supersaw,square]
    -e|--echo: Add an echo effect
+   --chorus: Add a chorus effect
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
@@ -39,7 +40,7 @@ flags:
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
 
-./keyboard compiled Mar 13 2025 20:16:41
+./keyboard compiled Mar 13 2025 21:37:39
 ```
 
 ## Map keys to wave files
@@ -61,7 +62,7 @@ someone named Lars here: https://familjenpalo.se/vpo/kalvtrask/ .
 You can test this reverb on the piano like this:
 
 ```bash
-./build/keyboard --notes media/notes.json -r media/ir/KalvtraskStereo16bps-44100.wav
+./build/keyboard --notes media/notes.json --reverb media/ir/KalvtraskStereo16bps-44100.wav
 ```
 
 ## Play MIDI files
