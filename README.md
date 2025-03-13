@@ -35,8 +35,11 @@ flags:
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
    --volume [float]: Set the volume knob (default 1.0)
+   --duration [float]: Note duration in seconds (default 0.8)
+   --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
+   --sustain [float]: Set the sustain level [0,1] (default 0.8)
 
-./keyboard compiled Mar 12 2025 07:49:25
+./keyboard compiled Mar 13 2025 07:52:22
 ```
 
 ## Map keys to wave files
