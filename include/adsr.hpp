@@ -35,7 +35,7 @@ public:
     this->qadsr[3] = quantas_r;
   }
   ADSR &operator=(const ADSR &other) {
-    if (this != &other) { // Check for self-assignment
+    if (this != &other) {
       this->amplitude = other.amplitude;
       this->quantas =
           other.qadsr[0] + other.qadsr[1] + other.qadsr[2] + other.qadsr[3];

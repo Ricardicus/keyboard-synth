@@ -11,11 +11,18 @@ public:
     this->length = length;
     this->sampleRate = sampleRate;
   }
+  Note(float frequency, int length, int sampleRate) {
+    this->frequency = frequency;
+    this->length = length;
+    this->sampleRate = sampleRate;
+  }
+  Note() {}
   void setBuffer(std::vector<short> &buffer) { this->buffer = buffer; }
   std::vector<short> buffer;
-  float frequency;
-  int sampleRate;
-  int length;
+  float frequency = 0;
+  int sampleRate = 0;
+  int length = 0;
+  float volume = 1.0;
 };
 
 #endif

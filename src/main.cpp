@@ -29,6 +29,7 @@ class PlayConfig {
 public:
   ADSR adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
+  Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
   Effects effects;
   std::string waveFile;
   std::string midiFile;
@@ -179,7 +180,7 @@ public:
 void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
   printf("flags:\n");
-  printf("   --form: form of sound [sine (default), triangular, saw, "
+  printf("   --form: form of sound [sine (default), triangular, saw, supersaw,"
          "square]\n");
   printf("   -e|--echo: Add an echo effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
@@ -216,6 +217,8 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
           config.waveForm = Sound::WaveForm::Saw;
         } else if (form == "square") {
           config.waveForm = Sound::WaveForm::Square;
+        } else if (form == "supersaw") {
+          config.rankPreset = Sound::Rank::Preset::SuperSaw;
         }
       }
     } else if (arg == "--notes" && i + 1 < argc) {
@@ -290,8 +293,13 @@ int main(int argc, char *argv[]) {
   }
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.setVolume(config.volume);
-  keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm,
-                        config.effects);
+  if (config.rankPreset != Sound::Rank::Preset::None) {
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset,
+                          config.effects);
+  } else {
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm,
+                          config.effects);
+  }
   printf("\nSound OK!\n");
   initscr();            // Initialize the library
   cbreak();             // Line buffering disabled

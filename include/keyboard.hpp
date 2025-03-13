@@ -106,6 +106,8 @@ public:
 
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                     Effects &effects);
+  void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
+                    Effects &effects);
   void registerNote(const std::string &note);
   void registerButtonPress(int note);
   void playNote(const std::string &note);

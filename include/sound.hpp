@@ -14,6 +14,21 @@ std::vector<short> generateSquareWave(Note &note, ADSR &adsr);
 std::vector<short> generateSawWave(Note &note, ADSR &adsr);
 std::vector<short> generateTriangularWave(Note &note, ADSR &adsr);
 
+using Pipe = std::pair<Note, Sound::WaveForm>;
+
+class Rank {
+public:
+  Rank() {}
+  Rank(ADSR &adsr) { this->adsr = adsr; }
+  void addPipe(Pipe &pipe) { this->pipes.push_back(pipe); }
+  static Rank superSaw(float frequency, int length, int sampleRate);
+  ADSR adsr;
+  std::vector<Pipe> pipes;
+  enum Preset { SuperSaw, None };
+};
+
+std::vector<short> generateWave(Rank &rank);
+
 } // namespace Sound
 
 #endif

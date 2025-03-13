@@ -27,11 +27,11 @@ else()
 endif()
 
 # Look for FFTW
-add_subdirectory(fftw-3.3.10)
-add_subdirectory(midifile)
+add_subdirectory(external/fftw-3.3.10)
+add_subdirectory(external/midifile)
 
 find_path(FFTW_INCLUDE_DIR fftw3.h
-          HINTS ${CMAKE_CURRENT_SOURCE_DIR}/fftw-3.3.10
+          HINTS ${CMAKE_CURRENT_SOURCE_DIR}/external/fftw-3.3.10
           PATH_SUFFIXES api include)
 
 if(FFTW_INCLUDE_DIR)
@@ -55,8 +55,8 @@ add_library(keylib STATIC
 
 # Link dependencies to the keylib library
 target_link_libraries(keylib ${OPENAL_LIBRARY} ${CURSES_LIBRARIES} fftw3)
-target_include_directories(keylib PRIVATE include midifile/include ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
-target_include_directories(keylib PUBLIC include midifile/include ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
+target_include_directories(keylib PRIVATE include external/nlohmann external/midifile/include ${OPENAL_INCLUDE_DIR} ${FFTW_INCLUDE_DIRS})
+target_include_directories(keylib PUBLIC include external/nlohmann external/midifile/include ${CURSES_INCLUDE_DIR} ${FFTW_LIBRARIES})
 
 # Define the keyboard executable
 add_executable(keyboard src/main.cpp)

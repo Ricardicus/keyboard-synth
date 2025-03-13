@@ -78,8 +78,9 @@ std::vector<short> Sound::generateSineWave(Note &note, ADSR &adsr) {
 
   float deltaT = 1.0f / note.sampleRate;
   for (int i = 0; i < sampleCount; i++) {
-    samples[i] = static_cast<short>(
-        adsr.response(i) * sin(2.0f * PI * note.frequency * i * deltaT));
+    samples[i] =
+        static_cast<short>(adsr.response(i) * note.volume *
+                           sin(2.0f * PI * note.frequency * i * deltaT));
   }
 
   return samples;
@@ -91,8 +92,9 @@ std::vector<short> Sound::generateSquareWave(Note &note, ADSR &adsr) {
 
   float deltaT = 1.0f / note.sampleRate;
   for (int i = 0; i < sampleCount; i++) {
-    samples[i] = static_cast<short>(
-        adsr.response(i) * square(2.0 * PI * note.frequency * i * deltaT));
+    samples[i] =
+        static_cast<short>(adsr.response(i) * note.volume *
+                           square(2.0 * PI * note.frequency * i * deltaT));
   }
 
   return samples;
@@ -104,8 +106,9 @@ std::vector<short> Sound::generateTriangularWave(Note &note, ADSR &adsr) {
 
   float deltaT = 1.0f / note.sampleRate;
   for (int i = 0; i < sampleCount; i++) {
-    samples[i] = static_cast<short>(
-        adsr.response(i) * triangular(2.0f * PI * note.frequency * i * deltaT));
+    samples[i] =
+        static_cast<short>(adsr.response(i) * note.volume *
+                           triangular(2.0f * PI * note.frequency * i * deltaT));
   }
 
   return samples;
@@ -117,9 +120,74 @@ std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr) {
 
   float deltaT = 1.0f / note.sampleRate;
   for (int i = 0; i < sampleCount; i++) {
-    samples[i] = static_cast<short>(
-        adsr.response(i) * saw(2.0f * PI * note.frequency * i * deltaT));
+    samples[i] =
+        static_cast<short>(adsr.response(i) * note.volume *
+                           saw(2.0f * PI * note.frequency * i * deltaT));
   }
 
   return samples;
+}
+
+std::vector<short> Sound::generateWave(Rank &rank) {
+  int sampleCount = 0;
+  for (const auto &pipe : rank.pipes) {
+    if (pipe.first.length > sampleCount) {
+      sampleCount = pipe.first.length;
+    }
+  }
+  std::vector<short> samples(sampleCount);
+
+  for (int i = 0; i < sampleCount; i++) {
+    for (const Pipe &pipe : rank.pipes) {
+      Note note = pipe.first;
+      Sound::WaveForm form = pipe.second;
+      float deltaT = 1.0f / note.sampleRate;
+
+      switch (form) {
+      case Sound::WaveForm::Sine:
+        samples[i] +=
+            static_cast<short>(rank.adsr.response(i) * note.volume *
+                               sin(2.0f * PI * note.frequency * i * deltaT));
+        break;
+      case Sound::WaveForm::Triangular:
+        samples[i] += static_cast<short>(
+            rank.adsr.response(i) * note.volume *
+            triangular(2.0f * PI * note.frequency * i * deltaT));
+        break;
+      case Sound::WaveForm::Square:
+        samples[i] +=
+            static_cast<short>(rank.adsr.response(i) * note.volume *
+                               square(2.0f * PI * note.frequency * i * deltaT));
+        break;
+      case Sound::WaveForm::Saw:
+        samples[i] +=
+            static_cast<short>(rank.adsr.response(i) * note.volume *
+                               saw(2.0f * PI * note.frequency * i * deltaT));
+        break;
+      case Sound::WaveForm::WaveFile:
+        break;
+      }
+    }
+  }
+
+  return samples;
+}
+
+Sound::Rank Sound::Rank::superSaw(float frequency, int length, int sampleRate) {
+  Rank rank;
+
+  float detune = 0.5;
+  float detune_cents[] = {-12.0, -8.0, -4.0, 0.0, 4.0, 8.0, 12.0};
+  const int num_oscillators = sizeof(detune_cents) / sizeof(detune_cents[0]);
+
+  for (int i = 0; i < num_oscillators; i++) {
+    float detuned_freq =
+        frequency * powf(2.0f, detune_cents[i] * detune / 1200.0f);
+    Note note(detuned_freq, length, sampleRate);
+    note.volume = 1.0 / num_oscillators;
+    Pipe pipe(note, Sound::WaveForm::Saw);
+    rank.addPipe(pipe);
+  }
+
+  return rank;
 }

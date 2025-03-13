@@ -213,6 +213,46 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
   }
 }
 
+void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
+                            Sound::Rank::Preset preset, Effects &effects) {
+  std::vector<std::string> notes = notes::getNotes();
+  assert(notes.size() == this->buffers.size());
+  int bufferIndex = 0;
+  unsigned ticks = notes.size();
+  unsigned tick = 1;
+
+  for (const auto &key : notes) {
+    Note n = Note(key, adsr.length, sampleRate);
+    Sound::Rank r;
+    switch (preset) {
+    case Sound::Rank::Preset::SuperSaw:
+      r = Sound::Rank::superSaw(n.frequency, adsr.length, sampleRate);
+    case Sound::Rank::Preset::None:
+      break;
+    }
+    r.adsr = adsr;
+
+    std::vector<short> buffer_raw = Sound::generateWave(r);
+    std::vector<short> buffer = effects.apply(buffer_raw);
+    for (size_t i = 0; i < buffer.size(); ++i) {
+      buffer[i] = buffer[i] * this->volume;
+    }
+    n.setBuffer(buffer);
+
+    alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
+                 n.buffer.size() * sizeof(short), n.sampleRate);
+
+    if (this->loaderFunc) {
+      this->loaderFunc(ticks, tick);
+      tick++;
+    }
+
+    this->keyToBufferIndex[key] = bufferIndex;
+    this->notes.insert(std::make_pair(key, n));
+    bufferIndex++;
+  }
+}
+
 void Keyboard::registerNote(const std::string &note) { playNote(note); }
 
 void Keyboard::registerButtonPress(int pressed) {
