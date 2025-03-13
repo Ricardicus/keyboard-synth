@@ -274,6 +274,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect effect;
       effect.effectType = Effect::EffectType::Chorus;
       config.effectChorus = effect;
+      config.effectChorus->sampleRate = SAMPLERATE;
     } else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
