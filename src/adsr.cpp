@@ -3,8 +3,8 @@
 
 std::string ADSR::getCoolASCIVisualization(const std::string &prefix) {
   std::string result;
-  int dots_per_quant_y = 9;
-  int dots_per_quant_x = 5;
+  int dots_per_quant_y = 7;
+  int dots_per_quant_x = 4;
   int dot_count = 0;
   int length = this->quantas * dots_per_quant_x;
   ADSR adsr_help(this->amplitude, this->qadsr[0], this->qadsr[1],

@@ -79,7 +79,7 @@ std::string getClosestNote(float frequency) {
   return closestNote;
 }
 
-double getFrequency(std::string &note) {
+double getFrequency(const std::string &note) {
   // Check if the note is in the frequencies map
   if (frequencies.find(note) != frequencies.end()) {
     // Return the double value associated with the note

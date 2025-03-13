@@ -47,66 +47,52 @@ void Keyboard::printInstructions() {
   // Define colors
   init_pair(4, COLOR_WHITE, COLOR_BLACK);  // Labels (White Bold)
   init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Values (Orange/Yellow)
+  init_pair(6, COLOR_BLACK, COLOR_WHITE);  // Key characters
+  init_pair(7, COLOR_BLUE, COLOR_WHITE);   // Note names
 
   // Section header
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("These keys are available on your keyboard:\n");
   attroff(COLOR_PAIR(4) | A_BOLD);
 
-  bool first = true;
-  for (const auto &kvp : this->keyPressToNote) {
-    int press = kvp.first;
-    std::string note = kvp.second;
+  std::vector<int> rowNumber = {'1', '2', '3', '4', '5',
+                                '6', '7', '8', '9', '0'};
+  std::vector<int> rowQwert = {'q', 'w', 'e', 'r', 't', 'y', 'u', 'i'};
+  std::vector<int> rowHome = {'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'};
+  std::vector<int> rowBottom = {'z', 'x', 'c', 'v', 'b', 'n', 'm', ','};
 
-    if (!first)
-      printw("\n");
-    first = false;
-
-    attron(COLOR_PAIR(5));
-    printw("'%c'", static_cast<char>(press));
-    attroff(COLOR_PAIR(5));
-
+  // Helper lambda to print a row.
+  auto printRow = [this](const std::vector<int> &row) {
     attron(COLOR_PAIR(4) | A_BOLD);
-    printw(" -> ");
+    printw("| ");
     attroff(COLOR_PAIR(4) | A_BOLD);
-
-    attron(COLOR_PAIR(5));
-    printw("%s", note.c_str());
-    attroff(COLOR_PAIR(5));
-
-    auto it = this->notes.find(note);
-    if (it != this->notes.end()) {
-      Note &n = it->second;
-
-      attron(COLOR_PAIR(4) | A_BOLD);
-      printw(" (freq: ");
-      attroff(COLOR_PAIR(4) | A_BOLD);
-
-      attron(COLOR_PAIR(5));
-      printw("%.2f Hz", n.frequency);
-      attroff(COLOR_PAIR(5));
-
-      attron(COLOR_PAIR(4) | A_BOLD);
-      printw(", length: ");
-      attroff(COLOR_PAIR(4) | A_BOLD);
-
-      attron(COLOR_PAIR(5));
-      printw("%.2f s", (float)n.length / (float)n.sampleRate);
-      attroff(COLOR_PAIR(5));
-
-      attron(COLOR_PAIR(4) | A_BOLD);
-      printw(")");
-      attroff(COLOR_PAIR(4) | A_BOLD);
+    for (int key : row) {
+      auto it = this->keyPressToNote.find(key);
+      if (it != this->keyPressToNote.end()) {
+        attron(COLOR_PAIR(6));
+        printw("%c ", key);
+        attroff(COLOR_PAIR(6));
+        attron(COLOR_PAIR(7));
+        printw("[%s]", it->second.c_str());
+        attroff(COLOR_PAIR(7));
+        attron(COLOR_PAIR(4) | A_BOLD);
+        printw(" | ");
+        attroff(COLOR_PAIR(4) | A_BOLD);
+      }
     }
-  }
+    printw("\n");
+  };
 
-  printw("\n");
+  // Print each row in order.
+  printRow(rowNumber);
+  printRow(rowQwert);
+  printRow(rowHome);
+  printRow(rowBottom);
 
-  // Volume knob
+  // Volume knob display
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("\nVolume knob set to: ");
   attroff(COLOR_PAIR(4) | A_BOLD);
-
   attron(COLOR_PAIR(5));
   printw("%.2f\n", this->volume);
   attroff(COLOR_PAIR(5));
@@ -222,6 +208,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
   unsigned tick = 1;
 
   for (const auto &key : notes) {
+    // Bottom row (one octave lower than home row)
     Note n = Note(key, adsr.length, sampleRate);
     Sound::Rank r;
     switch (preset) {

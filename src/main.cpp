@@ -41,7 +41,11 @@ public:
     result += "  volume: " + std::to_string(volume) + "\n";
     result +=
         "  notes-wave-map: " + (waveFile.size() > 0 ? waveFile : "none") + "\n";
-    result += "  waveform: " + Sound::typeOfWave(waveForm) + "\n";
+    if (rankPreset != Sound::Rank::Preset::None) {
+      result += "  waveform: " + Sound::Rank::presetStr(rankPreset) + "\n";
+    } else {
+      result += "  waveform: " + Sound::typeOfWave(waveForm) + "\n";
+    }
     result += "  ADSR:\n";
     result += "    amplitude: " + std::to_string(adsr.amplitude) + "\n";
     result += "    quantas: " + std::to_string(adsr.quantas) + "\n";
@@ -82,7 +86,7 @@ public:
     printw("  Volume: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%f\n", volume);
+    printw("%.2f\n", volume);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -96,7 +100,9 @@ public:
     printw("  Waveform: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%s\n", Sound::typeOfWave(waveForm).c_str());
+    printw("%s\n", rankPreset != Sound::Rank::Preset::None
+                       ? Sound::Rank::presetStr(rankPreset).c_str()
+                       : Sound::typeOfWave(waveForm).c_str());
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -172,6 +178,20 @@ public:
              effects.firs[i].getNormalization() ? "true" : "false");
       attroff(COLOR_PAIR(5));
     }
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  note length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%.2f s\n", duration);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  A4 frequency: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%.2f Hz\n", notes::getFrequency("A4"));
+    attroff(COLOR_PAIR(5));
 
     refresh(); // Refresh the screen to apply changes
   }

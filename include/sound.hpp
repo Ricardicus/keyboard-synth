@@ -25,6 +25,18 @@ public:
   ADSR adsr;
   std::vector<Pipe> pipes;
   enum Preset { SuperSaw, None };
+  static std::string presetStr(Preset p) {
+    std::string result;
+    switch (p) {
+    case SuperSaw:
+      result = "SuperSaw";
+      break;
+    case None:
+      result = "None";
+      break;
+    }
+    return result;
+  }
 };
 
 std::vector<short> generateWave(Rank &rank);

@@ -7,7 +7,7 @@
 
 #pragma once
 namespace notes {
-double getFrequency(std::string &note);
+double getFrequency(const std::string &note);
 std::vector<std::string> getNotes();
 int getNumberOfNotes();
 std::string getClosestNote(float frequency);
