@@ -62,9 +62,9 @@ void Keyboard::printInstructions() {
   std::vector<int> rowBottom = {'z', 'x', 'c', 'v', 'b', 'n', 'm', ','};
 
   // Helper lambda to print a row.
-  auto printRow = [this](const std::vector<int> &row) {
+  auto printRow = [this](const std::vector<int> &row, const char *prefix) {
     attron(COLOR_PAIR(4) | A_BOLD);
-    printw("| ");
+    printw("%s| ", prefix);
     attroff(COLOR_PAIR(4) | A_BOLD);
     for (int key : row) {
       auto it = this->keyPressToNote.find(key);
@@ -84,10 +84,10 @@ void Keyboard::printInstructions() {
   };
 
   // Print each row in order.
-  printRow(rowNumber);
-  printRow(rowQwert);
-  printRow(rowHome);
-  printRow(rowBottom);
+  printRow(rowNumber, "");
+  printRow(rowQwert, "  ");
+  printRow(rowHome, "    ");
+  printRow(rowBottom, "      ");
 
   // Volume knob display
   attron(COLOR_PAIR(4) | A_BOLD);

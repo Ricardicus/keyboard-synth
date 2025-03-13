@@ -29,7 +29,7 @@ In general, for more help use -h:
 ./keyboard -h
 Usage: ./keyboard [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, square]
+   --form: form of sound [sine (default), triangular, saw, supersaw,square]
    -e|--echo: Add an echo effect
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
@@ -39,7 +39,7 @@ flags:
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
 
-./keyboard compiled Mar 13 2025 07:52:22
+./keyboard compiled Mar 13 2025 20:16:41
 ```
 
 ## Map keys to wave files
