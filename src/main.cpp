@@ -81,7 +81,7 @@ public:
     printw("  Volume: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%d\n", volume);
+    printw("%f\n", volume);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -106,7 +106,7 @@ public:
     printw("    Amplitude: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%f\n", adsr.amplitude);
+    printw("%d\n", adsr.amplitude);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -120,7 +120,7 @@ public:
     printw("    QADSR: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%f %f %f %f\n", adsr.qadsr[0], adsr.qadsr[1], adsr.qadsr[2],
+    printw("%d %d %d %d\n", adsr.qadsr[0], adsr.qadsr[1], adsr.qadsr[2],
            adsr.qadsr[3]);
     attroff(COLOR_PAIR(5));
 
@@ -142,7 +142,7 @@ public:
     printw("    Sustain_level: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%f\n", adsr.sustain_level);
+    printw("%d\n", adsr.sustain_level);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -167,7 +167,7 @@ public:
       attroff(A_BOLD | COLOR_PAIR(4));
 
       attron(COLOR_PAIR(5));
-      printw("%d, Normalized: %s\n", effects.firs[i].getIRLen(),
+      printw("%zu, Normalized: %s\n", effects.firs[i].getIRLen(),
              effects.firs[i].getNormalization() ? "true" : "false");
       attroff(COLOR_PAIR(5));
     }
