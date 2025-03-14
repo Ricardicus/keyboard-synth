@@ -24,15 +24,15 @@ public:
   enum EffectType { Fir, Chorus };
 
   typedef struct ChorusConfig {
-    float lfoRate;
+    float delay;
     float depthMs;
     int numVoices;
     ChorusConfig(float lfoRate, float depthMs, int numVoices)
-        : lfoRate(lfoRate), depthMs(depthMs), numVoices(numVoices) {}
+        : delay(lfoRate), depthMs(depthMs), numVoices(numVoices) {}
   } ChorusConfig;
 
   EffectType effectType = EffectType::Fir;
-  ChorusConfig chorusConfig{0.2f, 0.5f, 5};
+  ChorusConfig chorusConfig{0.05f, 1.2f, 3};
   int sampleRate = 44100;
 
 private:

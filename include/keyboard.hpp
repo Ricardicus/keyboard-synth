@@ -116,6 +116,7 @@ public:
   void loadSoundMap(std::string soundMapFile) {
     // Open the file for reading
     std::ifstream file(soundMapFile);
+    this->soundMapFile = soundMapFile;
     if (!file.is_open()) {
       std::cerr << "Failed to open sound map file: " << soundMapFile
                 << std::endl;
@@ -139,6 +140,7 @@ private:
   std::vector<ALuint> sources;
   std::map<std::string, std::string> soundMap;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
+  std::string soundMapFile;
 
   std::map<std::string, int> keyToBufferIndex;
   std::map<std::string, Note> notes;

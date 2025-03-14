@@ -173,7 +173,6 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                        size, sampleRate);
 
         } else {
-
           std::vector<short> buffer_in = convertToVector(data, size);
           std::vector<short> buffer_out;
 
@@ -194,7 +193,15 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
       }
 
     } else {
-      std::vector<short> buffer_in = Sound::generateWave(f, n, adsr);
+
+      // No wave file for this key, fill in the blanks with sine
+      if (this->soundMapFile.size() > 0) {
+        printf("warning: Missing key '%s' in the mapping file '%s', filling in "
+               "with a sine wave\n",
+               key.c_str(), this->soundMapFile.c_str());
+      }
+      std::vector<short> buffer_in =
+          Sound::generateWave(Sound::WaveForm::Sine, n, adsr);
       std::vector<short> buffer_out;
 
       for (int i = 0; i < effects.size(); i++) {

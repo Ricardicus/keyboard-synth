@@ -101,32 +101,47 @@ std::vector<short> Effect::apply_fir(std::vector<short> &buffer,
 
 std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
   int numSamples = buffer.size();
-  std::vector<short> processedBuffer = buffer; // Copy input for modification
+  std::vector<Complex> processedFT = FourierTransform::DFT(buffer, false);
+  std::vector<std::vector<Complex>> voices;
 
-  for (int i = 0; i < numSamples; i++) {
-    // 🌀 Modulate delay using LFO
-    float lfo = sinf(2.0f * M_PI * chorusConfig.lfoRate * (float)i /
-                     sampleRate); // LFO modulation
+  std::complex<double> phaseIncrement =
+      std::polar(1.0, 2.0 * M_PI * this->chorusConfig.delay);
 
-    int mixedSample = buffer[i]; // Dry signal (original)
+  int sampleRate = this->sampleRate;
+  int delaySamples =
+      static_cast<int>(this->chorusConfig.depthMs * sampleRate / 1000.0);
 
-    for (int j = 0; j < chorusConfig.numVoices; j++) {
-      // Calculate delay in samples
-      float voiceDelayMs =
-          (j + 1) * chorusConfig.depthMs / chorusConfig.numVoices;
-      int delaySamples =
-          (voiceDelayMs + lfo * chorusConfig.depthMs) * sampleRate / 1000.0f;
-      int delayedIndex = i - delaySamples;
+  // Create each voice with an increasing offset and phase
+  for (int i = 0; i < this->chorusConfig.numVoices; i++) {
+    std::vector<Complex> voiceBuffer(processedFT.size(),
+                                     std::complex<double>(0.0, 0.0));
+    // Use std::pow to get the appropriate phase factor for this voice
+    std::complex<double> phaseFactor = std::pow(phaseIncrement, i);
 
-      if (delayedIndex >= 0) {
-        mixedSample += processedBuffer[delayedIndex]; // Mix delayed voices
+    for (int n = 0; n < static_cast<int>(voiceBuffer.size()); n++) {
+      int offset = n;
+      if (i % 2 == 0) {
+        offset += (i + 1) * delaySamples;
+      } else {
+        offset -= (i + 1) * delaySamples;
       }
+      offset = (offset + voiceBuffer.size()) % voiceBuffer.size();
+      voiceBuffer[n] = processedFT[offset] * phaseFactor;
     }
-
-    // Prevent clipping
-    processedBuffer[i] = static_cast<short>(
-        std::clamp(mixedSample / chorusConfig.numVoices, -32768, 32767));
+    voices.push_back(voiceBuffer);
   }
 
-  return processedBuffer;
+  // Mix the original signal with the voices.
+  for (int i = 0; i < static_cast<int>(processedFT.size()); i++) {
+    std::complex<double> res =
+        processedFT[i] / static_cast<double>(this->chorusConfig.numVoices);
+    for (int v = 0; v < static_cast<int>(voices.size()); v++) {
+      res +=
+          (voices[v][i] / static_cast<double>(this->chorusConfig.numVoices)) *
+          0.5;
+    }
+    processedFT[i] = res;
+  }
+
+  return FourierTransform::IDFT(processedFT);
 }

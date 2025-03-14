@@ -62,6 +62,13 @@ public:
     result += "    visualization: [see below]\n";
     result += adsr.getCoolASCIVisualization("    ");
     result += "  FIRs: " + std::to_string(effectFIR.firs.size()) + "\n";
+    if (effectChorus) {
+      result +=
+          "  Chorus: delay=" +
+          std::to_string(effectChorus->chorusConfig.delay) +
+          ", depth=" + std::to_string(effectChorus->chorusConfig.depthMs) +
+          ", voices=" + std::to_string(effectChorus->chorusConfig.numVoices);
+    }
     for (int i = 0; i < effectFIR.firs.size(); i++) {
       result += "    [" + std::to_string(i + 1) +
                 "] IR length: " + std::to_string(effectFIR.firs[i].getIRLen()) +
@@ -171,6 +178,27 @@ public:
     printw("%lu\n", effectFIR.firs.size());
     attroff(COLOR_PAIR(5));
 
+    if (effectChorus) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  Chorus: delay=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f ", effectChorus->chorusConfig.delay);
+      attroff(COLOR_PAIR(5));
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("depth=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f\n", effectChorus->chorusConfig.depthMs);
+      attroff(COLOR_PAIR(5));
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("voices=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%d\n", effectChorus->chorusConfig.numVoices);
+      attroff(COLOR_PAIR(5));
+    }
+
     for (size_t i = 0; i < effectFIR.firs.size(); i++) {
       attron(A_BOLD | COLOR_PAIR(4));
       printw("    [%lu] IR length: ", i + 1);
@@ -206,6 +234,12 @@ void printHelp(char *argv0) {
   printf("   --form: form of sound [sine (default), triangular, saw, supersaw,"
          "square]\n");
   printf("   -e|--echo: Add an echo effect\n");
+  printf("   --chorus: Add a chorus effect\n");
+  printf("   --chorus_delay [float]: Set the chorus delay factor, default: "
+         "0.45\n");
+  printf("   --chorus_depth [float]: Set the chorus depth factor, default: "
+         "0.003\n");
+  printf("   --chorus_voices[int]: Set the chorus voices, default: 3\n");
   printf("   --chorus: Add a chorus effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
@@ -275,7 +309,40 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       effect.effectType = Effect::EffectType::Chorus;
       config.effectChorus = effect;
       config.effectChorus->sampleRate = SAMPLERATE;
-    } else if (arg == "--midi" && i + 1 < argc) {
+    }
+
+    else if (arg == "--chorus_delay" && i + 1 < argc) {
+
+      if (!config.effectChorus) {
+        Effect effect;
+        effect.effectType = Effect::EffectType::Chorus;
+        config.effectChorus = effect;
+        config.effectChorus->sampleRate = SAMPLERATE;
+      }
+      config.effectChorus->chorusConfig.delay = std::stof(argv[i + 1]);
+    } else if (arg == "--chorus_depth" && i + 1 < argc) {
+
+      if (!config.effectChorus) {
+        Effect effect;
+        effect.effectType = Effect::EffectType::Chorus;
+        config.effectChorus = effect;
+        config.effectChorus->sampleRate = SAMPLERATE;
+      }
+
+      config.effectChorus->chorusConfig.depthMs = std::stof(argv[i + 1]);
+    } else if (arg == "--chorus_voices" && i + 1 < argc) {
+
+      if (!config.effectChorus) {
+        Effect effect;
+        effect.effectType = Effect::EffectType::Chorus;
+        config.effectChorus = effect;
+        config.effectChorus->sampleRate = SAMPLERATE;
+      }
+
+      config.effectChorus->chorusConfig.numVoices = std::atoi(argv[i + 1]);
+    }
+
+    else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
       FIR fir(SAMPLERATE);
@@ -327,8 +394,8 @@ int main(int argc, char *argv[]) {
   if (config.effectChorus) {
     effects.push_back(*config.effectChorus);
   }
+  printf("waveform: %d", config.waveForm);
   if (config.rankPreset != Sound::Rank::Preset::None) {
-
     keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects);
   } else {
     keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm, effects);
