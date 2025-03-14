@@ -9,24 +9,26 @@ using Complex = std::complex<double>;
 
 std::vector<short> Effect::apply(std::vector<short> &buffer) {
   switch (this->effectType) {
-  case EffectType::FIR: {
+  case EffectType::Fir: {
     return this->apply_fir(buffer);
   }
   case EffectType::Chorus: {
     return this->apply_chorus(buffer);
   }
   }
+  return {};
 }
 
 std::vector<short> Effect::apply(std::vector<short> &buffer, size_t maxLen) {
   switch (this->effectType) {
-  case EffectType::FIR: {
+  case EffectType::Fir: {
     return this->apply_fir(buffer, maxLen);
   }
   case EffectType::Chorus: {
     return this->apply_chorus(buffer);
   }
   }
+  return {};
 }
 
 std::vector<short> Effect::apply_fir(std::vector<short> &buffer) {

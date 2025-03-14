@@ -21,7 +21,7 @@ public:
 
   std::vector<FIR> firs;
 
-  enum EffectType { FIR, Chorus };
+  enum EffectType { Fir, Chorus };
 
   typedef struct ChorusConfig {
     float lfoRate;
@@ -31,7 +31,7 @@ public:
         : lfoRate(lfoRate), depthMs(depthMs), numVoices(numVoices) {}
   } ChorusConfig;
 
-  EffectType effectType = EffectType::FIR;
+  EffectType effectType = EffectType::Fir;
   ChorusConfig chorusConfig{0.2f, 0.5f, 5};
   int sampleRate = 44100;
 
