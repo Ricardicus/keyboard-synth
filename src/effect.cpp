@@ -7,6 +7,27 @@
 
 using Complex = std::complex<double>;
 
+std::vector<Complex> detuneSpectrum(const std::vector<Complex> &spectrum,
+                                    double pitchCents) {
+  double factor = std::pow(2.0, pitchCents / 100.0);
+  int n = spectrum.size();
+  std::vector<Complex> detuned(n, Complex(0.0, 0.0));
+
+  for (int i = 0; i < n; i++) {
+    double srcIndex = i / factor;
+    int index0 = static_cast<int>(std::floor(srcIndex));
+    int index1 = index0 + 1;
+    double frac = srcIndex - index0;
+
+    if (index1 < n) {
+      detuned[i] = (1.0 - frac) * spectrum[index0] + frac * spectrum[index1];
+    } else if (index0 < n) {
+      detuned[i] = spectrum[index0];
+    }
+  }
+  return detuned;
+}
+
 std::vector<short> Effect::apply(std::vector<short> &buffer) {
   switch (this->effectType) {
   case EffectType::Fir: {
@@ -108,25 +129,16 @@ std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
       std::polar(1.0, 2.0 * M_PI * this->chorusConfig.delay);
 
   int sampleRate = this->sampleRate;
-  int delaySamples =
-      static_cast<int>(this->chorusConfig.depthMs * sampleRate / 1000.0);
 
   // Create each voice with an increasing offset and phase
   for (int i = 0; i < this->chorusConfig.numVoices; i++) {
-    std::vector<Complex> voiceBuffer(processedFT.size(),
-                                     std::complex<double>(0.0, 0.0));
+    std::vector<Complex> voiceBuffer =
+        detuneSpectrum(processedFT, (i + 1) * this->chorusConfig.depth);
     // Use std::pow to get the appropriate phase factor for this voice
     std::complex<double> phaseFactor = std::pow(phaseIncrement, i);
 
     for (int n = 0; n < static_cast<int>(voiceBuffer.size()); n++) {
-      int offset = n;
-      if (i % 2 == 0) {
-        offset += (i + 1) * delaySamples;
-      } else {
-        offset -= (i + 1) * delaySamples;
-      }
-      offset = (offset + voiceBuffer.size()) % voiceBuffer.size();
-      voiceBuffer[n] = processedFT[offset] * phaseFactor;
+      voiceBuffer[n] = voiceBuffer[n] * phaseFactor;
     }
     voices.push_back(voiceBuffer);
   }

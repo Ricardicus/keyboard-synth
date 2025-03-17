@@ -25,14 +25,14 @@ public:
 
   typedef struct ChorusConfig {
     float delay;
-    float depthMs;
+    float depth;
     int numVoices;
-    ChorusConfig(float lfoRate, float depthMs, int numVoices)
-        : delay(lfoRate), depthMs(depthMs), numVoices(numVoices) {}
+    ChorusConfig(float lfoRate, float depth, int numVoices)
+        : delay(lfoRate), depth(depth), numVoices(numVoices) {}
   } ChorusConfig;
 
   EffectType effectType = EffectType::Fir;
-  ChorusConfig chorusConfig{0.05f, 1.2f, 3};
+  ChorusConfig chorusConfig{0.05f, 3, 3};
   int sampleRate = 44100;
 
 private:

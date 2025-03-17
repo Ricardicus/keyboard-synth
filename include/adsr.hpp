@@ -10,23 +10,23 @@ public:
     float duration = 0.8f;
     int samplerate = 44100;
     short amplitude = 32767;
-    this->length = static_cast<int>(samplerate * duration);
     this->amplitude = amplitude;
     this->qadsr[0] = 1;
     this->qadsr[1] = 1;
     this->qadsr[2] = 3;
     this->qadsr[3] = 3;
     this->quantas = 8;
-    this->quantas_length = length / this->quantas;
+    this->quantas_length = static_cast<int>(samplerate * duration);
+    this->length = this->quantas_length * this->quantas;
     this->sustain_level = 0.8 * amplitude;
     this->quantas = 1 + 1 + 3 + 3;
   }
   ADSR(short amplitude, int quantas_a, int quantas_d, int quantas_s,
-       int quantas_r, float sustain_level, int length) {
+       int quantas_r, float sustain_level, int quantas_length) {
     this->amplitude = amplitude;
     this->quantas = quantas_a + quantas_d + quantas_s + quantas_r;
-    this->length = length;
-    this->quantas_length = length / this->quantas;
+    this->quantas_length = quantas_length;
+    this->length = this->quantas_length * this->quantas;
     this->sustain_level = (short)(sustain_level * amplitude);
 
     this->qadsr[0] = quantas_a;
@@ -101,7 +101,7 @@ public:
   void update_len() {
     this->quantas =
         this->qadsr[0] + this->qadsr[1] + this->qadsr[2] + this->qadsr[3];
-    this->quantas_length = this->length / this->quantas;
+    this->length = this->quantas_length * this->quantas;
   }
 
   std::string getCoolASCIVisualization(const std::string &prefix);

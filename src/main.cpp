@@ -36,7 +36,7 @@ public:
   std::string midiFile;
   std::optional<Effect> effectChorus = std::nullopt;
   float volume = 1.0;
-  float duration = 0.8f;
+  float duration = 0.1f;
   std::string getPrintableConfig() {
     std::string result;
     result += "Keyboard sound configuration:\n";
@@ -66,7 +66,7 @@ public:
       result +=
           "  Chorus: delay=" +
           std::to_string(effectChorus->chorusConfig.delay) +
-          ", depth=" + std::to_string(effectChorus->chorusConfig.depthMs) +
+          ", depth=" + std::to_string(effectChorus->chorusConfig.depth) +
           ", voices=" + std::to_string(effectChorus->chorusConfig.numVoices);
     }
     for (int i = 0; i < effectFIR.firs.size(); i++) {
@@ -189,7 +189,7 @@ public:
       printw("depth=");
       attroff(A_BOLD | COLOR_PAIR(4));
       attron(COLOR_PAIR(5));
-      printw("%f\n", effectChorus->chorusConfig.depthMs);
+      printw("%f\n", effectChorus->chorusConfig.depth);
       attroff(COLOR_PAIR(5));
       attron(A_BOLD | COLOR_PAIR(4));
       printw("voices=");
@@ -214,7 +214,7 @@ public:
     printw("  note length: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%.2f s\n", duration);
+    printw("%.2f s\n", duration * adsr.quantas);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -237,8 +237,9 @@ void printHelp(char *argv0) {
   printf("   --chorus: Add a chorus effect\n");
   printf("   --chorus_delay [float]: Set the chorus delay factor, default: "
          "0.45\n");
-  printf("   --chorus_depth [float]: Set the chorus depth factor, default: "
-         "0.003\n");
+  printf("   --chorus_depth [float]: Set the chorus depth factor, in pitch "
+         "cents, default: "
+         "3\n");
   printf("   --chorus_voices[int]: Set the chorus voices, default: 3\n");
   printf("   --chorus: Add a chorus effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
@@ -247,7 +248,8 @@ void printHelp(char *argv0) {
          "file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
-  printf("   --duration [float]: Note duration in seconds (default 0.8)\n");
+  printf("   --duration [float]: Note ADSR quanta duration in seconds (default "
+         "0.1)\n");
   printf("   --adsr [int,int,int,int]: Set the ADSR quant intervals "
          "comma-separated (default 1,1,3,3)\n");
   printf("   --sustain [float]: Set the sustain level [0,1] (default 0.8)\n");
@@ -329,7 +331,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
         config.effectChorus->sampleRate = SAMPLERATE;
       }
 
-      config.effectChorus->chorusConfig.depthMs = std::stof(argv[i + 1]);
+      config.effectChorus->chorusConfig.depth = std::stof(argv[i + 1]);
     } else if (arg == "--chorus_voices" && i + 1 < argc) {
 
       if (!config.effectChorus) {
@@ -356,7 +358,8 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       config.volume = std::stof(argv[i + 1]);
     } else if (arg == "--duration" && i + 1 < argc) {
       config.duration = std::stof(argv[i + 1]);
-      config.adsr.setLength(static_cast<int>(SAMPLERATE * config.duration));
+      config.adsr.setLength(
+          static_cast<int>(SAMPLERATE * config.duration * config.adsr.quantas));
     } else if (arg == "-h" || arg == "--help") {
       printHelp(argv[0]);
       return -1;
@@ -366,7 +369,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
 }
 
 int main(int argc, char *argv[]) {
-  float duration = 0.8f;
+  float duration = 0.1f;
   short amplitude = 32767;
   int maxPolyphony = 50;
   ADSR adsr =
