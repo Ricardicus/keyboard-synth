@@ -84,7 +84,7 @@ public:
     // Prevent going lower if there's a note with octave 1
     if (delta < 0) {
       for (const auto &kv : keyPressToNote) {
-        if (kv.second.back() == '1') {
+        if (kv.second.back() == '0') {
           return; // We have an octave 1, can't decrease further
         }
       }
