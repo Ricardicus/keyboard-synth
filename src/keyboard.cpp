@@ -145,6 +145,11 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
           splitChannels(data, size, buffer_left_in, buffer_right_in);
 
           std::vector<short> buffer_left_effect_out;
+
+          if (effects.size() == 0) {
+            buffer_left_effect_out = buffer_left_in;
+          }
+
           for (int i = 0; i < effects.size(); i++) {
             buffer_left_effect_out = effects[i].apply(buffer_left_in);
             if (effects.size() != i + 1) {
@@ -158,6 +163,9 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
             if (effects.size() != i + 1) {
               buffer_right_in = buffer_right_effect_out;
             }
+          }
+          if (effects.size() == 0) {
+            buffer_right_effect_out = buffer_right_in;
           }
 
           std::vector<short> interleaved;
@@ -175,6 +183,10 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
         } else {
           std::vector<short> buffer_in = convertToVector(data, size);
           std::vector<short> buffer_out;
+
+          if (effects.size() == 0) {
+            buffer_out = buffer_in;
+          }
 
           for (int i = 0; i < effects.size(); i++) {
             buffer_out = effects[i].apply(buffer_in);
@@ -203,6 +215,10 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
       std::vector<short> buffer_in =
           Sound::generateWave(Sound::WaveForm::Sine, n, adsr);
       std::vector<short> buffer_out;
+
+      if (effects.size() == 0) {
+        buffer_out = buffer_in;
+      }
 
       for (int i = 0; i < effects.size(); i++) {
         buffer_out = effects[i].apply(buffer_in);
@@ -253,6 +269,10 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
 
     std::vector<short> buffer_in = Sound::generateWave(r);
     std::vector<short> buffer_out;
+
+    if (effects.size() == 0) {
+      buffer_out = buffer_in;
+    }
 
     for (int i = 0; i < effects.size(); i++) {
       buffer_out = effects[i].apply(buffer_in);

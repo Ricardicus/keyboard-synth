@@ -26,7 +26,7 @@ Use -h or --help for more info.
 In general, for more help use -h:
 
 ```text
-Usage: ./keyboard [flags]
+Usage: ./build/keyboard [flags]
 flags:
    --form: form of sound [sine (default), triangular, saw, supersaw,square]
    -e|--echo: Add an echo effect
@@ -41,8 +41,10 @@ flags:
    --duration [float]: Note ADSR quanta duration in seconds (default 0.1)
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
+   --lowpass [float]: Set the lowpass filter cut off frequency [0,1]
+                      of sample rate (default no low pass)
 
-./keyboard compiled Mar 17 2025 07:39:18
+./build/keyboard compiled Mar 17 2025 22:10:50
 ```
 
 ## Map keys to wave files

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "fir.hpp"
+#include "iir.hpp"
 
 class Effect {
 public:
@@ -18,10 +19,13 @@ public:
   std::vector<short> apply_chorus(std::vector<short> &buffer);
   std::vector<short> apply_fir(std::vector<short> &buffer);
   std::vector<short> apply_fir(std::vector<short> &buffer, size_t maxLen);
+  std::vector<short> apply_iir(std::vector<short> &buffer);
+  std::vector<short> apply_iir(std::vector<short> &buffer, size_t maxLen);
 
   std::vector<FIR> firs;
+  std::vector<IIR> iirs;
 
-  enum EffectType { Fir, Chorus };
+  enum Type { Fir, Iir, Chorus };
 
   typedef struct ChorusConfig {
     float delay;
@@ -31,7 +35,7 @@ public:
         : delay(lfoRate), depth(depth), numVoices(numVoices) {}
   } ChorusConfig;
 
-  EffectType effectType = EffectType::Fir;
+  Type effectType = Type::Fir;
   ChorusConfig chorusConfig{0.05f, 3, 3};
   int sampleRate = 44100;
 

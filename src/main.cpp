@@ -31,53 +31,13 @@ public:
   ADSR adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
-  Effect effectFIR;
   std::string waveFile;
   std::string midiFile;
+  std::optional<Effect> effectFIR = std::nullopt;
   std::optional<Effect> effectChorus = std::nullopt;
+  std::optional<Effect> effectIIR = std::nullopt;
   float volume = 1.0;
   float duration = 0.1f;
-  std::string getPrintableConfig() {
-    std::string result;
-    result += "Keyboard sound configuration:\n";
-    result += "  volume: " + std::to_string(volume) + "\n";
-    result +=
-        "  notes-wave-map: " + (waveFile.size() > 0 ? waveFile : "none") + "\n";
-    if (rankPreset != Sound::Rank::Preset::None) {
-      result += "  waveform: " + Sound::Rank::presetStr(rankPreset) + "\n";
-    } else {
-      result += "  waveform: " + Sound::typeOfWave(waveForm) + "\n";
-    }
-    result += "  ADSR:\n";
-    result += "    amplitude: " + std::to_string(adsr.amplitude) + "\n";
-    result += "    quantas: " + std::to_string(adsr.quantas) + "\n";
-    result += "    qadsr: " + std::to_string(adsr.qadsr[0]) + " " +
-              std::to_string(adsr.qadsr[1]) + " " +
-              std::to_string(adsr.qadsr[2]) + " " +
-              std::to_string(adsr.qadsr[3]) + "\n";
-    result += "    length: " + std::to_string(adsr.length) + "\n";
-    result +=
-        "    quantas_length: " + std::to_string(adsr.quantas_length) + "\n";
-    result += "    sustain_level: " + std::to_string(adsr.sustain_level) + "\n";
-    result += "    visualization: [see below]\n";
-    result += adsr.getCoolASCIVisualization("    ");
-    result += "  FIRs: " + std::to_string(effectFIR.firs.size()) + "\n";
-    if (effectChorus) {
-      result +=
-          "  Chorus: delay=" +
-          std::to_string(effectChorus->chorusConfig.delay) +
-          ", depth=" + std::to_string(effectChorus->chorusConfig.depth) +
-          ", voices=" + std::to_string(effectChorus->chorusConfig.numVoices);
-    }
-    for (int i = 0; i < effectFIR.firs.size(); i++) {
-      result += "    [" + std::to_string(i + 1) +
-                "] IR length: " + std::to_string(effectFIR.firs[i].getIRLen()) +
-                ", normalized: " +
-                (effectFIR.firs[i].getNormalization() ? "true" : "false") +
-                "\n";
-    }
-    return result;
-  }
 
   void printConfig() {
     start_color(); // Enable color functionality
@@ -168,15 +128,65 @@ public:
 
     // Print the cool ASCII visualization in **green**
     attron(COLOR_PAIR(2) | A_BOLD);
-    printw("%s\n", adsr.getCoolASCIVisualization("    ").c_str());
+    printw("%s", adsr.getCoolASCIVisualization("    ").c_str());
     attroff(COLOR_PAIR(2) | A_BOLD);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  FIRs: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%lu\n", effectFIR.firs.size());
-    attroff(COLOR_PAIR(5));
+    if (effectFIR) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  FIRs: ");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%lu\n", effectFIR->firs.size());
+      attroff(COLOR_PAIR(5));
+      for (size_t i = 0; i < effectFIR->firs.size(); i++) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] IR length: ", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        printw("%zu, Normalized: %s\n", effectFIR->firs[i].getIRLen(),
+               effectFIR->firs[i].getNormalization() ? "true" : "false");
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    if (effectIIR) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  IIRs: ");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%lu\n", effectIIR->iirs.size());
+      attroff(COLOR_PAIR(5));
+      for (size_t i = 0; i < effectIIR->iirs.size(); i++) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] Memory: ", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        printw("%u\n", effectIIR->iirs[i].memory);
+        attroff(COLOR_PAIR(5));
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] poles:", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        for (int a = 0; a < effectIIR->iirs[i].as.size(); a++) {
+          printw(" %f", effectIIR->iirs[i].as[a]);
+        }
+        printw("\n");
+        attroff(COLOR_PAIR(5));
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] zeroes:", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        for (int b = 0; b < effectIIR->iirs[i].bs.size(); b++) {
+          printw(" %f", effectIIR->iirs[i].bs[b]);
+        }
+        printw("\n");
+        attroff(COLOR_PAIR(5));
+      }
+    }
 
     if (effectChorus) {
       attron(A_BOLD | COLOR_PAIR(4));
@@ -196,17 +206,6 @@ public:
       attroff(A_BOLD | COLOR_PAIR(4));
       attron(COLOR_PAIR(5));
       printw("%d\n", effectChorus->chorusConfig.numVoices);
-      attroff(COLOR_PAIR(5));
-    }
-
-    for (size_t i = 0; i < effectFIR.firs.size(); i++) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("    [%lu] IR length: ", i + 1);
-      attroff(A_BOLD | COLOR_PAIR(4));
-
-      attron(COLOR_PAIR(5));
-      printw("%zu, Normalized: %s\n", effectFIR.firs[i].getIRLen(),
-             effectFIR.firs[i].getNormalization() ? "true" : "false");
       attroff(COLOR_PAIR(5));
     }
 
@@ -252,6 +251,9 @@ void printHelp(char *argv0) {
   printf("   --adsr [int,int,int,int]: Set the ADSR quant intervals "
          "comma-separated (default 1,1,3,3)\n");
   printf("   --sustain [float]: Set the sustain level [0,1] (default 0.8)\n");
+  printf(
+      "   --lowpass [float]: Set the lowpass filter cut off frequency [0,1]\n");
+  printf("                      of sample rate (default no low pass)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -304,19 +306,29 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(SAMPLERATE);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
-      config.effectFIR.addFIR(fir);
+      Effect effect;
+      effect.sampleRate = SAMPLERATE;
+      effect.effectType = Effect::Type::Fir;
+      config.effectFIR = effect;
+      config.effectFIR->addFIR(fir);
     } else if (arg == "--chorus") {
       Effect effect;
-      effect.effectType = Effect::EffectType::Chorus;
+      effect.effectType = Effect::Type::Chorus;
       config.effectChorus = effect;
       config.effectChorus->sampleRate = SAMPLERATE;
-    }
-
-    else if (arg == "--chorus_delay" && i + 1 < argc) {
+    } else if (arg == "--lowpass" && i + 1 < argc) {
+      Effect effect;
+      effect.effectType = Effect::Type::Iir;
+      config.effectIIR = effect;
+      config.effectIIR->sampleRate = SAMPLERATE;
+      IIR lowPass = IIRFilters::lowPass(config.effectIIR->sampleRate,
+                                        std::stof(argv[i + 1]));
+      config.effectIIR->iirs.push_back(lowPass);
+    } else if (arg == "--chorus_delay" && i + 1 < argc) {
 
       if (!config.effectChorus) {
         Effect effect;
-        effect.effectType = Effect::EffectType::Chorus;
+        effect.effectType = Effect::Type::Chorus;
         config.effectChorus = effect;
         config.effectChorus->sampleRate = SAMPLERATE;
       }
@@ -325,7 +337,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
 
       if (!config.effectChorus) {
         Effect effect;
-        effect.effectType = Effect::EffectType::Chorus;
+        effect.effectType = Effect::Type::Chorus;
         config.effectChorus = effect;
         config.effectChorus->sampleRate = SAMPLERATE;
       }
@@ -335,7 +347,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
 
       if (!config.effectChorus) {
         Effect effect;
-        effect.effectType = Effect::EffectType::Chorus;
+        effect.effectType = Effect::Type::Chorus;
         config.effectChorus = effect;
         config.effectChorus->sampleRate = SAMPLERATE;
       }
@@ -349,7 +361,11 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       FIR fir(SAMPLERATE);
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
-      config.effectFIR.addFIR(fir);
+      Effect effect;
+      effect.sampleRate = SAMPLERATE;
+      effect.effectType = Effect::Type::Fir;
+      config.effectFIR = effect;
+      config.effectFIR->addFIR(fir);
     } else if (arg == "--sustain" && i + 1 < argc) {
       config.adsr.sustain_level =
           std::stof(argv[i + 1]) * config.adsr.amplitude;
@@ -392,9 +408,14 @@ int main(int argc, char *argv[]) {
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.setVolume(config.volume);
   std::vector<Effect> effects;
-  effects.push_back(config.effectFIR);
+  if (config.effectFIR) {
+    effects.push_back(*config.effectFIR);
+  }
   if (config.effectChorus) {
     effects.push_back(*config.effectChorus);
+  }
+  if (config.effectIIR) {
+    effects.push_back(*config.effectIIR);
   }
   printf("waveform: %d", config.waveForm);
   if (config.rankPreset != Sound::Rank::Preset::None) {
@@ -408,8 +429,6 @@ int main(int argc, char *argv[]) {
   keypad(stdscr, TRUE); // Enable special keys
   noecho();             // Don't show the key being pressed
   scrollok(stdscr, TRUE);
-
-  std::string printableConfig = config.getPrintableConfig();
 
   if (config.midiFile.size() > 0) {
 

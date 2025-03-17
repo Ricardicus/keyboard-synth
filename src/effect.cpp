@@ -30,10 +30,13 @@ std::vector<Complex> detuneSpectrum(const std::vector<Complex> &spectrum,
 
 std::vector<short> Effect::apply(std::vector<short> &buffer) {
   switch (this->effectType) {
-  case EffectType::Fir: {
+  case Type::Fir: {
     return this->apply_fir(buffer);
   }
-  case EffectType::Chorus: {
+  case Type::Iir: {
+    return this->apply_iir(buffer);
+  }
+  case Type::Chorus: {
     return this->apply_chorus(buffer);
   }
   }
@@ -42,10 +45,13 @@ std::vector<short> Effect::apply(std::vector<short> &buffer) {
 
 std::vector<short> Effect::apply(std::vector<short> &buffer, size_t maxLen) {
   switch (this->effectType) {
-  case EffectType::Fir: {
+  case Type::Fir: {
     return this->apply_fir(buffer, maxLen);
   }
-  case EffectType::Chorus: {
+  case Type::Iir: {
+    return this->apply_iir(buffer);
+  }
+  case Type::Chorus: {
     return this->apply_chorus(buffer);
   }
   }
@@ -156,4 +162,19 @@ std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
   }
 
   return FourierTransform::IDFT(processedFT);
+}
+
+std::vector<short> Effect::apply_iir(std::vector<short> &buffer) {
+  std::vector<short> output;
+  std::vector<short> buffer_ = buffer;
+  for (int i = 0; i < this->iirs.size(); i++) {
+    this->iirs[i].clear();
+    short output;
+    for (int n = 0; n < buffer.size(); n++) {
+      short input = buffer[n];
+      output = this->iirs[i].process(input);
+      buffer_[n] = output;
+    }
+  }
+  return buffer_;
 }

@@ -51,6 +51,7 @@ add_library(keylib STATIC
     src/waveread.cpp
     src/effect.cpp
     src/adsr.cpp
+    src/iir.cpp
 )
 
 # Link dependencies to the keylib library
