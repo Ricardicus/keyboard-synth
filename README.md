@@ -26,21 +26,23 @@ Use -h or --help for more info.
 In general, for more help use -h:
 
 ```text
-./keyboard -h
 Usage: ./keyboard [flags]
 flags:
    --form: form of sound [sine (default), triangular, saw, supersaw,square]
    -e|--echo: Add an echo effect
-   --chorus: Add a chorus effect
+   --chorus: Add a chorus effect with default settings
+   --chorus_delay [float]: Set the chorus delay factor, default: 0.45
+   --chorus_depth [float]: Set the chorus depth factor, in pitch cents, default: 3
+   --chorus_voices[int]: Set the chorus voices, default: 3
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
    --volume [float]: Set the volume knob (default 1.0)
-   --duration [float]: Note duration in seconds (default 0.8)
+   --duration [float]: Note ADSR quanta duration in seconds (default 0.1)
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
 
-./keyboard compiled Mar 13 2025 21:37:39
+./keyboard compiled Mar 17 2025 07:39:18
 ```
 
 ## Map keys to wave files

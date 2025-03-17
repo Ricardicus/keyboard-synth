@@ -234,14 +234,13 @@ void printHelp(char *argv0) {
   printf("   --form: form of sound [sine (default), triangular, saw, supersaw,"
          "square]\n");
   printf("   -e|--echo: Add an echo effect\n");
-  printf("   --chorus: Add a chorus effect\n");
+  printf("   --chorus: Add a chorus effect with default settings\n");
   printf("   --chorus_delay [float]: Set the chorus delay factor, default: "
          "0.45\n");
   printf("   --chorus_depth [float]: Set the chorus depth factor, in pitch "
          "cents, default: "
          "3\n");
   printf("   --chorus_voices[int]: Set the chorus voices, default: 3\n");
-  printf("   --chorus: Add a chorus effect\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
