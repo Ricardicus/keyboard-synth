@@ -1,9 +1,10 @@
+#include <atomic>
 #include <cassert>
-#include <chrono> // for std::chrono::seconds
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <ncurses.h>
-#include <thread> // for std::this_thread::sleep_for
+#include <thread>
 #include <vector>
 
 #include "effect.hpp"
@@ -103,117 +104,186 @@ void Keyboard::printInstructions() {
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                            std::vector<Effect> &effects) {
+                            std::vector<Effect> &effects, int nbrThreads) {
   int length = adsr.getLength();
+  std::vector<std::string> notes = notes::getNotes();
+  assert(notes.size() == this->buffers.size());
+  unsigned ticks = notes.size();
+  std::atomic<unsigned> tick{1};
+
+  // Ensure nbrThreads is sensible
+  nbrThreads =
+      std::max(1, std::min(nbrThreads, static_cast<int>(notes.size())));
+
+  // Shared data needs protection
+  std::mutex mtx;
+
+  // Split notes into chunks
+  std::vector<std::thread> threads;
+  int notesPerThread = notes.size() / nbrThreads;
+  int remainder = notes.size() % nbrThreads;
+
+  // Lambda to process a range of notes
+  auto processNotes = [&](int start, int end, int threadIndex) {
+    std::vector<Effect> effectsClone(effects);
+    for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
+      const auto &key = notes[bufferIndex];
+      Note n = Note(key, length, sampleRate);
+
+      if (f == Sound::WaveForm::WaveFile &&
+          this->soundMap.find(key) != this->soundMap.end()) {
+        int channels, wavSampleRate, bps, size;
+        char *data;
+        ALenum format = AL_FORMAT_MONO8;
+        if ((data = loadWAV(this->soundMap[key], channels, wavSampleRate, bps,
+                            size)) != NULL) {
+          if (channels == 1) {
+            format = (bps == 8) ? AL_FORMAT_MONO8 : AL_FORMAT_MONO16;
+          } else {
+            format = (bps == 8) ? AL_FORMAT_STEREO8 : AL_FORMAT_STEREO16;
+          }
+
+          if (channels == 2) {
+            std::vector<short> buffer_left_in, buffer_right_in;
+            splitChannels(data, size, buffer_left_in, buffer_right_in);
+
+            std::vector<short> buffer_left_effect_out = buffer_left_in;
+            for (int i = 0; i < effectsClone.size(); i++) {
+              buffer_left_effect_out =
+                  effectsClone[i].apply(buffer_left_effect_out);
+            }
+
+            std::vector<short> buffer_right_effect_out = buffer_right_in;
+            for (int i = 0; i < effectsClone.size(); i++) {
+              buffer_right_effect_out =
+                  effectsClone[i].apply(buffer_right_effect_out);
+            }
+
+            std::vector<short> interleaved;
+            interleaved.reserve(buffer_left_effect_out.size() * 2);
+            for (size_t i = 0; i < buffer_left_effect_out.size(); ++i) {
+              interleaved.push_back(buffer_left_effect_out[i] * this->volume);
+              interleaved.push_back(buffer_right_effect_out[i] * this->volume);
+            }
+            {
+              std::lock_guard<std::mutex> lock(mtx);
+              alBufferData(this->buffers[bufferIndex], format,
+                           interleaved.data(), size, wavSampleRate);
+            }
+          } else {
+            std::vector<short> buffer_in = convertToVector(data, size);
+            std::vector<short> buffer_out = buffer_in;
+            for (int i = 0; i < effectsClone.size(); i++) {
+              buffer_out = effectsClone[i].apply(buffer_out);
+            }
+
+            {
+              std::lock_guard<std::mutex> lock(mtx);
+              alBufferData(this->buffers[bufferIndex], format,
+                           buffer_out.data(), size, wavSampleRate);
+            }
+          }
+          delete[] data; // Assuming loadWAV allocates memory
+        } else {
+          std::lock_guard<std::mutex> lock(mtx);
+          fprintf(stderr, "Error loading file: %s\n",
+                  this->soundMap[key].c_str());
+        }
+      } else {
+        if (this->soundMapFile.size() > 0) {
+          std::lock_guard<std::mutex> lock(mtx);
+          printf(
+              "warning: Missing key '%s' in the mapping file '%s', filling in "
+              "with a sine wave\n",
+              key.c_str(), this->soundMapFile.c_str());
+        }
+        std::vector<short> buffer_in = Sound::generateWave(f, n, adsr, effects);
+        std::vector<short> buffer_out = buffer_in;
+        for (int i = 0; i < effectsClone.size(); i++) {
+          buffer_out = effectsClone[i].apply(buffer_out);
+        }
+        for (auto &sample : buffer_out) {
+          sample *= this->volume;
+        }
+        n.setBuffer(buffer_out);
+
+        {
+          std::lock_guard<std::mutex> lock(mtx);
+          alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
+                       n.buffer.data(), n.buffer.size() * sizeof(short),
+                       n.sampleRate);
+        }
+      }
+
+      // Safely update shared data
+      {
+        std::lock_guard<std::mutex> lock(mtx);
+        this->keyToBufferIndex[key] = bufferIndex;
+        this->notes.insert(std::make_pair(key, n));
+        if (this->loaderFunc) {
+          unsigned currentTick = tick.fetch_add(1);
+          this->loaderFunc(ticks, currentTick);
+        }
+      }
+    }
+  };
+
+  // Launch threads
+  int start = 0;
+  for (int t = 0; t < nbrThreads; ++t) {
+    int extra = (t < remainder) ? 1 : 0; // Distribute remainder
+    int end = start + notesPerThread + extra;
+    threads.emplace_back(processNotes, start, end, t);
+    start = end;
+  }
+
+  // Wait for all threads to finish
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}
+
+void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
+                            Sound::Rank::Preset preset,
+                            std::vector<Effect> &effects, int nbrThreads) {
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
   int bufferIndex = 0;
   unsigned ticks = notes.size();
-  unsigned tick = 1;
+  std::atomic<unsigned> tick{1};
 
-  for (const auto &key : notes) {
+  // Ensure nbrThreads is sensible
+  nbrThreads =
+      std::max(1, std::min(nbrThreads, static_cast<int>(notes.size())));
 
-    Note n = Note(key, length, sampleRate);
-    if (f == Sound::WaveForm::WaveFile &&
-        this->soundMap.find(key) != this->soundMap.end()) {
-      int channels;
-      int sampleRate;
-      int bps;
-      char *data;
-      int size;
-      ALenum format = AL_FORMAT_MONO8;
-      if ((data = loadWAV(this->soundMap[key], channels, sampleRate, bps,
-                          size)) != NULL) {
-        if (channels == 1) {
-          if (bps == 8) {
-            format = AL_FORMAT_MONO8;
-          } else {
-            format = AL_FORMAT_MONO16;
-          }
-        } else {
-          if (bps == 8) {
-            format = AL_FORMAT_STEREO8;
-          } else {
-            format = AL_FORMAT_STEREO16;
-          }
-        }
+  // Shared data needs protection
+  std::mutex mtx;
 
-        if (channels == 2) {
-          std::vector<short> buffer_left_in;
-          std::vector<short> buffer_right_in;
+  // Split notes into chunks
+  std::vector<std::thread> threads;
+  int notesPerThread = notes.size() / nbrThreads;
+  int remainder = notes.size() % nbrThreads;
 
-          splitChannels(data, size, buffer_left_in, buffer_right_in);
-
-          std::vector<short> buffer_left_effect_out;
-
-          if (effects.size() == 0) {
-            buffer_left_effect_out = buffer_left_in;
-          }
-
-          for (int i = 0; i < effects.size(); i++) {
-            buffer_left_effect_out = effects[i].apply(buffer_left_in);
-            if (effects.size() != i + 1) {
-              buffer_left_in = buffer_left_effect_out;
-            }
-          }
-
-          std::vector<short> buffer_right_effect_out;
-          for (int i = 0; i < effects.size(); i++) {
-            buffer_right_effect_out = effects[i].apply(buffer_right_in);
-            if (effects.size() != i + 1) {
-              buffer_right_in = buffer_right_effect_out;
-            }
-          }
-          if (effects.size() == 0) {
-            buffer_right_effect_out = buffer_right_in;
-          }
-
-          std::vector<short> interleaved;
-          interleaved.reserve(buffer_left_effect_out.size() *
-                              2); // Reserve space to optimize performance
-
-          for (size_t i = 0; i < buffer_left_effect_out.size(); ++i) {
-            interleaved.push_back(buffer_left_effect_out[i] * this->volume);
-            interleaved.push_back(buffer_right_effect_out[i] * this->volume);
-          }
-
-          alBufferData(this->buffers[bufferIndex], format, interleaved.data(),
-                       size, sampleRate);
-
-        } else {
-          std::vector<short> buffer_in = convertToVector(data, size);
-          std::vector<short> buffer_out;
-
-          if (effects.size() == 0) {
-            buffer_out = buffer_in;
-          }
-
-          for (int i = 0; i < effects.size(); i++) {
-            buffer_out = effects[i].apply(buffer_in);
-            if (effects.size() != i + 1) {
-              buffer_in = buffer_out;
-            }
-          }
-
-          alBufferData(this->buffers[bufferIndex], format, buffer_out.data(),
-                       size, sampleRate);
-        }
-
-      } else {
-        fprintf(stderr, "Error loading file: %s\n",
-                this->soundMap[key].c_str());
+  // Lambda to process a range of notes
+  auto processNotes = [&](int start, int end, int threadIndex) {
+    std::vector<Effect> effectsClone(effects);
+    for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
+      const auto &key = notes[bufferIndex];
+      // Bottom row (one octave lower than home row)
+      Note n = Note(key, adsr.length, sampleRate);
+      Sound::Rank r;
+      switch (preset) {
+      case Sound::Rank::Preset::SuperSaw:
+        r = Sound::Rank::superSaw(n.frequency, adsr.length, sampleRate);
+      case Sound::Rank::Preset::None:
+        break;
+      }
+      r.adsr = adsr;
+      for (int e = 0; e < effects.size(); e++) {
+        r.addEffect(effects[e]);
       }
 
-    } else {
-
-      // No wave file for this key, fill in the blanks with sine
-      if (this->soundMapFile.size() > 0) {
-        printf("warning: Missing key '%s' in the mapping file '%s', filling in "
-               "with a sine wave\n",
-               key.c_str(), this->soundMapFile.c_str());
-      }
-      std::vector<short> buffer_in =
-          Sound::generateWave(Sound::WaveForm::Sine, n, adsr);
+      std::vector<short> buffer_in = Sound::generateWave(r);
       std::vector<short> buffer_out;
 
       if (effects.size() == 0) {
@@ -231,71 +301,33 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
       }
       n.setBuffer(buffer_out);
 
-      alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
-                   n.buffer.data(), n.buffer.size() * sizeof(short),
-                   n.sampleRate);
-    }
-    if (this->loaderFunc) {
-      this->loaderFunc(ticks, tick);
-      tick++;
-    }
-
-    this->keyToBufferIndex[key] = bufferIndex;
-    this->notes.insert(std::make_pair(key, n));
-    bufferIndex++;
-  }
-}
-
-void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
-                            Sound::Rank::Preset preset,
-                            std::vector<Effect> &effects) {
-  std::vector<std::string> notes = notes::getNotes();
-  assert(notes.size() == this->buffers.size());
-  int bufferIndex = 0;
-  unsigned ticks = notes.size();
-  unsigned tick = 1;
-
-  for (const auto &key : notes) {
-    // Bottom row (one octave lower than home row)
-    Note n = Note(key, adsr.length, sampleRate);
-    Sound::Rank r;
-    switch (preset) {
-    case Sound::Rank::Preset::SuperSaw:
-      r = Sound::Rank::superSaw(n.frequency, adsr.length, sampleRate);
-    case Sound::Rank::Preset::None:
-      break;
-    }
-    r.adsr = adsr;
-
-    std::vector<short> buffer_in = Sound::generateWave(r);
-    std::vector<short> buffer_out;
-
-    if (effects.size() == 0) {
-      buffer_out = buffer_in;
-    }
-
-    for (int i = 0; i < effects.size(); i++) {
-      buffer_out = effects[i].apply(buffer_in);
-      if (effects.size() != i + 1) {
-        buffer_in = buffer_out;
+      // Safely update shared data
+      {
+        std::lock_guard<std::mutex> lock(mtx);
+        alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16,
+                     n.buffer.data(), n.buffer.size() * sizeof(short),
+                     n.sampleRate);
+        this->keyToBufferIndex[key] = bufferIndex;
+        this->notes.insert(std::make_pair(key, n));
+        if (this->loaderFunc) {
+          unsigned currentTick = tick.fetch_add(1);
+          this->loaderFunc(ticks, currentTick);
+        }
       }
     }
-    for (size_t i = 0; i < buffer_out.size(); ++i) {
-      buffer_out[i] = buffer_out[i] * this->volume;
-    }
-    n.setBuffer(buffer_out);
+  };
+  // Launch threads
+  int start = 0;
+  for (int t = 0; t < nbrThreads; ++t) {
+    int extra = (t < remainder) ? 1 : 0; // Distribute remainder
+    int end = start + notesPerThread + extra;
+    threads.emplace_back(processNotes, start, end, t);
+    start = end;
+  }
 
-    alBufferData(this->buffers[bufferIndex], AL_FORMAT_MONO16, n.buffer.data(),
-                 n.buffer.size() * sizeof(short), n.sampleRate);
-
-    if (this->loaderFunc) {
-      this->loaderFunc(ticks, tick);
-      tick++;
-    }
-
-    this->keyToBufferIndex[key] = bufferIndex;
-    this->notes.insert(std::make_pair(key, n));
-    bufferIndex++;
+  // Wait for all threads to finish
+  for (auto &thread : threads) {
+    thread.join();
   }
 }
 

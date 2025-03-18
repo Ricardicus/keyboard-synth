@@ -21,7 +21,7 @@
 #include <map>
 #include <mutex>
 #include <string>
-#include <thread> // for std::this_thread::sleep_for
+#include <thread>
 #include <vector>
 
 #include "effect.hpp"
@@ -105,9 +105,9 @@ public:
   }
 
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                    std::vector<Effect> &effects);
+                    std::vector<Effect> &effects, int nbrThreads);
   void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
-                    std::vector<Effect> &effects);
+                    std::vector<Effect> &effects, int nbrThreads);
   void registerNote(const std::string &note);
   void registerButtonPress(int note);
   void playNote(const std::string &note);
@@ -173,5 +173,6 @@ private:
   std::map<int, std::function<void()>> keyPressToAction = {
       {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},
       {static_cast<int>('p'), [this]() { this->changeOctave(1); }}};
+  std::mutex mtx;
 };
 #endif

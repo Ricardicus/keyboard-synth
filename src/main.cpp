@@ -36,8 +36,10 @@ public:
   std::optional<Effect> effectFIR = std::nullopt;
   std::optional<Effect> effectChorus = std::nullopt;
   std::optional<Effect> effectIIR = std::nullopt;
+  std::optional<Effect> effectVibrato = std::nullopt;
   float volume = 1.0;
   float duration = 0.1f;
+  int parallelization = 8; // Number of threads to use in keyboard preparation
 
   void printConfig() {
     start_color(); // Enable color functionality
@@ -209,6 +211,21 @@ public:
       attroff(COLOR_PAIR(5));
     }
 
+    if (effectVibrato) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  Vibrato: frequency=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f ", effectChorus->vibratoConfig.frequency);
+      attroff(COLOR_PAIR(5));
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("depth=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f\n", effectChorus->vibratoConfig.depth);
+      attroff(COLOR_PAIR(5));
+    }
+
     attron(A_BOLD | COLOR_PAIR(4));
     printw("  note length: ");
     attroff(A_BOLD | COLOR_PAIR(4));
@@ -230,7 +247,7 @@ public:
 void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
   printf("flags:\n");
-  printf("   --form: form of sound [sine (default), triangular, saw, supersaw,"
+  printf("   --form: form of sound [sine (default), triangular, saw, supersaw, "
          "square]\n");
   printf("   -e|--echo: Add an echo effect\n");
   printf("   --chorus: Add a chorus effect with default settings\n");
@@ -240,6 +257,11 @@ void printHelp(char *argv0) {
          "cents, default: "
          "3\n");
   printf("   --chorus_voices[int]: Set the chorus voices, default: 3\n");
+  printf("   --vibrato: Add a vibrato effect with default settings\n");
+  printf("   --vibrato_depth [float]: Set the vibrato depth factor, default: "
+         "0.3\n");
+  printf("   --vibrato_frequency [float]: Set the vibrato frequency, in Herz "
+         " default: 6\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
@@ -252,8 +274,13 @@ void printHelp(char *argv0) {
          "comma-separated (default 1,1,3,3)\n");
   printf("   --sustain [float]: Set the sustain level [0,1] (default 0.8)\n");
   printf(
-      "   --lowpass [float]: Set the lowpass filter cut off frequency [0,1]\n");
-  printf("                      of sample rate (default no low pass)\n");
+      "   --lowpass [float]: Set the lowpass filter cut off frequency in Hz\n");
+  printf("                   (default no low pass)\n");
+  printf("   --highpass [float]: Set the highpass filter cut off frequency in "
+         "Hz\n");
+  printf("                (default no highpass)\n");
+  printf("   --parallelization [int]: Number of threads used in keyboard "
+         "preparation default: 8");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -316,6 +343,27 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       effect.effectType = Effect::Type::Chorus;
       config.effectChorus = effect;
       config.effectChorus->sampleRate = SAMPLERATE;
+    } else if (arg == "--vibrato") {
+      Effect effect;
+      effect.effectType = Effect::Type::Vibrato;
+      config.effectVibrato = effect;
+      config.effectVibrato->sampleRate = SAMPLERATE;
+    } else if (arg == "--vibrato_depth" && i + 1 < argc) {
+      if (!config.effectVibrato) {
+        Effect effect;
+        effect.effectType = Effect::Type::Vibrato;
+        config.effectVibrato = effect;
+        config.effectVibrato->sampleRate = SAMPLERATE;
+      }
+      config.effectVibrato->vibratoConfig.depth = std::stof(argv[i + 1]);
+    } else if (arg == "--vibrato_frequency" && i + 1 < argc) {
+      if (!config.effectVibrato) {
+        Effect effect;
+        effect.effectType = Effect::Type::Vibrato;
+        config.effectVibrato = effect;
+        config.effectVibrato->sampleRate = SAMPLERATE;
+      }
+      config.effectVibrato->vibratoConfig.frequency = std::stof(argv[i + 1]);
     } else if (arg == "--lowpass" && i + 1 < argc) {
       Effect effect;
       effect.effectType = Effect::Type::Iir;
@@ -324,8 +372,15 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       IIR lowPass = IIRFilters::lowPass(config.effectIIR->sampleRate,
                                         std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
+    } else if (arg == "--highpass" && i + 1 < argc) {
+      Effect effect;
+      effect.effectType = Effect::Type::Iir;
+      config.effectIIR = effect;
+      config.effectIIR->sampleRate = SAMPLERATE;
+      IIR lowPass = IIRFilters::highPass(config.effectIIR->sampleRate,
+                                         std::stof(argv[i + 1]));
+      config.effectIIR->iirs.push_back(lowPass);
     } else if (arg == "--chorus_delay" && i + 1 < argc) {
-
       if (!config.effectChorus) {
         Effect effect;
         effect.effectType = Effect::Type::Chorus;
@@ -334,28 +389,24 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       }
       config.effectChorus->chorusConfig.delay = std::stof(argv[i + 1]);
     } else if (arg == "--chorus_depth" && i + 1 < argc) {
-
       if (!config.effectChorus) {
         Effect effect;
         effect.effectType = Effect::Type::Chorus;
         config.effectChorus = effect;
         config.effectChorus->sampleRate = SAMPLERATE;
       }
-
       config.effectChorus->chorusConfig.depth = std::stof(argv[i + 1]);
     } else if (arg == "--chorus_voices" && i + 1 < argc) {
-
       if (!config.effectChorus) {
         Effect effect;
         effect.effectType = Effect::Type::Chorus;
         config.effectChorus = effect;
         config.effectChorus->sampleRate = SAMPLERATE;
       }
-
       config.effectChorus->chorusConfig.numVoices = std::atoi(argv[i + 1]);
-    }
-
-    else if (arg == "--midi" && i + 1 < argc) {
+    } else if (arg == "--parallelization" && i + 1 < argc) {
+      config.parallelization = std::atoi(argv[i + 1]);
+    } else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
       FIR fir(SAMPLERATE);
@@ -417,12 +468,23 @@ int main(int argc, char *argv[]) {
   if (config.effectIIR) {
     effects.push_back(*config.effectIIR);
   }
-  printf("waveform: %d", config.waveForm);
-  if (config.rankPreset != Sound::Rank::Preset::None) {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects);
-  } else {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm, effects);
+  if (config.effectVibrato) {
+    effects.push_back(*config.effectVibrato);
   }
+  auto start = std::chrono::high_resolution_clock::now();
+  if (config.rankPreset != Sound::Rank::Preset::None) {
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects,
+                          config.parallelization);
+  } else {
+    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm, effects,
+                          config.parallelization);
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+  auto prepTime =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
+  printf("Keyboard preparation time: %0.4f seconds",
+         static_cast<double>(prepTime) / 1000.0);
   printf("\nSound OK!\n");
   initscr();            // Initialize the library
   cbreak();             // Line buffering disabled

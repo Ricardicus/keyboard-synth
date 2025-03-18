@@ -28,7 +28,7 @@ std::vector<Complex> detuneSpectrum(const std::vector<Complex> &spectrum,
   return detuned;
 }
 
-std::vector<short> Effect::apply(std::vector<short> &buffer) {
+std::vector<short> Effect::apply(const std::vector<short> &buffer) {
   switch (this->effectType) {
   case Type::Fir: {
     return this->apply_fir(buffer);
@@ -39,11 +39,14 @@ std::vector<short> Effect::apply(std::vector<short> &buffer) {
   case Type::Chorus: {
     return this->apply_chorus(buffer);
   }
+  default:
+    break;
   }
-  return {};
+  return buffer;
 }
 
-std::vector<short> Effect::apply(std::vector<short> &buffer, size_t maxLen) {
+std::vector<short> Effect::apply(const std::vector<short> &buffer,
+                                 size_t maxLen) {
   switch (this->effectType) {
   case Type::Fir: {
     return this->apply_fir(buffer, maxLen);
@@ -54,11 +57,13 @@ std::vector<short> Effect::apply(std::vector<short> &buffer, size_t maxLen) {
   case Type::Chorus: {
     return this->apply_chorus(buffer);
   }
+  default:
+    break;
   }
   return {};
 }
 
-std::vector<short> Effect::apply_fir(std::vector<short> &buffer) {
+std::vector<short> Effect::apply_fir(const std::vector<short> &buffer) {
   FourierTransform ft;
   std::vector<short> output;
   std::vector<short> buffer_ = buffer;
@@ -90,7 +95,7 @@ std::vector<short> Effect::apply_fir(std::vector<short> &buffer) {
   return buffer_;
 }
 
-std::vector<short> Effect::apply_fir(std::vector<short> &buffer,
+std::vector<short> Effect::apply_fir(const std::vector<short> &buffer,
                                      size_t maxLen) {
   FourierTransform ft;
   std::vector<short> output;
@@ -126,7 +131,7 @@ std::vector<short> Effect::apply_fir(std::vector<short> &buffer,
   return buffer_;
 }
 
-std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
+std::vector<short> Effect::apply_chorus(const std::vector<short> &buffer) {
   int numSamples = buffer.size();
   std::vector<Complex> processedFT = FourierTransform::DFT(buffer, false);
   std::vector<std::vector<Complex>> voices;
@@ -164,7 +169,7 @@ std::vector<short> Effect::apply_chorus(std::vector<short> &buffer) {
   return FourierTransform::IDFT(processedFT);
 }
 
-std::vector<short> Effect::apply_iir(std::vector<short> &buffer) {
+std::vector<short> Effect::apply_iir(const std::vector<short> &buffer) {
   std::vector<short> output;
   std::vector<short> buffer_ = buffer;
   for (int i = 0; i < this->iirs.size(); i++) {

@@ -29,14 +29,18 @@ Use -h or --help for more info.
 In general, for more help use -h:
 
 ```text
+./build/keyboard -h
 Usage: ./build/keyboard [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, supersaw,square]
+   --form: form of sound [sine (default), triangular, saw, supersaw, square]
    -e|--echo: Add an echo effect
    --chorus: Add a chorus effect with default settings
    --chorus_delay [float]: Set the chorus delay factor, default: 0.45
    --chorus_depth [float]: Set the chorus depth factor, in pitch cents, default: 3
    --chorus_voices[int]: Set the chorus voices, default: 3
+   --vibrato: Add a vibrato effect with default settings
+   --vibrato_depth [float]: Set the vibrato depth factor, default: 0.3
+   --vibrato_frequency [float]: Set the vibrato frequency, in Herz  default: 10
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
@@ -44,10 +48,12 @@ flags:
    --duration [float]: Note ADSR quanta duration in seconds (default 0.1)
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
-   --lowpass [float]: Set the lowpass filter cut off frequency [0,1]
-                      of sample rate (default no low pass)
-
-./build/keyboard compiled Mar 17 2025 22:10:50
+   --lowpass [float]: Set the lowpass filter cut off frequency in Hz
+                   (default no low pass)
+   --highpass [float]: Set the highpass filter cut off frequency in Hz
+                (default no highpass)
+   --parallelization [int]: Number of threads used in keyboard preparation default: 8
+./build/keyboard compiled Mar 18 2025 20:43:11
 ```
 
 ## Map keys to wave files

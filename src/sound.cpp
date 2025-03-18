@@ -23,22 +23,25 @@ std::string Sound::typeOfWave(Sound::WaveForm form) {
 }
 
 std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
-                                       ADSR &adsr) {
+                                       ADSR &adsr,
+                                       std::vector<Effect> &effects) {
   switch (form) {
   case Sound::WaveForm::Sine:
-    return Sound::generateSineWave(note, adsr);
+    return Sound::generateSineWave(note, adsr, effects);
   case Sound::WaveForm::Triangular:
-    return Sound::generateTriangularWave(note, adsr);
+    return Sound::generateTriangularWave(note, adsr, effects);
   case Sound::WaveForm::Square:
-    return Sound::generateSquareWave(note, adsr);
+    return Sound::generateSquareWave(note, adsr, effects);
   case Sound::WaveForm::Saw:
-    return Sound::generateSawWave(note, adsr);
+    return Sound::generateSawWave(note, adsr, effects);
   case Sound::WaveForm::WaveFile:
     break;
   }
 
   return {};
 }
+
+static float sinus(float f) { return sin(f); }
 
 static float square(float f) {
   f = fmod(f, 2.0 * PI);
@@ -72,7 +75,8 @@ static float saw(float f) {
   return 1.0;
 }
 
-std::vector<short> Sound::generateSineWave(Note &note, ADSR &adsr) {
+std::vector<short> Sound::generateSineWave(Note &note, ADSR &adsr,
+                                           std::vector<Effect> &effects) {
   int sampleCount = note.length;
   std::vector<short> samples(sampleCount);
 
@@ -80,13 +84,30 @@ std::vector<short> Sound::generateSineWave(Note &note, ADSR &adsr) {
   for (int i = 0; i < sampleCount; i++) {
     samples[i] =
         static_cast<short>(adsr.response(i) * note.volume *
-                           sin(2.0f * PI * note.frequency * i * deltaT));
+                           sinus(2.0f * PI * note.frequency * i * deltaT));
+    if (effects.size() > 0) {
+      for (int e = 0; e < effects.size(); e++) {
+        switch (effects[e].effectType) {
+        case Effect::Type::Vibrato: {
+          samples[i] = static_cast<short>(
+              adsr.response(i) * note.volume *
+              sinus(2.0f * PI * note.frequency * i * deltaT +
+                    effects[e].vibratoConfig.depth *
+                        sin(2.0f * PI * effects[e].vibratoConfig.frequency * i *
+                            deltaT)));
+        }
+        default:
+          break;
+        }
+      }
+    }
   }
 
   return samples;
 }
 
-std::vector<short> Sound::generateSquareWave(Note &note, ADSR &adsr) {
+std::vector<short> Sound::generateSquareWave(Note &note, ADSR &adsr,
+                                             std::vector<Effect> &effects) {
   int sampleCount = note.length;
   std::vector<short> samples(sampleCount);
 
@@ -95,12 +116,29 @@ std::vector<short> Sound::generateSquareWave(Note &note, ADSR &adsr) {
     samples[i] =
         static_cast<short>(adsr.response(i) * note.volume *
                            square(2.0 * PI * note.frequency * i * deltaT));
+    if (effects.size() > 0) {
+      for (int e = 0; e < effects.size(); e++) {
+        switch (effects[e].effectType) {
+        case Effect::Type::Vibrato: {
+          samples[i] = static_cast<short>(
+              adsr.response(i) * note.volume *
+              square(2.0f * PI * note.frequency * i * deltaT +
+                     effects[e].vibratoConfig.depth *
+                         sin(2.0f * PI * effects[e].vibratoConfig.frequency *
+                             i * deltaT)));
+        }
+        default:
+          break;
+        }
+      }
+    }
   }
 
   return samples;
 }
 
-std::vector<short> Sound::generateTriangularWave(Note &note, ADSR &adsr) {
+std::vector<short> Sound::generateTriangularWave(Note &note, ADSR &adsr,
+                                                 std::vector<Effect> &effects) {
   int sampleCount = note.length;
   std::vector<short> samples(sampleCount);
 
@@ -109,12 +147,30 @@ std::vector<short> Sound::generateTriangularWave(Note &note, ADSR &adsr) {
     samples[i] =
         static_cast<short>(adsr.response(i) * note.volume *
                            triangular(2.0f * PI * note.frequency * i * deltaT));
+    if (effects.size() > 0) {
+      for (int e = 0; e < effects.size(); e++) {
+        switch (effects[e].effectType) {
+        case Effect::Type::Vibrato: {
+          samples[i] = static_cast<short>(
+              adsr.response(i) * note.volume *
+              triangular(
+                  2.0f * PI * note.frequency * i * deltaT +
+                  effects[e].vibratoConfig.depth *
+                      sin(2.0f * PI * effects[e].vibratoConfig.frequency * i *
+                          deltaT)));
+        }
+        default:
+          break;
+        }
+      }
+    }
   }
 
   return samples;
 }
 
-std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr) {
+std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr,
+                                          std::vector<Effect> &effects) {
   int sampleCount = note.length;
   std::vector<short> samples(sampleCount);
 
@@ -123,6 +179,22 @@ std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr) {
     samples[i] =
         static_cast<short>(adsr.response(i) * note.volume *
                            saw(2.0f * PI * note.frequency * i * deltaT));
+    if (effects.size() > 0) {
+      for (int e = 0; e < effects.size(); e++) {
+        switch (effects[e].effectType) {
+        case Effect::Type::Vibrato: {
+          samples[i] = static_cast<short>(
+              adsr.response(i) * note.volume *
+              saw(2.0f * PI * note.frequency * i * deltaT +
+                  effects[e].vibratoConfig.depth *
+                      sin(2.0f * PI * effects[e].vibratoConfig.frequency * i *
+                          deltaT)));
+        }
+        default:
+          break;
+        }
+      }
+    }
   }
 
   return samples;
@@ -138,36 +210,114 @@ std::vector<short> Sound::generateWave(Rank &rank) {
   std::vector<short> samples(sampleCount);
 
   for (int i = 0; i < sampleCount; i++) {
+    short val = 0;
     for (const Pipe &pipe : rank.pipes) {
       Note note = pipe.first;
       Sound::WaveForm form = pipe.second;
       float deltaT = 1.0f / note.sampleRate;
 
       switch (form) {
-      case Sound::WaveForm::Sine:
-        samples[i] +=
+      case Sound::WaveForm::Sine: {
+        short addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
-                               sin(2.0f * PI * note.frequency * i * deltaT));
+                               sinus(2.0f * PI * note.frequency * i * deltaT));
+        if (rank.effects.size() > 0) {
+          for (int e = 0; e < rank.effects.size(); e++) {
+            switch (rank.effects[e].effectType) {
+            case Effect::Type::Vibrato: {
+              addition = static_cast<short>(
+                  rank.adsr.response(i) * note.volume *
+                  sin(2.0f * PI * note.frequency * i * deltaT +
+                      rank.effects[e].vibratoConfig.depth *
+                          sin(2.0f * PI *
+                              rank.effects[e].vibratoConfig.frequency * i *
+                              deltaT)));
+            }
+            default:
+              break;
+            }
+          }
+        }
+        val += addition;
         break;
-      case Sound::WaveForm::Triangular:
-        samples[i] += static_cast<short>(
+      }
+      case Sound::WaveForm::Triangular: {
+        short addition = static_cast<short>(
             rank.adsr.response(i) * note.volume *
             triangular(2.0f * PI * note.frequency * i * deltaT));
+        if (rank.effects.size() > 0) {
+          for (int e = 0; e < rank.effects.size(); e++) {
+            switch (rank.effects[e].effectType) {
+            case Effect::Type::Vibrato: {
+              addition = static_cast<short>(
+                  rank.adsr.response(i) * note.volume *
+                  triangular(2.0f * PI * note.frequency * i * deltaT +
+                             rank.effects[e].vibratoConfig.depth *
+                                 sin(2.0f * PI *
+                                     rank.effects[e].vibratoConfig.frequency *
+                                     i * deltaT)));
+            }
+            default:
+              break;
+            }
+          }
+        }
+        val += addition;
         break;
-      case Sound::WaveForm::Square:
-        samples[i] +=
+      }
+      case Sound::WaveForm::Square: {
+        short addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
                                square(2.0f * PI * note.frequency * i * deltaT));
+        if (rank.effects.size() > 0) {
+          for (int e = 0; e < rank.effects.size(); e++) {
+            switch (rank.effects[e].effectType) {
+            case Effect::Type::Vibrato: {
+              addition = static_cast<short>(
+                  rank.adsr.response(i) * note.volume *
+                  square(2.0f * PI * note.frequency * i * deltaT +
+                         rank.effects[e].vibratoConfig.depth *
+                             sin(2.0f * PI *
+                                 rank.effects[e].vibratoConfig.frequency * i *
+                                 deltaT)));
+            }
+            default:
+              break;
+            }
+          }
+        }
+        val += addition;
         break;
-      case Sound::WaveForm::Saw:
-        samples[i] +=
+      }
+      case Sound::WaveForm::Saw: {
+        short addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
                                saw(2.0f * PI * note.frequency * i * deltaT));
+        if (rank.effects.size() > 0) {
+          for (int e = 0; e < rank.effects.size(); e++) {
+            switch (rank.effects[e].effectType) {
+            case Effect::Type::Vibrato: {
+              addition = static_cast<short>(
+                  rank.adsr.response(i) * note.volume *
+                  saw(2.0f * PI * note.frequency * i * deltaT +
+                      rank.effects[e].vibratoConfig.depth *
+                          sin(2.0f * PI *
+                              rank.effects[e].vibratoConfig.frequency * i *
+                              deltaT)));
+            }
+            default:
+              break;
+            }
+          }
+        }
+        val += addition;
         break;
+      }
       case Sound::WaveForm::WaveFile:
         break;
       }
     }
+    samples[i] = val;
   }
 
   return samples;

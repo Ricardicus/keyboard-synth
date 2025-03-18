@@ -34,7 +34,9 @@ public:
 };
 
 namespace IIRFilters {
-IIR lowPass(int sampleRate, float cutoff);
-};
+IIR lowPass(int sampleRate, float cutoffFreq);
+IIR highPass(int sampleRate, float cutoffFreq);
+IIR bandPass(int sampleRate, float centerFreq, float bandwidth);
+}; // namespace IIRFilters
 
 #endif
