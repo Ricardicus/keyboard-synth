@@ -6,17 +6,20 @@ project idea. Play music with the computer keyboard.
 
 # Build
 
+Clone the source tree and build using CMake
+
 ```bash
+git clone https://github.com/Ricardicus/keyboard-synth.git
+cd keyboard-synth
 mkdir build
-cd build
-cmake ..
-make
+cmake -B build
+cmake --build build
 ```
 
 # Run 
 
 ```
-./keyboard
+./build/keyboard
 ```
 
 Now you can press the keys on the a -> l and z -> , keys. Sharp notes: w, e, t, y, u. 
@@ -74,9 +77,9 @@ You can test this reverb on the piano like this:
 Instead of taking input from the keyboard, the keyboard can also be configured to
 receive input events from MIDI files.
 
-This in ebabled with the support of the ![midifile project](https://github.com/craigsapp/midifile).
+This in ebabled with the support of the [midifile project](https://github.com/craigsapp/midifile).
 I have included an example midi-file of Bach under media/midi/bmv988.mid
-taken from the ![jsbash.net webpage](http://www.jsbach.net/midi/midi_goldbergvariations.html)
+taken from the [jsbash.net webpage](http://www.jsbach.net/midi/midi_goldbergvariations.html)
 
 ```bash
 ./build/keyboard --midi media/midi/bwv988.mid
