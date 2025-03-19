@@ -251,7 +251,9 @@ void printHelp(char *argv0) {
          "\n");
   printf("           square, fattriangle, pulsesquare, sinesawdrone, "
          "supersawsub, \n");
-  printf("           glitchmix, lushpad, retroLead]\n");
+  printf(
+      "           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,\n");
+  printf("           synthstab, glassbells]\n");
   printf("   -e|--echo: Add an echo effect\n");
   printf("   --chorus: Add a chorus effect with default settings\n");
   printf("   --chorus_delay [float]: Set the chorus delay factor, default: "
@@ -324,6 +326,14 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
           config.rankPreset = Sound::Rank::Preset::LushPad;
         } else if (form == "retrolead") {
           config.rankPreset = Sound::Rank::Preset::RetroLead;
+        } else if (form == "bassgrowl") {
+          config.rankPreset = Sound::Rank::Preset::BassGrowl;
+        } else if (form == "ambientdrone") {
+          config.rankPreset = Sound::Rank::Preset::AmbientDrone;
+        } else if (form == "synthstab") {
+          config.rankPreset = Sound::Rank::Preset::SynthStab;
+        } else if (form == "glassbells") {
+          config.rankPreset = Sound::Rank::Preset::GlassBells;
         }
       }
     } else if (arg == "--notes" && i + 1 < argc) {

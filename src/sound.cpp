@@ -557,3 +557,102 @@ Sound::Rank Sound::Rank::retroLead(float frequency, int length,
 
   return rank;
 }
+
+Sound::Rank Sound::Rank::organTone(float frequency, int length,
+                                   int sampleRate) {
+  Rank rank;
+
+  Note mainNote(frequency, length, sampleRate);
+  mainNote.volume = 0.6f;
+  Pipe mainPipe(mainNote, Sound::WaveForm::Sine);
+  rank.addPipe(mainPipe);
+
+  // Add harmonics
+  float harmonics[] = {frequency * 2.0f, frequency * 3.0f};
+  for (float freq : harmonics) {
+    Note harmonic(freq, length, sampleRate);
+    harmonic.volume = 0.2f;
+    Pipe harmonicPipe(harmonic, Sound::WaveForm::Sine);
+    rank.addPipe(harmonicPipe);
+  }
+
+  Effect tremoloEffect;
+  tremoloEffect.effectType = Effect::Type::Vibrato;
+  tremoloEffect.vibratoConfig = {5.0f, 0.01f}; // Tremolo at 5 Hz, subtle depth
+  rank.effects.push_back(tremoloEffect);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::bassGrowl(float frequency, int length,
+                                   int sampleRate) {
+  Rank rank;
+
+  Note sawNote(frequency, length, sampleRate);
+  sawNote.volume = 0.6f;
+  Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
+  rank.addPipe(sawPipe);
+
+  Note subBass(frequency / 2.0f, length, sampleRate);
+  subBass.volume = 0.4f;
+  Pipe subPipe(subBass, Sound::WaveForm::Sine);
+  rank.addPipe(subPipe);
+
+  // (Add distortion effect via FIR/IIR if available in your effect stack)
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::ambientDrone(float frequency, int length,
+                                      int sampleRate) {
+  Rank rank;
+
+  float detune_cents[] = {-5.0f, 0.0f, 5.0f};
+  for (float cents : detune_cents) {
+    float detunedFreq = frequency * powf(2.0f, cents / 1200.0f);
+    Note note(detunedFreq, length, sampleRate);
+    note.volume = 0.4f / 3;
+    Pipe pipe(note, Sound::WaveForm::Sine);
+    rank.addPipe(pipe);
+  }
+
+  Effect slowVibrato;
+  slowVibrato.effectType = Effect::Type::Vibrato;
+  slowVibrato.vibratoConfig = {0.8f, 0.01f}; // slow vibrato
+  rank.effects.push_back(slowVibrato);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::synthStab(float frequency, int length,
+                                   int sampleRate) {
+  Rank rank;
+
+  Note sawNote(frequency, length / 4, sampleRate); // very short envelope
+  sawNote.volume = 0.8f;
+  Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
+  rank.addPipe(sawPipe);
+
+  Note triangleNote(frequency * 2, length / 4, sampleRate);
+  triangleNote.volume = 0.5f;
+  Pipe triPipe(triangleNote, Sound::WaveForm::Triangular);
+  rank.addPipe(triPipe);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::glassBells(float frequency, int length,
+                                    int sampleRate) {
+  Rank rank;
+
+  float detune_cents[] = {-3.0f, 0.0f, 3.0f};
+  for (int i = 0; i < 3; ++i) {
+    float detuned_freq = frequency * powf(2.0f, detune_cents[i] / 1200.0f);
+    Note sineNote(detuned_freq, length, sampleRate);
+    sineNote.volume = 0.5 / 3;
+    Pipe sinePipe(sineNote, Sound::WaveForm::Sine);
+    rank.addPipe(sinePipe);
+  }
+
+  return rank;
+}

@@ -37,6 +37,11 @@ public:
   static Rank glitchMix(float frequency, int length, int sampleRate);
   static Rank lushPad(float frequency, int length, int sampleRate);
   static Rank retroLead(float frequency, int length, int sampleRate);
+  static Rank organTone(float frequency, int length, int sampleRate);
+  static Rank bassGrowl(float frequency, int length, int sampleRate);
+  static Rank ambientDrone(float frequency, int length, int sampleRate);
+  static Rank synthStab(float frequency, int length, int sampleRate);
+  static Rank glassBells(float frequency, int length, int sampleRate);
 
   ADSR adsr;
   std::vector<Pipe> pipes;
@@ -50,6 +55,10 @@ public:
     GlitchMix,
     LushPad,
     RetroLead,
+    BassGrowl,
+    AmbientDrone,
+    SynthStab,
+    GlassBells,
     None
   };
   static std::string presetStr(Preset p) {
@@ -78,6 +87,18 @@ public:
       break;
     case RetroLead:
       result = "RetroLead";
+      break;
+    case BassGrowl:
+      result = "BassGrowl";
+      break;
+    case AmbientDrone:
+      result = "AmbientDrone";
+      break;
+    case SynthStab:
+      result = "SynthStab";
+      break;
+    case GlassBells:
+      result = "GlassBells";
       break;
     case None:
       result = "None";

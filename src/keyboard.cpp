@@ -298,6 +298,19 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
       case Sound::Rank::Preset::RetroLead:
         r = Sound::Rank::retroLead(n.frequency, adsr.length, sampleRate);
         break;
+      case Sound::Rank::Preset::BassGrowl:
+        r = Sound::Rank::bassGrowl(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::AmbientDrone:
+        r = Sound::Rank::ambientDrone(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::SynthStab:
+        r = Sound::Rank::synthStab(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::GlassBells:
+        r = Sound::Rank::glassBells(n.frequency, adsr.length, sampleRate);
+        break;
+
       case Sound::Rank::Preset::None:
         break;
       }
