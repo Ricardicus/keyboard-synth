@@ -32,7 +32,9 @@ In general, for more help use -h:
 ./build/keyboard -h
 Usage: ./build/keyboard [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, supersaw, square]
+   --form: form of sound [sine (default), triangular, saw, supersaw, 
+           square, fattriangle, pulsesquare, sinesawdrone, supersawsub, 
+           glitchmix, lushpad, retroLead]
    -e|--echo: Add an echo effect
    --chorus: Add a chorus effect with default settings
    --chorus_delay [float]: Set the chorus delay factor, default: 0.45
@@ -40,7 +42,7 @@ flags:
    --chorus_voices[int]: Set the chorus voices, default: 3
    --vibrato: Add a vibrato effect with default settings
    --vibrato_depth [float]: Set the vibrato depth factor, default: 0.3
-   --vibrato_frequency [float]: Set the vibrato frequency, in Herz  default: 10
+   --vibrato_frequency [float]: Set the vibrato frequency, in Herz  default: 6
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
@@ -53,7 +55,7 @@ flags:
    --highpass [float]: Set the highpass filter cut off frequency in Hz
                 (default no highpass)
    --parallelization [int]: Number of threads used in keyboard preparation default: 8
-./build/keyboard compiled Mar 18 2025 20:43:11
+./build/keyboard compiled Mar 19 2025 18:15:41
 ```
 
 ## Map keys to wave files

@@ -60,7 +60,7 @@ std::vector<short> Effect::apply(const std::vector<short> &buffer,
   default:
     break;
   }
-  return {};
+  return buffer;
 }
 
 std::vector<short> Effect::apply_fir(const std::vector<short> &buffer) {

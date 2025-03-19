@@ -271,16 +271,39 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
       const auto &key = notes[bufferIndex];
       // Bottom row (one octave lower than home row)
       Note n = Note(key, adsr.length, sampleRate);
+
       Sound::Rank r;
       switch (preset) {
       case Sound::Rank::Preset::SuperSaw:
         r = Sound::Rank::superSaw(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::FatTriangle:
+        r = Sound::Rank::fatTriangle(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::PulseSquare:
+        r = Sound::Rank::pulseSquare(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::SineSawDrone:
+        r = Sound::Rank::sineSawDrone(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::SuperSawWithSub:
+        r = Sound::Rank::superSawWithSub(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::GlitchMix:
+        r = Sound::Rank::glitchMix(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::LushPad:
+        r = Sound::Rank::lushPad(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::RetroLead:
+        r = Sound::Rank::retroLead(n.frequency, adsr.length, sampleRate);
+        break;
       case Sound::Rank::Preset::None:
         break;
       }
       r.adsr = adsr;
-      for (int e = 0; e < effects.size(); e++) {
-        r.addEffect(effects[e]);
+      for (int e = 0; e < effectsClone.size(); e++) {
+        r.addEffect(effectsClone[e]);
       }
 
       std::vector<short> buffer_in = Sound::generateWave(r);
@@ -290,8 +313,8 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
         buffer_out = buffer_in;
       }
 
-      for (int i = 0; i < effects.size(); i++) {
-        buffer_out = effects[i].apply(buffer_in);
+      for (int i = 0; i < effectsClone.size(); i++) {
+        buffer_out = effectsClone[i].apply(buffer_in);
         if (effects.size() != i + 1) {
           buffer_in = buffer_out;
         }

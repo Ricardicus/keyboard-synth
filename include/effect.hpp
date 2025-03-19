@@ -25,7 +25,7 @@ public:
   std::vector<FIR> firs;
   std::vector<IIR> iirs;
 
-  enum Type { Fir, Iir, Chorus, Vibrato };
+  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle };
 
   typedef struct ChorusConfig {
     float delay;
@@ -40,9 +40,17 @@ public:
     float depth;
   } VibratoConfig;
 
+  typedef struct DutyCycleConfig {
+    float frequency; // Frequency of PWM modulation
+    float depth;     // Depth of modulation
+    DutyCycleConfig(float frequency, float depth)
+        : frequency(frequency), depth(depth) {}
+  } DutyCycleConfig;
+
   Type effectType = Type::Fir;
   ChorusConfig chorusConfig{0.05f, 3, 3};
   VibratoConfig vibratoConfig{6, 0.3};
+  DutyCycleConfig dutyCycleConfig{2.0f, 0.5f}; // Default values (2 Hz, 50%)
   int sampleRate = 44100;
 
 private:

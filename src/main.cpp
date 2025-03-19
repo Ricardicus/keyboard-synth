@@ -216,13 +216,13 @@ public:
       printw("  Vibrato: frequency=");
       attroff(A_BOLD | COLOR_PAIR(4));
       attron(COLOR_PAIR(5));
-      printw("%f ", effectChorus->vibratoConfig.frequency);
+      printw("%f ", effectVibrato->vibratoConfig.frequency);
       attroff(COLOR_PAIR(5));
       attron(A_BOLD | COLOR_PAIR(4));
       printw("depth=");
       attroff(A_BOLD | COLOR_PAIR(4));
       attron(COLOR_PAIR(5));
-      printw("%f\n", effectChorus->vibratoConfig.depth);
+      printw("%f\n", effectVibrato->vibratoConfig.depth);
       attroff(COLOR_PAIR(5));
     }
 
@@ -248,7 +248,10 @@ void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
   printf("flags:\n");
   printf("   --form: form of sound [sine (default), triangular, saw, supersaw, "
-         "square]\n");
+         "\n");
+  printf("           square, fattriangle, pulsesquare, sinesawdrone, "
+         "supersawsub, \n");
+  printf("           glitchmix, lushpad, retroLead]\n");
   printf("   -e|--echo: Add an echo effect\n");
   printf("   --chorus: Add a chorus effect with default settings\n");
   printf("   --chorus_delay [float]: Set the chorus delay factor, default: "
@@ -307,6 +310,20 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
           config.waveForm = Sound::WaveForm::Square;
         } else if (form == "supersaw") {
           config.rankPreset = Sound::Rank::Preset::SuperSaw;
+        } else if (form == "fattriangle") {
+          config.rankPreset = Sound::Rank::Preset::FatTriangle;
+        } else if (form == "pulsesquare") {
+          config.rankPreset = Sound::Rank::Preset::PulseSquare;
+        } else if (form == "sinesawdrone") {
+          config.rankPreset = Sound::Rank::Preset::SineSawDrone;
+        } else if (form == "supersawsub") {
+          config.rankPreset = Sound::Rank::Preset::SuperSawWithSub;
+        } else if (form == "glitchmix") {
+          config.rankPreset = Sound::Rank::Preset::GlitchMix;
+        } else if (form == "lushpad") {
+          config.rankPreset = Sound::Rank::Preset::LushPad;
+        } else if (form == "retrolead") {
+          config.rankPreset = Sound::Rank::Preset::RetroLead;
         }
       }
     } else if (arg == "--notes" && i + 1 < argc) {
@@ -452,6 +469,7 @@ int main(int argc, char *argv[]) {
   }
 
   printf("Processing buffers... preparing sound..\n");
+
   if (config.waveFile.size() > 0) {
     keyboard.loadSoundMap(config.waveFile);
     config.waveForm = Sound::WaveForm::WaveFile;
