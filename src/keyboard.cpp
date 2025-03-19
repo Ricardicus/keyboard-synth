@@ -190,17 +190,21 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                   this->soundMap[key].c_str());
         }
       } else {
+        Sound::WaveForm ff = f;
         if (this->soundMapFile.size() > 0) {
           std::lock_guard<std::mutex> lock(mtx);
           printf(
               "warning: Missing key '%s' in the mapping file '%s', filling in "
               "with a sine wave\n",
               key.c_str(), this->soundMapFile.c_str());
+          ff = Sound::WaveForm::Sine;
         }
-        std::vector<short> buffer_in = Sound::generateWave(f, n, adsr, effects);
+        std::vector<short> buffer_in =
+            Sound::generateWave(ff, n, adsr, effects);
         std::vector<short> buffer_out = buffer_in;
         for (int i = 0; i < effectsClone.size(); i++) {
-          buffer_out = effectsClone[i].apply(buffer_out);
+          buffer_out = effectsClone[i].apply(buffer_in);
+          buffer_in = buffer_out;
         }
         for (auto &sample : buffer_out) {
           sample *= this->volume;

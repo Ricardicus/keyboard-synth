@@ -34,7 +34,7 @@ Usage: ./build/keyboard [flags]
 flags:
    --form: form of sound [sine (default), triangular, saw, supersaw, 
            square, fattriangle, pulsesquare, sinesawdrone, supersawsub, 
-           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
+           glitchmix, lushpad, retrolead, bassgrowl, ambientdrone,
            synthstab, glassbells, organtone]
    -e|--echo: Add an echo effect
    --chorus: Add a chorus effect with default settings
