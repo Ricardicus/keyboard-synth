@@ -35,7 +35,7 @@ flags:
    --form: form of sound [sine (default), triangular, saw, supersaw, 
            square, fattriangle, pulsesquare, sinesawdrone, supersawsub, 
            glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
-           synthstab, glassbells]
+           synthstab, glassbells, organtone]
    -e|--echo: Add an echo effect
    --chorus: Add a chorus effect with default settings
    --chorus_delay [float]: Set the chorus delay factor, default: 0.45
@@ -56,7 +56,7 @@ flags:
    --highpass [float]: Set the highpass filter cut off frequency in Hz
                 (default no highpass)
    --parallelization [int]: Number of threads used in keyboard preparation default: 8
-./build/keyboard compiled Mar 19 2025 22:26:18
+./build/keyboard compiled Mar 19 2025 22:35:43
 ```
 
 ## Map keys to wave files

@@ -53,6 +53,7 @@ public:
     SineSawDrone,
     SuperSawWithSub,
     GlitchMix,
+    OrganTone,
     LushPad,
     RetroLead,
     BassGrowl,
@@ -99,6 +100,9 @@ public:
       break;
     case GlassBells:
       result = "GlassBells";
+      break;
+    case OrganTone:
+      result = "OrganTone";
       break;
     case None:
       result = "None";

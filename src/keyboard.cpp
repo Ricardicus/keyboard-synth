@@ -310,7 +310,9 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
       case Sound::Rank::Preset::GlassBells:
         r = Sound::Rank::glassBells(n.frequency, adsr.length, sampleRate);
         break;
-
+      case Sound::Rank::Preset::OrganTone:
+        r = Sound::Rank::organTone(n.frequency, adsr.length, sampleRate);
+        break;
       case Sound::Rank::Preset::None:
         break;
       }
