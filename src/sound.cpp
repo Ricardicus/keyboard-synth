@@ -562,24 +562,34 @@ Sound::Rank Sound::Rank::organTone(float frequency, int length,
                                    int sampleRate) {
   Rank rank;
 
+  // Main sine wave
   Note mainNote(frequency, length, sampleRate);
-  mainNote.volume = 0.6f;
+  mainNote.volume = 0.5f;
   Pipe mainPipe(mainNote, Sound::WaveForm::Sine);
   rank.addPipe(mainPipe);
 
-  // Add harmonics
-  float harmonics[] = {frequency * 2.0f, frequency * 3.0f};
-  for (float freq : harmonics) {
-    Note harmonic(freq, length, sampleRate);
-    harmonic.volume = 0.2f;
+  // Harmonics with slight detuning
+  float harmonics[] = {frequency * 2.0f, frequency * 3.0f, frequency * 4.0f};
+  float detune_cents[] = {-2.0f, 0.0f, 2.0f};
+  for (int i = 0; i < 3; ++i) {
+    float detuned_freq = harmonics[i] * powf(2.0f, detune_cents[i] / 1200.0f);
+    Note harmonic(detuned_freq, length, sampleRate);
+    harmonic.volume = 0.15f;
     Pipe harmonicPipe(harmonic, Sound::WaveForm::Sine);
     rank.addPipe(harmonicPipe);
   }
 
-  Effect tremoloEffect;
-  tremoloEffect.effectType = Effect::Type::Vibrato;
-  tremoloEffect.vibratoConfig = {5.0f, 0.01f}; // Tremolo at 5 Hz, subtle depth
-  rank.effects.push_back(tremoloEffect);
+  // Leslie-like tremolo (fast vibrato)
+  Effect tremolo;
+  tremolo.effectType = Effect::Type::Vibrato;
+  tremolo.vibratoConfig = {0.05f, 7.0f}; // 5% depth, 7 Hz for spinning feel
+  rank.effects.push_back(tremolo);
+
+  // Add a subtle saw for grit
+  Note sawNote(frequency * 1.01f, length, sampleRate); // Slight detune
+  sawNote.volume = 0.03f;
+  Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
+  rank.addPipe(sawPipe);
 
   return rank;
 }
@@ -588,17 +598,34 @@ Sound::Rank Sound::Rank::bassGrowl(float frequency, int length,
                                    int sampleRate) {
   Rank rank;
 
-  Note sawNote(frequency, length, sampleRate);
-  sawNote.volume = 0.6f;
-  Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
-  rank.addPipe(sawPipe);
+  // Main saw wave with detuning
+  float detune_cents[] = {-4.0f, 0.0f, 4.0f};
+  for (float cents : detune_cents) {
+    float detuned_freq = frequency * powf(2.0f, cents / 1200.0f);
+    Note sawNote(detuned_freq, length, sampleRate);
+    sawNote.volume = 0.3f / 3;
+    Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
+    rank.addPipe(sawPipe);
+  }
 
+  // Sub-bass sine
   Note subBass(frequency / 2.0f, length, sampleRate);
-  subBass.volume = 0.4f;
+  subBass.volume = 0.35f;
   Pipe subPipe(subBass, Sound::WaveForm::Sine);
   rank.addPipe(subPipe);
 
-  // (Add distortion effect via FIR/IIR if available in your effect stack)
+  // Wobbling square with duty cycle
+  Note squareNote(frequency * 0.99f, length, sampleRate); // Slight detune
+  squareNote.volume = 0.25f;
+  Pipe squarePipe(squareNote, Sound::WaveForm::Square);
+  rank.addPipe(squarePipe);
+
+  // PWM effect for growl
+  Effect pwm;
+  pwm.effectType = Effect::Type::DutyCycle;
+  pwm.dutyCycleConfig =
+      Effect::DutyCycleConfig(3.0f, 0.45f); // 3 Hz wobble, 5-95% range
+  rank.effects.push_back(pwm);
 
   return rank;
 }
@@ -607,19 +634,33 @@ Sound::Rank Sound::Rank::ambientDrone(float frequency, int length,
                                       int sampleRate) {
   Rank rank;
 
-  float detune_cents[] = {-5.0f, 0.0f, 5.0f};
+  // Detuned base layer (triangles for warmth)
+  float detune_cents[] = {-7.0f, 0.0f, 7.0f};
   for (float cents : detune_cents) {
-    float detunedFreq = frequency * powf(2.0f, cents / 1200.0f);
-    Note note(detunedFreq, length, sampleRate);
-    note.volume = 0.4f / 3;
-    Pipe pipe(note, Sound::WaveForm::Sine);
+    float detuned_freq = frequency * powf(2.0f, cents / 1200.0f);
+    Note note(detuned_freq, length, sampleRate);
+    note.volume = 0.3f / 3;
+    Pipe pipe(note, Sound::WaveForm::Triangular);
     rank.addPipe(pipe);
   }
 
-  Effect slowVibrato;
-  slowVibrato.effectType = Effect::Type::Vibrato;
-  slowVibrato.vibratoConfig = {0.8f, 0.01f}; // slow vibrato
-  rank.effects.push_back(slowVibrato);
+  // High sine harmonic for shimmer
+  Note highNote(frequency * 12.0f, length, sampleRate);
+  highNote.volume = 0.005f;
+  Pipe highPipe(highNote, Sound::WaveForm::Sine);
+  rank.addPipe(highPipe);
+
+  // Slow vibrato for drift
+  Effect slowVib;
+  slowVib.effectType = Effect::Type::Vibrato;
+  slowVib.vibratoConfig = {0.015f, 1.5f}; // 1.5% depth, 1.5 Hz
+  rank.effects.push_back(slowVib);
+
+  // Faster vibrato for swirl
+  Effect fastVib;
+  fastVib.effectType = Effect::Type::Vibrato;
+  fastVib.vibratoConfig = {0.02f, 4.0f}; // 2% depth, 4 Hz
+  rank.effects.push_back(fastVib);
 
   return rank;
 }
@@ -628,15 +669,28 @@ Sound::Rank Sound::Rank::synthStab(float frequency, int length,
                                    int sampleRate) {
   Rank rank;
 
-  Note sawNote(frequency, length / 4, sampleRate); // very short envelope
-  sawNote.volume = 0.8f;
-  Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
-  rank.addPipe(sawPipe);
+  // Short, detuned saw (main stab)
+  float detune_cents[] = {-3.0f, 0.0f, 3.0f};
+  for (float cents : detune_cents) {
+    float detuned_freq = frequency * powf(2.0f, cents / 1200.0f);
+    Note sawNote(detuned_freq, length / 4, sampleRate);
+    sawNote.volume = 0.3f / 3;
+    Pipe sawPipe(sawNote, Sound::WaveForm::Saw);
+    rank.addPipe(sawPipe);
+  }
 
-  Note triangleNote(frequency * 2, length / 4, sampleRate);
-  triangleNote.volume = 0.5f;
-  Pipe triPipe(triangleNote, Sound::WaveForm::Triangular);
-  rank.addPipe(triPipe);
+  // Punchy square with PWM
+  Note squareNote(frequency * 1.01f, length / 4, sampleRate);
+  squareNote.volume = 0.35f;
+  Pipe squarePipe(squareNote, Sound::WaveForm::Square);
+  rank.addPipe(squarePipe);
+
+  // Duty cycle for pulse
+  Effect pwm;
+  pwm.effectType = Effect::Type::DutyCycle;
+  pwm.dutyCycleConfig =
+      Effect::DutyCycleConfig(8.0f, 0.3f); // 8 Hz pulse, 20-80% range
+  rank.effects.push_back(pwm);
 
   return rank;
 }
@@ -645,14 +699,28 @@ Sound::Rank Sound::Rank::glassBells(float frequency, int length,
                                     int sampleRate) {
   Rank rank;
 
-  float detune_cents[] = {-3.0f, 0.0f, 3.0f};
+  // Base layer: detuned sines and triangles
+  float detune_cents[] = {-4.0f, 0.0f, 4.0f};
   for (int i = 0; i < 3; ++i) {
     float detuned_freq = frequency * powf(2.0f, detune_cents[i] / 1200.0f);
-    Note sineNote(detuned_freq, length, sampleRate);
-    sineNote.volume = 0.5 / 3;
-    Pipe sinePipe(sineNote, Sound::WaveForm::Sine);
-    rank.addPipe(sinePipe);
+    Note note(detuned_freq, length, sampleRate);
+    note.volume = 0.25f / 3;
+    Pipe pipe(note, (i % 2 == 0) ? Sound::WaveForm::Sine
+                                 : Sound::WaveForm::Triangular);
+    rank.addPipe(pipe);
   }
+
+  // High harmonic for sparkle
+  Note highNote(frequency * 3.0f, length, sampleRate);
+  highNote.volume = 0.15f;
+  Pipe highPipe(highNote, Sound::WaveForm::Sine);
+  rank.addPipe(highPipe);
+
+  // Subtle vibrato for choral effect
+  Effect vibrato;
+  vibrato.effectType = Effect::Type::Vibrato;
+  vibrato.vibratoConfig = {0.01f, 2.0f}; // 1% depth, 2 Hz
+  rank.effects.push_back(vibrato);
 
   return rank;
 }
