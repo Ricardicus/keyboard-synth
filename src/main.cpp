@@ -37,6 +37,7 @@ public:
   std::optional<Effect> effectChorus = std::nullopt;
   std::optional<Effect> effectIIR = std::nullopt;
   std::optional<Effect> effectVibrato = std::nullopt;
+  std::optional<Effect> effectTremolo = std::nullopt;
   float volume = 1.0;
   float duration = 0.1f;
   int parallelization = 8; // Number of threads to use in keyboard preparation
@@ -226,6 +227,21 @@ public:
       attroff(COLOR_PAIR(5));
     }
 
+    if (effectTremolo) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  Tremolo: frequency=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f ", effectTremolo->tremoloConfig.frequency);
+      attroff(COLOR_PAIR(5));
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("depth=");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%f\n", effectTremolo->tremoloConfig.depth);
+      attroff(COLOR_PAIR(5));
+    }
+
     attron(A_BOLD | COLOR_PAIR(4));
     printw("  note length: ");
     attroff(A_BOLD | COLOR_PAIR(4));
@@ -265,8 +281,14 @@ void printHelp(char *argv0) {
   printf("   --vibrato: Add a vibrato effect with default settings\n");
   printf("   --vibrato_depth [float]: Set the vibrato depth factor, default: "
          "0.3\n");
-  printf("   --vibrato_frequency [float]: Set the vibrato frequency, in Herz "
+  printf("   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz "
          " default: 6\n");
+  printf("   --tremolo: Add a tremolo effect with default settings\n");
+  printf("   --tremolo_depth [float]: Set the tremolo depth factor [0-1], "
+         "default: "
+         "1.0\n");
+  printf("   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz "
+         " default: 18\n");
   printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
          "this wav file\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
@@ -393,6 +415,27 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
         config.effectVibrato->sampleRate = SAMPLERATE;
       }
       config.effectVibrato->vibratoConfig.frequency = std::stof(argv[i + 1]);
+    } else if (arg == "--tremolo") {
+      Effect effect;
+      effect.effectType = Effect::Type::Tremolo;
+      config.effectTremolo = effect;
+      config.effectTremolo->sampleRate = SAMPLERATE;
+    } else if (arg == "--tremolo_depth" && i + 1 < argc) {
+      if (!config.effectTremolo) {
+        Effect effect;
+        effect.effectType = Effect::Type::Tremolo;
+        config.effectTremolo = effect;
+        config.effectTremolo->sampleRate = SAMPLERATE;
+      }
+      config.effectTremolo->tremoloConfig.depth = std::stof(argv[i + 1]);
+    } else if (arg == "--tremolo_frequency" && i + 1 < argc) {
+      if (!config.effectTremolo) {
+        Effect effect;
+        effect.effectType = Effect::Type::Tremolo;
+        config.effectTremolo = effect;
+        config.effectTremolo->sampleRate = SAMPLERATE;
+      }
+      config.effectTremolo->tremoloConfig.frequency = std::stof(argv[i + 1]);
     } else if (arg == "--lowpass" && i + 1 < argc) {
       Effect effect;
       effect.effectType = Effect::Type::Iir;
@@ -500,6 +543,9 @@ int main(int argc, char *argv[]) {
   }
   if (config.effectVibrato) {
     effects.push_back(*config.effectVibrato);
+  }
+  if (config.effectTremolo) {
+    effects.push_back(*config.effectTremolo);
   }
   auto start = std::chrono::high_resolution_clock::now();
   if (config.rankPreset != Sound::Rank::Preset::None) {

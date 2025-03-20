@@ -32,9 +32,9 @@ In general, for more help use -h:
 ./build/keyboard -h
 Usage: ./build/keyboard [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, supersaw, 
-           square, fattriangle, pulsesquare, sinesawdrone, supersawsub, 
-           glitchmix, lushpad, retrolead, bassgrowl, ambientdrone,
+   --form: form of sound [sine (default), triangular, saw, supersaw,
+           square, fattriangle, pulsesquare, sinesawdrone, supersawsub,
+           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
            synthstab, glassbells, organtone]
    -e|--echo: Add an echo effect
    --chorus: Add a chorus effect with default settings
@@ -43,7 +43,10 @@ flags:
    --chorus_voices[int]: Set the chorus voices, default: 3
    --vibrato: Add a vibrato effect with default settings
    --vibrato_depth [float]: Set the vibrato depth factor, default: 0.3
-   --vibrato_frequency [float]: Set the vibrato frequency, in Herz  default: 6
+   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz  default: 6
+   --tremolo: Add a tremolo effect with default settings
+   --tremolo_depth [float]: Set the tremolo depth factor [0-1], default: 1.0
+   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz  default: 18
    -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file

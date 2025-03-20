@@ -62,6 +62,7 @@ public:
     GlassBells,
     None
   };
+
   static std::string presetStr(Preset p) {
     std::string result;
     switch (p) {

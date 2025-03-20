@@ -25,20 +25,44 @@ std::string Sound::typeOfWave(Sound::WaveForm form) {
 std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
                                        ADSR &adsr,
                                        std::vector<Effect> &effects) {
+  std::vector<short> result;
   switch (form) {
   case Sound::WaveForm::Sine:
-    return Sound::generateSineWave(note, adsr, effects);
+    result = Sound::generateSineWave(note, adsr, effects);
+    break;
   case Sound::WaveForm::Triangular:
-    return Sound::generateTriangularWave(note, adsr, effects);
+    result = Sound::generateTriangularWave(note, adsr, effects);
+    break;
   case Sound::WaveForm::Square:
-    return Sound::generateSquareWave(note, adsr, effects);
+    result = Sound::generateSquareWave(note, adsr, effects);
+    break;
   case Sound::WaveForm::Saw:
-    return Sound::generateSawWave(note, adsr, effects);
+    result = Sound::generateSawWave(note, adsr, effects);
+    break;
   case Sound::WaveForm::WaveFile:
     break;
   }
 
-  return {};
+  if (effects.size() > 0) {
+    float deltaT = 1.0f / note.sampleRate;
+    for (int e = 0; e < effects.size(); e++) {
+      switch (effects[e].effectType) {
+      case Effect::Type::Tremolo: {
+        for (int i = 0; i < result.size(); i++) {
+          result[i] = static_cast<short>(
+              (effects[e].tremoloConfig.depth *
+               sin(effects[e].tremoloConfig.frequency * i * deltaT) *
+               result[i]) +
+              (1.0 - effects[e].tremoloConfig.depth) * result[i]);
+        }
+      }
+      default:
+        break;
+      }
+    }
+  }
+
+  return result;
 }
 
 static float sinus(float f) { return sin(f); }
@@ -81,6 +105,11 @@ static float saw(float f) {
     return (f - (PI + PI / 2)) / (PI / 2) - 1;
   }
   return 1.0;
+}
+
+static float white_noise(float f) {
+  return (float)(rand() % 2001 - 1000) /
+         1000.0; // Random value between -1.0 and 1.0
 }
 
 std::vector<short> Sound::generateSineWave(Note &note, ADSR &adsr,
@@ -236,10 +265,11 @@ std::vector<short> Sound::generateWave(Rank &rank) {
       Note note = pipe.first;
       Sound::WaveForm form = pipe.second;
       float deltaT = 1.0f / note.sampleRate;
+      short addition;
 
       switch (form) {
       case Sound::WaveForm::Sine: {
-        short addition =
+        addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
                                sinus(2.0f * PI * note.frequency * i * deltaT));
         if (rank.effects.size() > 0) {
@@ -253,17 +283,17 @@ std::vector<short> Sound::generateWave(Rank &rank) {
                           sin(2.0f * PI *
                               rank.effects[e].vibratoConfig.frequency * i *
                               deltaT)));
+              break;
             }
             default:
               break;
             }
           }
         }
-        val += addition;
         break;
       }
       case Sound::WaveForm::Triangular: {
-        short addition = static_cast<short>(
+        addition = static_cast<short>(
             rank.adsr.response(i) * note.volume *
             triangular(2.0f * PI * note.frequency * i * deltaT));
         if (rank.effects.size() > 0) {
@@ -283,11 +313,10 @@ std::vector<short> Sound::generateWave(Rank &rank) {
             }
           }
         }
-        val += addition;
         break;
       }
       case Sound::WaveForm::Square: {
-        short addition =
+        addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
                                square(2.0f * PI * note.frequency * i * deltaT));
         if (rank.effects.size() > 0) {
@@ -318,11 +347,10 @@ std::vector<short> Sound::generateWave(Rank &rank) {
             }
           }
         }
-        val += addition;
         break;
       }
       case Sound::WaveForm::Saw: {
-        short addition =
+        addition =
             static_cast<short>(rank.adsr.response(i) * note.volume *
                                saw(2.0f * PI * note.frequency * i * deltaT));
         if (rank.effects.size() > 0) {
@@ -342,12 +370,30 @@ std::vector<short> Sound::generateWave(Rank &rank) {
             }
           }
         }
-        val += addition;
         break;
       }
       case Sound::WaveForm::WaveFile:
         break;
       }
+
+      if (rank.effects.size() > 0) {
+        for (int e = 0; e < rank.effects.size(); e++) {
+          switch (rank.effects[e].effectType) {
+          case Effect::Type::Tremolo: {
+            addition = static_cast<short>(
+                (rank.effects[e].tremoloConfig.depth *
+                 sin(rank.effects[e].tremoloConfig.frequency * i * deltaT) *
+                 addition) +
+                (1.0 - rank.effects[e].tremoloConfig.depth) * addition);
+            break;
+          }
+          default:
+            break;
+          }
+        }
+      }
+
+      val += addition;
     }
     samples[i] = val;
   }

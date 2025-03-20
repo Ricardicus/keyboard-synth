@@ -25,7 +25,7 @@ public:
   std::vector<FIR> firs;
   std::vector<IIR> iirs;
 
-  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle };
+  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle, Tremolo };
 
   typedef struct ChorusConfig {
     float delay;
@@ -47,10 +47,16 @@ public:
         : frequency(frequency), depth(depth) {}
   } DutyCycleConfig;
 
+  typedef struct TremoloConfig {
+    float frequency;
+    float depth;
+  } TremoloConfig;
+
   Type effectType = Type::Fir;
   ChorusConfig chorusConfig{0.05f, 3, 3};
   VibratoConfig vibratoConfig{6, 0.3};
   DutyCycleConfig dutyCycleConfig{2.0f, 0.5f}; // Default values (2 Hz, 50%)
+  TremoloConfig tremoloConfig{18.0f, 1.0f};    // Default values (2 Hz, 50%)
   int sampleRate = 44100;
 
 private:
