@@ -100,6 +100,7 @@ void Keyboard::printInstructions() {
 
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("Press 'p'/'o' to +/- one octave\n");
+  printw("Press 'P'/'O' to +/- keyboard preset sounds\n");
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 
@@ -316,6 +317,18 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
         break;
       case Sound::Rank::Preset::OrganTone:
         r = Sound::Rank::organTone(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::Saw:
+        r = Sound::Rank::saw(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::Square:
+        r = Sound::Rank::square(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::Triangular:
+        r = Sound::Rank::triangular(n.frequency, adsr.length, sampleRate);
+        break;
+      case Sound::Rank::Preset::Sine:
+        r = Sound::Rank::sine(n.frequency, adsr.length, sampleRate);
         break;
       case Sound::Rank::Preset::None:
         break;

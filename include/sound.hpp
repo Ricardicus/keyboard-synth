@@ -42,6 +42,10 @@ public:
   static Rank ambientDrone(float frequency, int length, int sampleRate);
   static Rank synthStab(float frequency, int length, int sampleRate);
   static Rank glassBells(float frequency, int length, int sampleRate);
+  static Rank sine(float frequency, int length, int sampleRate);
+  static Rank saw(float frequency, int length, int sampleRate);
+  static Rank square(float frequency, int length, int sampleRate);
+  static Rank triangular(float frequency, int length, int sampleRate);
 
   ADSR adsr;
   std::vector<Pipe> pipes;
@@ -60,6 +64,10 @@ public:
     AmbientDrone,
     SynthStab,
     GlassBells,
+    Sine,
+    Triangular,
+    Square,
+    Saw,
     None
   };
 
@@ -104,6 +112,18 @@ public:
       break;
     case OrganTone:
       result = "OrganTone";
+      break;
+    case Sine:
+      result = "Sine";
+      break;
+    case Triangular:
+      result = "Triangular";
+      break;
+    case Saw:
+      result = "Saw";
+      break;
+    case Square:
+      result = "Square";
       break;
     case None:
       result = "None";

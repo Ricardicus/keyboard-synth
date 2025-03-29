@@ -327,11 +327,15 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       if (i + 1 < argc) {
         std::string form = argv[i + 1];
         if (form == "triangular") {
-          config.waveForm = Sound::WaveForm::Triangular;
+          config.rankPreset = Sound::Rank::Preset::Triangular;
         } else if (form == "saw") {
-          config.waveForm = Sound::WaveForm::Saw;
+          config.rankPreset = Sound::Rank::Preset::SuperSaw;
         } else if (form == "square") {
-          config.waveForm = Sound::WaveForm::Square;
+          config.rankPreset = Sound::Rank::Preset::Square;
+        } else if (form == "triangular") {
+          config.rankPreset = Sound::Rank::Preset::Triangular;
+        } else if (form == "sine") {
+          config.rankPreset = Sound::Rank::Preset::Sine;
         } else if (form == "supersaw") {
           config.rankPreset = Sound::Rank::Preset::SuperSaw;
         } else if (form == "fattriangle") {
@@ -513,9 +517,29 @@ int main(int argc, char *argv[]) {
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   Keyboard keyboard(maxPolyphony);
+  int rankIndex = 0;
+  std::vector<Sound::Rank::Preset> presets = {
+      Sound::Rank::Preset::Sine,
+      Sound::Rank::Preset::Saw,
+      Sound::Rank::Preset::Square,
+      Sound::Rank::Preset::Triangular,
+      Sound::Rank::Preset::SuperSaw,
+      Sound::Rank::Preset::FatTriangle,
+      Sound::Rank::Preset::PulseSquare,
+      Sound::Rank::Preset::SineSawDrone,
+      Sound::Rank::Preset::SuperSawWithSub,
+      Sound::Rank::Preset::GlitchMix,
+      Sound::Rank::Preset::OrganTone,
+      Sound::Rank::Preset::LushPad,
+      Sound::Rank::Preset::RetroLead,
+      Sound::Rank::Preset::BassGrowl,
+      Sound::Rank::Preset::AmbientDrone,
+      Sound::Rank::Preset::SynthStab,
+      Sound::Rank::Preset::GlassBells};
 
   PlayConfig config;
   config.adsr = adsr;
+  config.rankPreset = presets[rankIndex];
   int c = parseArguments(argc, argv, config);
   if (c < 0) {
     return 0;
@@ -548,13 +572,8 @@ int main(int argc, char *argv[]) {
     effects.push_back(*config.effectTremolo);
   }
   auto start = std::chrono::high_resolution_clock::now();
-  if (config.rankPreset != Sound::Rank::Preset::None) {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects,
-                          config.parallelization);
-  } else {
-    keyboard.prepareSound(SAMPLERATE, config.adsr, config.waveForm, effects,
-                          config.parallelization);
-  }
+  keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects,
+                        config.parallelization);
   auto end = std::chrono::high_resolution_clock::now();
   auto prepTime =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
@@ -632,6 +651,23 @@ int main(int argc, char *argv[]) {
         clear();
         config.printConfig();
         keyboard.printInstructions();
+      } else if (ch == 'O' || ch == 'P') {
+        keyboard.teardown();
+        printw("Updating the keyboard..\n");
+        keyboard.setup(maxPolyphony);
+        if (ch == 'P') {
+          rankIndex = (rankIndex + 1) % presets.size();
+        } else {
+          rankIndex = (rankIndex + presets.size() - 1) % presets.size();
+        }
+        keyboard.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
+                              effects, config.parallelization);
+        clear();
+        config.rankPreset = presets[rankIndex];
+        config.printConfig();
+        keyboard.printInstructions();
+        printw("Updated to new preset %s\n",
+               Sound::Rank::presetStr(presets[rankIndex]).c_str());
       }
     }
   }

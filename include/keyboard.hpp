@@ -33,7 +33,10 @@
 
 class Keyboard {
 public:
-  Keyboard(int maxPolyphony) {
+  Keyboard(int maxPolyphony) { setup(maxPolyphony); }
+  ~Keyboard() { teardown(); }
+
+  void setup(int maxPolyphony) {
     // Initialize the device and context
     device = alcOpenDevice(NULL);
     if (!device) {
@@ -59,7 +62,8 @@ public:
     alGenBuffers(noteSpace, &buffers[0]);
     alGenSources(maxPolyphony, &sources[0]);
   }
-  ~Keyboard() {
+
+  void teardown() {
     // Clean up the buffer and source
     alDeleteSources(this->sources.size(), &this->sources[0]);
     alDeleteBuffers(this->buffers.size(), &this->buffers[0]);

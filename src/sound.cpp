@@ -770,3 +770,44 @@ Sound::Rank Sound::Rank::glassBells(float frequency, int length,
 
   return rank;
 }
+
+Sound::Rank Sound::Rank::sine(float frequency, int length, int sampleRate) {
+  Rank rank;
+
+  Note sineNote(frequency, length, sampleRate);
+  Pipe sinePipe(sineNote, Sound::WaveForm::Sine);
+  rank.addPipe(sinePipe);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::saw(float frequency, int length, int sampleRate) {
+  Rank rank;
+
+  Note note(frequency, length, sampleRate);
+  Pipe pipe(note, Sound::WaveForm::Saw);
+  rank.addPipe(pipe);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::square(float frequency, int length, int sampleRate) {
+  Rank rank;
+
+  Note note(frequency, length, sampleRate);
+  Pipe pipe(note, Sound::WaveForm::Square);
+  rank.addPipe(pipe);
+
+  return rank;
+}
+
+Sound::Rank Sound::Rank::triangular(float frequency, int length,
+                                    int sampleRate) {
+  Rank rank;
+
+  Note note(frequency, length, sampleRate);
+  Pipe pipe(note, Sound::WaveForm::Triangular);
+  rank.addPipe(pipe);
+
+  return rank;
+}
