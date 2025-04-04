@@ -63,5 +63,5 @@ target_include_directories(keylib PUBLIC include external/nlohmann external/midi
 add_executable(keyboard src/main.cpp)
 
 # Link keylib to the keyboard executable
-target_link_libraries(keyboard keylib midifile)
+target_link_libraries(keyboard keylib midifile pthread)
 
