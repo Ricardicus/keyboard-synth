@@ -73,7 +73,14 @@ public:
     alcCloseDevice(this->device);
   }
 
-  void setVolume(float volume_) { this->volume = volume_; }
+  float getVolume() { return this->volume; }
+  void setVolume(float volume_) {
+    this->volume = volume_;
+    if (this->volume < 0.0)
+      this->volume = 0;
+    if (this->volume > 1.0)
+      this->volume = 1.0;
+  }
 
   void changeOctave(int delta) {
     // Prevent going higher if there's a note with octave 8

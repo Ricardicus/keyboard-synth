@@ -100,7 +100,8 @@ void Keyboard::printInstructions() {
 
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("Press 'p'/'o' to +/- one octave\n");
-  printw("Press 'P'/'O' to +/- keyboard preset sounds\n");
+  printw("Press 'P'/'O' to +/- preset sounds\n");
+  printw("Press 'W'/'E' to -/+ volume\n");
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 

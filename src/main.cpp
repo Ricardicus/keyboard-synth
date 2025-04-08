@@ -668,7 +668,17 @@ int main(int argc, char *argv[]) {
         keyboard.printInstructions();
         printw("Updated to new preset %s\n",
                Sound::Rank::presetStr(presets[rankIndex]).c_str());
+      } else if (ch == 'W' || ch == 'E') {
+        keyboard.setVolume(keyboard.getVolume() - (ch == 'E' ? -0.1 : 0.1));
+        keyboard.teardown();
+        keyboard.setup(maxPolyphony);
+        keyboard.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
+                              effects, config.parallelization);
+        clear();
+        config.printConfig();
+        keyboard.printInstructions();
       }
+      printw("%c\n", c);
     }
   }
 
