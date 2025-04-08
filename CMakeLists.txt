@@ -52,6 +52,7 @@ add_library(keylib STATIC
     src/effect.cpp
     src/adsr.cpp
     src/iir.cpp
+    src/keyboardstream.cpp
 )
 
 # Link dependencies to the keylib library
@@ -62,6 +63,19 @@ target_include_directories(keylib PUBLIC include external/nlohmann external/midi
 # Define the keyboard executable
 add_executable(keyboard src/main.cpp)
 
+find_package(SDL2 QUIET)
+if(SDL2_FOUND)
+    message(STATUS "SDL2 found. Building streamtest.")
+    
+    add_executable(streamtest src/stream_test.cpp)
+
+    target_include_directories(streamtest PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(streamtest keylib midifile ${SDL2_LIBRARIES})
+
+else()
+    message(WARNING "SDL2 not found. Skipping build of streamtest.")
+endif()
+
 # Link keylib to the keyboard executable
-target_link_libraries(keyboard keylib midifile pthread)
+target_link_libraries(keyboard keylib midifile)
 
