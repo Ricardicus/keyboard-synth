@@ -17,8 +17,11 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
+#include "adsr.hpp"
 
 #include "json.hpp"
+
+static constexpr int SAMPLERATE = 44100;
 
 class KeyboardStream {
 public:
@@ -69,7 +72,7 @@ public:
                     std::vector<Effect> &effects, int nbrThreads);
   void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
                     std::vector<Effect> &effects, int nbrThreads);
-  void fillBuffer(float *buffer, const int len);
+  void fillBuffer(short *buffer, const int len);
   void registerNote(const std::string &note);
   void registerNoteRelease(const std::string &note);
   void registerButtonPress(int note);
@@ -113,8 +116,8 @@ public:
           std::lock_guard<std::mutex> lock(this->mtx);
 
           for (auto it = notesPressed.begin(); it != notesPressed.end();) {
-            if (now - it->second.time > 200) {
-              it = notesPressed.erase(it); // erase returns the next iterator
+            if (it->second.adsr.reached_sustain(it->second.index) && now - it->second.time > 1000 && !it->second.release) {
+              it->second.release = true;
             } else {
               ++it;
             }
@@ -128,10 +131,13 @@ public:
   }
 
   struct NotePress {
+    ADSR adsr;
+    int index = 0;
     std::string note;
     long time;
     bool isPlaying;
     float phase;
+    bool release = false;
   };
 
 private:
@@ -146,7 +152,11 @@ private:
   std::map<std::string, Note> notes;
   std::map<std::string, NotePress> notesPressed;
   std::thread keyboardPressWatchdog;
-  ADSR adsr;
+  float duration = 0.1f;
+  short amplitude = 32767;
+  int maxPolyphony = 50;
+  ADSR adsr =
+      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
 

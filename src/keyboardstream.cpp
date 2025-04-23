@@ -37,6 +37,7 @@ void KeyboardStream::printInstructions() {
   auto printRow = [this](const std::vector<int> &row, const char *prefix) {
     attron(COLOR_PAIR(4) | A_BOLD);
     printw("%s| ", prefix);
+
     attroff(COLOR_PAIR(4) | A_BOLD);
     for (int key : row) {
       auto it = this->keyPressToNote.find(key);
@@ -85,13 +86,26 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
                                   int nbrThreads) {}
 
 void KeyboardStream::registerNote(const std::string &note) {
-  NotePress np;
 
-  np.time = KeyboardStream::currentTimeMillis();
-  np.note = note;
-  np.isPlaying = true;
-  {
-    std::lock_guard<std::mutex> lock(this->mtx);
+  auto it = this->notesPressed.find(note);
+  if (it != this->notesPressed.end()) {
+    // Note already exists, just update the time
+    it->second.time = KeyboardStream::currentTimeMillis();
+    if (it->second.adsr.reached_sustain(it->second.index) & !it->second.release) {
+      it->second.index = it->second.adsr.get_sustain_start_index();
+      printf("reached sustain\n");
+    } else {
+      printf("from the top (%d)\n", it->second.index);
+      it->second.index = 0;
+    }
+  } else {
+    // Note doesn't exist, create a new NotePress
+    NotePress np;
+    np.time = KeyboardStream::currentTimeMillis();
+    np.note = note;
+    np.adsr = this->adsr;
+    np.index = 0;
+    printf("new note, release: %d\n", np.release);
     this->notesPressed[note] = np;
   }
 }
@@ -123,21 +137,32 @@ void KeyboardStream::registerButtonRelease(int pressed) {
   }
 }
 
-void KeyboardStream::fillBuffer(float *buffer, const int len) {
+
+void KeyboardStream::fillBuffer(short* buffer, const int len) {
   float deltaT = 1.0f / this->sampleRate;
 
-  std::lock_guard<std::mutex> lock(this->mtx);
-
   for (int i = 0; i < len; i++) {
-    float sample = 0.0f;
+    int sample = 0.0;
+    short factor = this->notesPressed.size();
+
+    std::lock_guard<std::mutex> lock(this->mtx);
 
     for (auto &pair : this->notesPressed) {
       NotePress &note = pair.second;
+      int index = note.index;
+      int adsr = note.adsr.response(index);
       double freq = notes::getFrequency(note.note);
 
       // Add sine wave at current phase
-      sample += std::sin(note.phase);
+      if (note.adsr.reached_sustain(index) && !note.release) {
+        adsr = note.adsr.sustain();
+      } else {
+        // Advance index for the next sample
+        adsr = note.adsr.response(index);
+        note.index++;
+      }
 
+      sample += static_cast<short>(static_cast<float>(adsr) * std::sin(note.phase));
       // Advance phase for next sample
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
@@ -145,6 +170,6 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
     }
 
     // Normalize and write to buffer
-    buffer[i] = sample * 0.2f; // Adjust volume
+    buffer[i] = static_cast<short>(sample / 10); // Adjust volume
   }
 }

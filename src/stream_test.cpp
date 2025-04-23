@@ -2,10 +2,10 @@
 #include <cmath>
 #include <iostream>
 #include <mutex>
-#include <unordered_set>
-#include <thread>
 #include <termios.h>
+#include <thread>
 #include <unistd.h>
+#include <unordered_set>
 
 #include "keyboardstream.hpp"
 
@@ -14,9 +14,9 @@ const int SAMPLE_RATE = 44100;
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *ks = static_cast<KeyboardStream *>(userdata);
-  float *floatStream = reinterpret_cast<float *>(stream);
-  int samples = len / sizeof(float);
-  ks->fillBuffer(floatStream, samples);
+  short *streamBuf = reinterpret_cast<short *>(stream);
+  int samples = len / sizeof(short);
+  ks->fillBuffer(streamBuf, samples);
 }
 
 // Enable raw mode on stdin (non-blocking, no echo)
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
   SDL_AudioSpec desired, obtained;
   SDL_zero(desired);
   desired.freq = SAMPLE_RATE;
-  desired.format = AUDIO_F32SYS;
+  desired.format = AUDIO_S16SYS;
   desired.channels = 1;
   desired.samples = BUFFER_SIZE;
   desired.callback = audioCallback;
@@ -57,18 +57,18 @@ int main(int argc, char *argv[]) {
 
   SDL_PauseAudio(0); // Start audio
 
-  std::cout << "Press a/s/d/f to play notes. Shift key to stop. Press q to quit.\n";
+  std::cout
+      << "Press a/s/d/f to play notes. Shift key to stop. Press q to quit.\n";
 
   setTerminalRaw(true); // enable immediate input
 
   bool running = true;
   while (running) {
     int c = getc(stdin);
-    if (c == EOF) continue;
-    if (c == 4) {
-      running = false;
+    if (c == EOF)
       continue;
-    }
+    printf("got %c\n", c);
+    if (c == 4) break;
     stream.registerButtonPress(c);
   }
 
