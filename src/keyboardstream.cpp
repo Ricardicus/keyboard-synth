@@ -78,12 +78,18 @@ void KeyboardStream::printInstructions() {
 
 void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                                   std::vector<Effect> &effects,
-                                  int nbrThreads) {}
+                                  int nbrThreads) {
+  this->adsr = adsr;
+  this->waveForm = f;
+}
 
 void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
                                   Sound::Rank::Preset preset,
                                   std::vector<Effect> &effects,
-                                  int nbrThreads) {}
+                                  int nbrThreads) {
+  this->adsr = adsr;
+  this->rankPreset = preset;
+}
 
 void KeyboardStream::registerNote(const std::string &note) {
 
@@ -91,11 +97,10 @@ void KeyboardStream::registerNote(const std::string &note) {
   if (it != this->notesPressed.end()) {
     // Note already exists, just update the time
     it->second.time = KeyboardStream::currentTimeMillis();
-    if (it->second.adsr.reached_sustain(it->second.index) & !it->second.release) {
+    if (it->second.adsr.reached_sustain(it->second.index) &
+        !it->second.release) {
       it->second.index = it->second.adsr.get_sustain_start_index();
-      printf("reached sustain\n");
     } else {
-      printf("from the top (%d)\n", it->second.index);
       it->second.index = 0;
     }
   } else {
@@ -105,7 +110,6 @@ void KeyboardStream::registerNote(const std::string &note) {
     np.note = note;
     np.adsr = this->adsr;
     np.index = 0;
-    printf("new note, release: %d\n", np.release);
     this->notesPressed[note] = np;
   }
 }
@@ -122,8 +126,6 @@ void KeyboardStream::registerButtonPress(int pressed) {
   if (this->keyPressToNote.find(pressed) != this->keyPressToNote.end()) {
     std::string note = this->keyPressToNote[pressed];
     registerNote(note);
-  } else {
-    printf("Note not found %d\n", pressed);
   }
   if (this->keyPressToAction.find(pressed) != this->keyPressToAction.end()) {
     this->keyPressToAction[pressed]();
@@ -137,8 +139,7 @@ void KeyboardStream::registerButtonRelease(int pressed) {
   }
 }
 
-
-void KeyboardStream::fillBuffer(short* buffer, const int len) {
+void KeyboardStream::fillBuffer(short *buffer, const int len) {
   float deltaT = 1.0f / this->sampleRate;
 
   for (int i = 0; i < len; i++) {
@@ -162,7 +163,8 @@ void KeyboardStream::fillBuffer(short* buffer, const int len) {
         note.index++;
       }
 
-      sample += static_cast<short>(static_cast<float>(adsr) * std::sin(note.phase));
+      sample += static_cast<short>(static_cast<float>(adsr) *
+                                   generateSample(note.phase));
       // Advance phase for next sample
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
@@ -171,5 +173,65 @@ void KeyboardStream::fillBuffer(short* buffer, const int len) {
 
     // Normalize and write to buffer
     buffer[i] = static_cast<short>(sample / 10); // Adjust volume
+  }
+}
+
+float KeyboardStream::generateSample(float phase) {
+  if (this->rankPreset != Sound::Rank::Preset::None) {
+    switch (this->rankPreset) {
+    case Sound::Rank::Preset::Sine:
+      return Sound::sinus(phase);
+
+    case Sound::Rank::Preset::Triangular:
+      return Sound::triangular(phase);
+
+    case Sound::Rank::Preset::Square:
+      return Sound::square(phase);
+
+    case Sound::Rank::Preset::Saw:
+      return Sound::saw(phase);
+
+    // TODO: Implement these presets
+    case Sound::Rank::Preset::SuperSaw:
+    case Sound::Rank::Preset::FatTriangle:
+    case Sound::Rank::Preset::PulseSquare:
+    case Sound::Rank::Preset::SineSawDrone:
+    case Sound::Rank::Preset::SuperSawWithSub:
+    case Sound::Rank::Preset::GlitchMix:
+    case Sound::Rank::Preset::OrganTone:
+    case Sound::Rank::Preset::LushPad:
+    case Sound::Rank::Preset::RetroLead:
+    case Sound::Rank::Preset::BassGrowl:
+    case Sound::Rank::Preset::AmbientDrone:
+    case Sound::Rank::Preset::SynthStab:
+    case Sound::Rank::Preset::GlassBells:
+      // Custom synthesis logic needed
+      return 0.0f;
+
+    default:
+      break;
+    }
+  }
+
+  // Fallback to basic waveform selection
+  switch (this->waveForm) {
+  case Sound::Sine:
+    return Sound::sinus(phase);
+
+  case Sound::Triangular:
+    return Sound::triangular(phase);
+
+  case Sound::Square:
+    return Sound::square(phase);
+
+  case Sound::Saw:
+    return Sound::saw(phase);
+
+  case Sound::WaveFile:
+    // Placeholder for WaveFile sample playback
+    return 0.0f;
+
+  default:
+    return 0.0f;
   }
 }

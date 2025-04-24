@@ -8,6 +8,13 @@
 namespace Sound {
 enum WaveForm { Sine, Triangular, Square, Saw, WaveFile };
 
+float sinus(float f);
+float square(float f);
+float square(float f, float factor);
+float triangular(float f);
+float saw(float f);
+float white_noise(float f);
+
 std::string typeOfWave(WaveForm form);
 std::vector<short> generateWave(WaveForm f, Note &note, ADSR &adsr,
                                 std::vector<Effect> &effects);

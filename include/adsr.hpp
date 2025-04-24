@@ -102,8 +102,10 @@ public:
     int sustain_end = this->quantas_length *
                       (this->qadsr[0] + this->qadsr[1] + this->qadsr[2]);
     int release_length = this->length - sustain_end;
-    return x > getLength() ? 0 : (short)this->sustain_level -
-           (((float)x - sustain_end) / release_length) * this->sustain_level;
+    return x > getLength() ? 0
+                           : (short)this->sustain_level -
+                                 (((float)x - sustain_end) / release_length) *
+                                     this->sustain_level;
   }
 
   void update_len() {

@@ -17,7 +17,6 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
-#include "adsr.hpp"
 
 #include "json.hpp"
 
@@ -116,8 +115,16 @@ public:
           std::lock_guard<std::mutex> lock(this->mtx);
 
           for (auto it = notesPressed.begin(); it != notesPressed.end();) {
-            if (it->second.adsr.reached_sustain(it->second.index) && now - it->second.time > 1000 && !it->second.release) {
-              it->second.release = true;
+            if (now - it->second.time > 1000) {
+              if (it->second.adsr.reached_sustain(it->second.index) &&
+                  !it->second.release) {
+                it->second.release = true;
+              }
+              if (it->second.adsr.length <= it->second.index) {
+                it = notesPressed.erase(it); // erase returns the next iterator
+              } else {
+                ++it;
+              }
             } else {
               ++it;
             }
@@ -130,14 +137,15 @@ public:
     }).detach(); // Detach to run independently
   }
 
+  float generateSample(float phase);
+
   struct NotePress {
     ADSR adsr;
-    int index = 0;
     std::string note;
     long time;
-    bool isPlaying;
-    float phase;
+    float phase = 0;
     bool release = false;
+    int index = 0;
   };
 
 private:
@@ -152,11 +160,11 @@ private:
   std::map<std::string, Note> notes;
   std::map<std::string, NotePress> notesPressed;
   std::thread keyboardPressWatchdog;
-  float duration = 0.1f;
+
   short amplitude = 32767;
-  int maxPolyphony = 50;
+  float duration = 0.1f;
   ADSR adsr =
-      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
+      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
 

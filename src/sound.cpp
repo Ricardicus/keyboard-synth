@@ -65,9 +65,9 @@ std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
   return result;
 }
 
-static float sinus(float f) { return sin(f); }
+float Sound::sinus(float f) { return sin(f); }
 
-static float square(float f) {
+float Sound::square(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI) {
     return 1.0;
@@ -75,7 +75,7 @@ static float square(float f) {
   return -1.0;
 }
 
-static float square(float f, float factor) {
+float Sound::square(float f, float factor) {
   f = fmod(f, 2.0 * PI);
   if (f < PI * factor) {
     return 1.0;
@@ -83,7 +83,7 @@ static float square(float f, float factor) {
   return -1.0;
 }
 
-static float triangular(float f) {
+float Sound::triangular(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI / 2.0) {
     return f / (PI / 2.0);
@@ -95,7 +95,7 @@ static float triangular(float f) {
   return 1.0;
 }
 
-static float saw(float f) {
+float Sound::saw(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI / 2.0) {
     return f / (PI / 2.0);
@@ -107,7 +107,7 @@ static float saw(float f) {
   return 1.0;
 }
 
-static float white_noise(float f) {
+float Sound::white_noise(float f) {
   return (float)(rand() % 2001 - 1000) /
          1000.0; // Random value between -1.0 and 1.0
 }

@@ -329,11 +329,9 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
         if (form == "triangular") {
           config.rankPreset = Sound::Rank::Preset::Triangular;
         } else if (form == "saw") {
-          config.rankPreset = Sound::Rank::Preset::SuperSaw;
+          config.rankPreset = Sound::Rank::Preset::Saw;
         } else if (form == "square") {
           config.rankPreset = Sound::Rank::Preset::Square;
-        } else if (form == "triangular") {
-          config.rankPreset = Sound::Rank::Preset::Triangular;
         } else if (form == "sine") {
           config.rankPreset = Sound::Rank::Preset::Sine;
         } else if (form == "supersaw") {
