@@ -89,6 +89,66 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
                                   int nbrThreads) {
   this->adsr = adsr;
   this->rankPreset = preset;
+  for (const std::string &note : notes::getNotes()) {
+    float frequency = static_cast<float>(notes::getFrequency(note));
+    Sound::Rank r;
+    switch (preset) {
+    case Sound::Rank::Preset::SuperSaw:
+      r = Sound::Rank::superSaw(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::FatTriangle:
+      r = Sound::Rank::fatTriangle(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::PulseSquare:
+      r = Sound::Rank::pulseSquare(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SineSawDrone:
+      r = Sound::Rank::sineSawDrone(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SuperSawWithSub:
+      r = Sound::Rank::superSawWithSub(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::GlitchMix:
+      r = Sound::Rank::glitchMix(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::LushPad:
+      r = Sound::Rank::lushPad(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::RetroLead:
+      r = Sound::Rank::retroLead(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::BassGrowl:
+      r = Sound::Rank::bassGrowl(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::AmbientDrone:
+      r = Sound::Rank::ambientDrone(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SynthStab:
+      r = Sound::Rank::synthStab(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::GlassBells:
+      r = Sound::Rank::glassBells(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::OrganTone:
+      r = Sound::Rank::organTone(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Saw:
+      r = Sound::Rank::saw(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Square:
+      r = Sound::Rank::square(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Triangular:
+      r = Sound::Rank::triangular(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Sine:
+      r = Sound::Rank::sine(frequency, adsr.length, sampleRate);
+      break;
+    case Sound::Rank::Preset::None:
+      break;
+    }
+    this->ranks[note] = r;
+  }
 }
 
 void KeyboardStream::registerNote(const std::string &note) {
@@ -164,7 +224,7 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
       }
 
       sample += static_cast<short>(static_cast<float>(adsr) *
-                                   generateSample(note.phase));
+                                   generateSample(note.note, note.phase));
       // Advance phase for next sample
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
@@ -176,7 +236,7 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
   }
 }
 
-float KeyboardStream::generateSample(float phase) {
+float KeyboardStream::generateSample(std::string note, float phase) {
   if (this->rankPreset != Sound::Rank::Preset::None) {
     switch (this->rankPreset) {
     case Sound::Rank::Preset::Sine:
@@ -191,25 +251,10 @@ float KeyboardStream::generateSample(float phase) {
     case Sound::Rank::Preset::Saw:
       return Sound::saw(phase);
 
-    // TODO: Implement these presets
-    case Sound::Rank::Preset::SuperSaw:
-    case Sound::Rank::Preset::FatTriangle:
-    case Sound::Rank::Preset::PulseSquare:
-    case Sound::Rank::Preset::SineSawDrone:
-    case Sound::Rank::Preset::SuperSawWithSub:
-    case Sound::Rank::Preset::GlitchMix:
-    case Sound::Rank::Preset::OrganTone:
-    case Sound::Rank::Preset::LushPad:
-    case Sound::Rank::Preset::RetroLead:
-    case Sound::Rank::Preset::BassGrowl:
-    case Sound::Rank::Preset::AmbientDrone:
-    case Sound::Rank::Preset::SynthStab:
-    case Sound::Rank::Preset::GlassBells:
+    default: {
       // Custom synthesis logic needed
-      return 0.0f;
-
-    default:
-      break;
+      return this->ranks[note].generateRankSample();
+    }
     }
   }
 

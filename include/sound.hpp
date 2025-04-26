@@ -138,6 +138,11 @@ public:
     }
     return result;
   }
+
+  float generateRankSample();
+
+private:
+  unsigned int generatorIndex = 0;
 };
 
 std::vector<short> generateWave(Rank &rank);

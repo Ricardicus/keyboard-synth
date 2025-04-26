@@ -137,7 +137,7 @@ public:
     }).detach(); // Detach to run independently
   }
 
-  float generateSample(float phase);
+  float generateSample(std::string note, float phase);
 
   struct NotePress {
     ADSR adsr;
@@ -167,6 +167,7 @@ private:
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
+  std::map<std::string, Sound::Rank> ranks;
 
   float volume = 1.0;
 
