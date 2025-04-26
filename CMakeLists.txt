@@ -72,6 +72,10 @@ if(SDL2_FOUND)
     target_include_directories(streamtest PRIVATE ${SDL2_INCLUDE_DIRS})
     target_link_libraries(streamtest keylib midifile ${SDL2_LIBRARIES})
 
+    add_executable(audiolizer src/audiolizer.cpp)
+
+    target_include_directories(audiolizer PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(audiolizer keylib midifile ${SDL2_LIBRARIES})
 else()
     message(WARNING "SDL2 not found. Skipping build of streamtest.")
 endif()
