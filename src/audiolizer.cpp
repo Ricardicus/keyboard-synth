@@ -183,7 +183,7 @@ void usage(const std::string &program_name) {
       << "  --buffer-size  Buffer size to use (required)\n"
       << "  --input        Path to input file (required)\n"
       << "  --clip-start   Start of the sound (percent), default 0\n"
-      << "  --components   End of the sound (percent), default 100\n"
+      << "  --clip-stop    End of the sound (percent), default 100\n"
       << std::endl;
 }
 
@@ -273,29 +273,56 @@ int main(int argc, char *argv[]) {
     buffer_right = buffer_left;
   }
 
-  printf("Samples: %d\n", buffer_left.size());
+  // Prepare the sound so that it fades in/fades out mix first and last sample
+
+  printf("Samples: %lu\n", buffer_left.size());
+
+  if (config.clip_stop != 100 || config.clip_start > 0) {
+    int start = static_cast<int>(
+        (static_cast<float>(config.clip_start) / 100.0) * buffer_left.size());
+    int end = static_cast<int>((static_cast<float>(config.clip_stop) / 100.0) *
+                               buffer_left.size());
+
+    std::vector<short> buffer_left_clipped, buffer_right_clipped;
+    for (int i = start; i <= end; i++) {
+      buffer_left_clipped.push_back(buffer_left[i]);
+      buffer_right_clipped.push_back(buffer_right[i]);
+    }
+
+    buffer_left = buffer_left_clipped;
+    buffer_right = buffer_right_clipped;
+
+    // Fix so that the end/start is mixed
+    int fade_in_interval = (SAMPLERATE / 100) * 10; // a hundreth of a second
+    for (int i = 0; i < fade_in_interval; i++) {
+      float factor =
+          static_cast<float>(i) / static_cast<float>(fade_in_interval);
+      buffer_left[i] = static_cast<short>(
+          (factor) * static_cast<float>(buffer_left[i]) +
+          (1 - factor) *
+              static_cast<float>(buffer_left[end - fade_in_interval + i]));
+      buffer_right[i] = static_cast<short>(
+          (factor) * static_cast<float>(buffer_right[i]) +
+          (1 - factor) *
+              static_cast<float>(buffer_right[end - fade_in_interval + i]));
+      buffer_left[end - fade_in_interval + i] = static_cast<short>(
+          (1 - factor) * static_cast<float>(buffer_left[i]) +
+          (factor) *
+              static_cast<float>(buffer_left[end - fade_in_interval + i]));
+      buffer_right[end - fade_in_interval + i] = static_cast<short>(
+          (1 - factor) * static_cast<float>(buffer_right[i]) +
+          (factor) *
+              static_cast<float>(buffer_right[end - fade_in_interval + i]));
+    }
+
+    printf("Samples after clipping: %lu\n", buffer_left.size());
+  }
 
   AudiolizedSound audiolized_left =
       audiolize(buffer_left, config.buffer_size, config.top_components);
   AudiolizedSound audiolized_right =
       audiolize(buffer_right, config.buffer_size, config.top_components);
 
-  if (config.clip_stop != 100 || config.clip_start > 0) {
-    int start =
-        static_cast<int>((static_cast<float>(config.clip_start) / 100.0) *
-                         audiolized_left.bits.size());
-    int end = static_cast<int>((static_cast<float>(config.clip_stop) / 100.0) *
-                               audiolized_left.bits.size());
-    std::vector<AudiolizedBit> bits_left, bits_right;
-
-    for (int i = start; i <= end; i++) {
-      bits_left.push_back(audiolized_left.bits[i]);
-      bits_right.push_back(audiolized_right.bits[i]);
-    }
-
-    audiolized_left.bits = bits_left;
-    audiolized_right.bits = bits_right;
-  }
   // Trim the bits
   printf("Number of bits: %lu\n", audiolized_left.bits.size());
 
