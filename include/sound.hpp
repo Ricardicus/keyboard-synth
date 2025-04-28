@@ -141,6 +141,67 @@ public:
 
   float generateRankSample();
 
+  static Rank fromPreset(Sound::Rank::Preset preset, float frequency,
+                         int length, int sampleRate) {
+    Sound::Rank r;
+    switch (preset) {
+    case Sound::Rank::Preset::SuperSaw:
+      r = Sound::Rank::superSaw(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::FatTriangle:
+      r = Sound::Rank::fatTriangle(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::PulseSquare:
+      r = Sound::Rank::pulseSquare(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SineSawDrone:
+      r = Sound::Rank::sineSawDrone(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SuperSawWithSub:
+      r = Sound::Rank::superSawWithSub(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::GlitchMix:
+      r = Sound::Rank::glitchMix(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::LushPad:
+      r = Sound::Rank::lushPad(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::RetroLead:
+      r = Sound::Rank::retroLead(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::BassGrowl:
+      r = Sound::Rank::bassGrowl(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::AmbientDrone:
+      r = Sound::Rank::ambientDrone(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::SynthStab:
+      r = Sound::Rank::synthStab(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::GlassBells:
+      r = Sound::Rank::glassBells(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::OrganTone:
+      r = Sound::Rank::organTone(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Saw:
+      r = Sound::Rank::saw(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Square:
+      r = Sound::Rank::square(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Triangular:
+      r = Sound::Rank::triangular(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::Sine:
+      r = Sound::Rank::sine(frequency, length, sampleRate);
+      break;
+    case Sound::Rank::Preset::None:
+      break;
+    }
+    return r;
+  }
+
 private:
   unsigned int generatorIndex = 0;
 };

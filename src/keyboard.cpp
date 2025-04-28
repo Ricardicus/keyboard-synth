@@ -277,62 +277,8 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
       // Bottom row (one octave lower than home row)
       Note n = Note(key, adsr.length, sampleRate);
 
-      Sound::Rank r;
-      switch (preset) {
-      case Sound::Rank::Preset::SuperSaw:
-        r = Sound::Rank::superSaw(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::FatTriangle:
-        r = Sound::Rank::fatTriangle(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::PulseSquare:
-        r = Sound::Rank::pulseSquare(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::SineSawDrone:
-        r = Sound::Rank::sineSawDrone(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::SuperSawWithSub:
-        r = Sound::Rank::superSawWithSub(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::GlitchMix:
-        r = Sound::Rank::glitchMix(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::LushPad:
-        r = Sound::Rank::lushPad(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::RetroLead:
-        r = Sound::Rank::retroLead(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::BassGrowl:
-        r = Sound::Rank::bassGrowl(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::AmbientDrone:
-        r = Sound::Rank::ambientDrone(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::SynthStab:
-        r = Sound::Rank::synthStab(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::GlassBells:
-        r = Sound::Rank::glassBells(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::OrganTone:
-        r = Sound::Rank::organTone(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::Saw:
-        r = Sound::Rank::saw(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::Square:
-        r = Sound::Rank::square(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::Triangular:
-        r = Sound::Rank::triangular(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::Sine:
-        r = Sound::Rank::sine(n.frequency, adsr.length, sampleRate);
-        break;
-      case Sound::Rank::Preset::None:
-        break;
-      }
+      Sound::Rank r =
+          Sound::Rank::fromPreset(preset, n.frequency, adsr.length, sampleRate);
       r.adsr = adsr;
       for (int e = 0; e < effectsClone.size(); e++) {
         r.addEffect(effectsClone[e]);

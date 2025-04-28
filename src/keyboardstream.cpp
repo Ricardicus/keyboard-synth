@@ -91,68 +91,13 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
   this->rankPreset = preset;
   for (const std::string &note : notes::getNotes()) {
     float frequency = static_cast<float>(notes::getFrequency(note));
-    Sound::Rank r;
-    switch (preset) {
-    case Sound::Rank::Preset::SuperSaw:
-      r = Sound::Rank::superSaw(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::FatTriangle:
-      r = Sound::Rank::fatTriangle(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::PulseSquare:
-      r = Sound::Rank::pulseSquare(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::SineSawDrone:
-      r = Sound::Rank::sineSawDrone(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::SuperSawWithSub:
-      r = Sound::Rank::superSawWithSub(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::GlitchMix:
-      r = Sound::Rank::glitchMix(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::LushPad:
-      r = Sound::Rank::lushPad(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::RetroLead:
-      r = Sound::Rank::retroLead(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::BassGrowl:
-      r = Sound::Rank::bassGrowl(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::AmbientDrone:
-      r = Sound::Rank::ambientDrone(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::SynthStab:
-      r = Sound::Rank::synthStab(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::GlassBells:
-      r = Sound::Rank::glassBells(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::OrganTone:
-      r = Sound::Rank::organTone(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::Saw:
-      r = Sound::Rank::saw(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::Square:
-      r = Sound::Rank::square(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::Triangular:
-      r = Sound::Rank::triangular(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::Sine:
-      r = Sound::Rank::sine(frequency, adsr.length, sampleRate);
-      break;
-    case Sound::Rank::Preset::None:
-      break;
-    }
+    Sound::Rank r =
+        Sound::Rank::fromPreset(preset, frequency, adsr.length, sampleRate);
     this->ranks[note] = r;
   }
 }
 
 void KeyboardStream::registerNote(const std::string &note) {
-
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
     // Note already exists, just update the time
@@ -280,3 +225,12 @@ float KeyboardStream::generateSample(std::string note, float phase) {
     return 0.0f;
   }
 }
+
+void KeyboardStream::Synth::setVolume(float volume) { this->volume = volume; }
+
+using Pipe = std::pair<Note, Sound::WaveForm>;
+void KeyboardStream::Synth::setOctave(int octave) { this->octave = octave; }
+
+void KeyboardStream::Synth::setDetune(int detune) { this->detune = detune; }
+
+void KeyboardStream::Synth::setRankPreset(Sound::Rank::Preset sound) {}

@@ -139,6 +139,25 @@ public:
 
   float generateSample(std::string note, float phase);
 
+  class Synth {
+  public:
+    float volume;
+    int octave;
+    int detune;
+    Sound::Rank sound;
+
+    void setVolume(float volume);
+    void setOctave(int octave);
+    void setDetune(int detune);
+    void setRankPreset(Sound::Rank::Preset sound);
+
+    short getSample();
+
+  private:
+    int index = 0;
+    std::map<std::string, Sound::Rank> ranks;
+  };
+
   struct NotePress {
     ADSR adsr;
     std::string note;

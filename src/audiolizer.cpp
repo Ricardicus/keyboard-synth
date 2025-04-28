@@ -293,7 +293,7 @@ int main(int argc, char *argv[]) {
     buffer_right = buffer_right_clipped;
 
     // Fix so that the end/start is mixed
-    int fade_in_interval = (SAMPLERATE / 100) * 10; // a hundreth of a second
+    int fade_in_interval = (SAMPLERATE / 100) * 15;
     for (int i = 0; i < fade_in_interval; i++) {
       float factor =
           static_cast<float>(i) / static_cast<float>(fade_in_interval);
