@@ -202,6 +202,8 @@ public:
     return r;
   }
 
+  void reset() { this->generatorIndex = 0; }
+
 private:
   unsigned int generatorIndex = 0;
 };

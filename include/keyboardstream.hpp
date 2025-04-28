@@ -121,6 +121,7 @@ public:
                 it->second.release = true;
               }
               if (it->second.adsr.length <= it->second.index) {
+                this->ranks[it->second.note].reset();
                 it = notesPressed.erase(it); // erase returns the next iterator
               } else {
                 ++it;

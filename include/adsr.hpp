@@ -79,6 +79,16 @@ public:
     }
     return false;
   }
+  bool reached_sustain_end(int index) {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    int release_end = sustain_end + this->quantas_length * this->qadsr[3];
+    if (index > sustain_end) {
+      return true;
+    }
+    return false;
+  }
 
   int getLength() { return this->length; };
   void setLength(int length) {

@@ -91,9 +91,9 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
   this->rankPreset = preset;
   for (const std::string &note : notes::getNotes()) {
     float frequency = static_cast<float>(notes::getFrequency(note));
-    Sound::Rank r =
+    this->ranks[note] =
         Sound::Rank::fromPreset(preset, frequency, adsr.length, sampleRate);
-    this->ranks[note] = r;
+    ;
   }
 }
 
@@ -101,13 +101,15 @@ void KeyboardStream::registerNote(const std::string &note) {
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
     // Note already exists, just update the time
-    it->second.time = KeyboardStream::currentTimeMillis();
     if (it->second.adsr.reached_sustain(it->second.index) &
         !it->second.release) {
       it->second.index = it->second.adsr.get_sustain_start_index();
     } else {
+      this->ranks[it->second.note].reset();
       it->second.index = 0;
     }
+
+    it->second.time = KeyboardStream::currentTimeMillis();
   } else {
     // Note doesn't exist, create a new NotePress
     NotePress np;
