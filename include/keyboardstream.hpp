@@ -125,7 +125,8 @@ public:
 
     void initialize(int sampleRate);
 
-    short getSample(const std::string &note);
+    float getSample(const std::string &note);
+    void reset(const std::string &note);
 
   private:
     void updateFrequencies() {

@@ -248,6 +248,20 @@ void KeyboardStream::Synth::setSound(Sound::Rank::Preset sound) {
   this->sound = sound;
 }
 
+float KeyboardStream::Synth::getSample(const std::string &note) {
+  float result = 0;
+  if (this->ranks.find(note) != this->ranks.end()) {
+    this->ranks[note].generateRankSample();
+  }
+  return result;
+}
+
+void KeyboardStream::Synth::reset(const std::string &note) {
+  if (this->ranks.find(note) != this->ranks.end()) {
+    this->ranks[note].reset();
+  }
+}
+
 void KeyboardStream::Synth::initialize(int sampleRate) {
   std::vector<std::string> notes = notes::getNotes();
   // Ensure nbrThreads is sensible

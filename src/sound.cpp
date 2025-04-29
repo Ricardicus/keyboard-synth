@@ -257,10 +257,14 @@ float Sound::Rank::generateRankSample() {
     Sound::WaveForm form = pipe.second;
     float deltaT = 1.0f / note.sampleRate;
     float addition;
+    float frequency = note.frequency;
+    if (note.frequencyAltered > 0) {
+      frequency = note.frequencyAltered;
+    }
 
     switch (form) {
     case Sound::WaveForm::Sine: {
-      addition = note.volume * Sound::sinus(2.0f * PI * note.frequency *
+      addition = note.volume * Sound::sinus(2.0f * PI * frequency *
                                             this->generatorIndex * deltaT);
       if (this->effects.size() > 0) {
         for (int e = 0; e < this->effects.size(); e++) {
@@ -269,7 +273,7 @@ float Sound::Rank::generateRankSample() {
             addition =
                 note.volume *
                 Sound::sinus(
-                    2.0f * PI * note.frequency * this->generatorIndex * deltaT +
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
                     this->effects[e].vibratoConfig.depth *
                         Sound::sinus(2.0f * PI *
                                      this->effects[e].vibratoConfig.frequency *
@@ -284,7 +288,7 @@ float Sound::Rank::generateRankSample() {
       break;
     }
     case Sound::WaveForm::Triangular: {
-      addition = note.volume * Sound::triangular(2.0f * PI * note.frequency *
+      addition = note.volume * Sound::triangular(2.0f * PI * frequency *
                                                  this->generatorIndex * deltaT);
       if (this->effects.size() > 0) {
         for (int e = 0; e < this->effects.size(); e++) {
@@ -293,7 +297,7 @@ float Sound::Rank::generateRankSample() {
             addition =
                 note.volume *
                 Sound::triangular(
-                    2.0f * PI * note.frequency * this->generatorIndex * deltaT +
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
                     this->effects[e].vibratoConfig.depth *
                         sin(2.0f * PI *
                             this->effects[e].vibratoConfig.frequency *
@@ -307,7 +311,7 @@ float Sound::Rank::generateRankSample() {
       break;
     }
     case Sound::WaveForm::Square: {
-      addition = note.volume * Sound::square(2.0f * PI * note.frequency *
+      addition = note.volume * Sound::square(2.0f * PI * frequency *
                                              this->generatorIndex * deltaT);
       if (this->effects.size() > 0) {
         for (int e = 0; e < this->effects.size(); e++) {
@@ -315,8 +319,8 @@ float Sound::Rank::generateRankSample() {
           case Effect::Type::Vibrato: {
             addition =
                 note.volume *
-                Sound::square(2.0f * PI * note.frequency *
-                                  this->generatorIndex * deltaT,
+                Sound::square(2.0f * PI * frequency * this->generatorIndex *
+                                  deltaT,
                               this->effects[e].vibratoConfig.depth *
                                   sin(2.0f * PI *
                                       this->effects[e].vibratoConfig.frequency *
@@ -327,7 +331,7 @@ float Sound::Rank::generateRankSample() {
             addition =
                 note.volume *
                 Sound::square(
-                    2.0f * PI * note.frequency * this->generatorIndex * deltaT +
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
                     this->effects[e].dutyCycleConfig.depth *
                         sin(2.0f * PI *
                             this->effects[e].dutyCycleConfig.frequency *
@@ -342,7 +346,7 @@ float Sound::Rank::generateRankSample() {
       break;
     }
     case Sound::WaveForm::Saw: {
-      addition = note.volume * Sound::saw(2.0f * PI * note.frequency *
+      addition = note.volume * Sound::saw(2.0f * PI * frequency *
                                           this->generatorIndex * deltaT);
       if (this->effects.size() > 0) {
         for (int e = 0; e < this->effects.size(); e++) {
@@ -350,7 +354,7 @@ float Sound::Rank::generateRankSample() {
           case Effect::Type::Vibrato: {
             addition =
                 note.volume *
-                Sound::saw(2.0f * PI * note.frequency * this->generatorIndex *
+                Sound::saw(2.0f * PI * frequency * this->generatorIndex *
                                deltaT +
                            this->effects[e].vibratoConfig.depth *
                                sin(2.0f * PI *
