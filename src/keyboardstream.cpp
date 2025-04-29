@@ -101,14 +101,9 @@ void KeyboardStream::registerNote(const std::string &note) {
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
     // Note already exists, just update the time
-    if (it->second.adsr.reached_sustain(it->second.index) &
-        !it->second.release) {
-      it->second.index = it->second.adsr.get_sustain_start_index();
-    } else {
-      this->ranks[it->second.note].reset();
-      it->second.index = 0;
-    }
-
+    this->ranks[it->second.note].reset();
+    it->second.index = 0;
+    it->second.release = false;
     it->second.time = KeyboardStream::currentTimeMillis();
   } else {
     // Note doesn't exist, create a new NotePress
@@ -125,7 +120,7 @@ void KeyboardStream::registerNoteRelease(const std::string &note) {
   std::lock_guard<std::mutex> lock(this->mtx);
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
-    this->notesPressed.erase(it);
+    it->second.release = true;
   }
 }
 
@@ -155,8 +150,8 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
 
     std::lock_guard<std::mutex> lock(this->mtx);
 
-    for (auto &pair : this->notesPressed) {
-      NotePress &note = pair.second;
+    for (auto it = notesPressed.begin(); it != notesPressed.end();) {
+      NotePress &note = it->second;
       int index = note.index;
       int adsr = note.adsr.response(index);
       double freq = notes::getFrequency(note.note);
@@ -176,6 +171,12 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
         note.phase -= 2.0f * M_PI; // Wrap around for stability
+
+      if (note.index >= note.adsr.getLength()) {
+        it = notesPressed.erase(it);
+      } else {
+        ++it;
+      }
     }
 
     // Normalize and write to buffer
@@ -231,8 +232,66 @@ float KeyboardStream::generateSample(std::string note, float phase) {
 void KeyboardStream::Synth::setVolume(float volume) { this->volume = volume; }
 
 using Pipe = std::pair<Note, Sound::WaveForm>;
-void KeyboardStream::Synth::setOctave(int octave) { this->octave = octave; }
+void KeyboardStream::Synth::setOctave(int octave) {
+  this->octave = octave;
+  this->updateFrequencies();
+}
 
-void KeyboardStream::Synth::setDetune(int detune) { this->detune = detune; }
+void KeyboardStream::Synth::setDetune(int detune) {
+  this->detune = detune;
+  this->updateFrequencies();
+}
 
-void KeyboardStream::Synth::setRankPreset(Sound::Rank::Preset sound) {}
+void KeyboardStream::Synth::setADSR(ADSR adsr) { this->adsr = adsr; }
+
+void KeyboardStream::Synth::setSound(Sound::Rank::Preset sound) {
+  this->sound = sound;
+}
+
+void KeyboardStream::Synth::initialize(int sampleRate) {
+  std::vector<std::string> notes = notes::getNotes();
+  // Ensure nbrThreads is sensible
+  int nbrThreads = 4;
+  nbrThreads =
+      std::max(1, std::min(nbrThreads, static_cast<int>(notes.size())));
+
+  // Shared data needs protection
+  std::mutex mtx;
+
+  // Split notes into chunks
+  std::vector<std::thread> threads;
+  int notesPerThread = notes.size() / nbrThreads;
+  int remainder = notes.size() % nbrThreads;
+
+  // Lambda to process a range of notes
+  auto processNotes = [&](int start, int end, int threadIndex) {
+    for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
+      const auto &key = notes[bufferIndex];
+      // Bottom row (one octave lower than home row)
+      Note n = Note(key, this->adsr.length, sampleRate);
+
+      float frequency = notes::getFrequency(key);
+      Sound::Rank r = Sound::Rank::fromPreset(this->sound, frequency,
+                                              this->adsr.length, sampleRate);
+      {
+        std::lock_guard<std::mutex> lock(mtx);
+        this->ranks[key] = r;
+      }
+    }
+  };
+  // Launch threads
+  int start = 0;
+  for (int t = 0; t < nbrThreads; ++t) {
+    int extra = (t < remainder) ? 1 : 0; // Distribute remainder
+    int end = start + notesPerThread + extra;
+    threads.emplace_back(processNotes, start, end, t);
+    start = end;
+  }
+
+  // Wait for all threads to finish
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  this->initialized = true;
+}

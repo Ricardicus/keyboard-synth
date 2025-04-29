@@ -51,7 +51,6 @@ public:
     return *this;
   }
 
-public:
   int response(int x) {
     int value = 0;
     int i;

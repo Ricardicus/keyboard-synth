@@ -525,8 +525,10 @@ int main(int argc, char *argv[]) {
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   KeyboardStream stream(BUFFER_SIZE, SAMPLERATE);
   bool running = true;
-
-  stream.startKeypressWatchdog();
+  if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
+    std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
+    return 1;
+  }
 
   SDL_AudioSpec desired, obtained;
   SDL_zero(desired);
@@ -541,6 +543,8 @@ int main(int argc, char *argv[]) {
     std::cerr << "SDL_OpenAudio failed: " << SDL_GetError() << std::endl;
     return 1;
   }
+
+  // stream.startKeypressWatchdog();
 
   SDL_PauseAudio(0); // Start audio
 
@@ -670,37 +674,85 @@ int main(int argc, char *argv[]) {
 
     config.printConfig();
     stream.printInstructions();
+    refresh();
 
-    while (true) {
-      int ch = getch();
-      if (ch == 4) {
-        printw("CTRL-D - shutting down\n");
-        break;
-      }
-      stream.registerButtonPress(ch);
-      if (ch == 'o' || ch == 'p') {
-        clear();
-        config.printConfig();
-        stream.printInstructions();
-      } else if (ch == 'O' || ch == 'P') {
-        stream.teardown();
-        printw("Updating the keyboard..\n");
-        // stream.setup(maxPolyphony);
-        if (ch == 'P') {
-          rankIndex = (rankIndex + 1) % presets.size();
-        } else {
-          rankIndex = (rankIndex + presets.size() - 1) % presets.size();
-        }
-        stream.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
-                            effects, config.parallelization);
-        clear();
-        config.rankPreset = presets[rankIndex];
-        config.printConfig();
-        stream.printInstructions();
-        printw("Updated to new preset %s\n",
-               Sound::Rank::presetStr(presets[rankIndex]).c_str());
-      }
+    SDL_Window *window =
+        SDL_CreateWindow("Keyboard Synth", SDL_WINDOWPOS_CENTERED,
+                         SDL_WINDOWPOS_CENTERED, 100, 100, SDL_WINDOW_SHOWN);
+    if (!window) {
+      std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+      SDL_CloseAudio();
+      SDL_Quit();
+      endwin();
+      return 1;
     }
+    refresh();
+
+    SDL_Event event;
+    bool running = true;
+
+    while (running) {
+      while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+
+        case SDL_QUIT:
+          running = false;
+          break;
+
+        case SDL_KEYDOWN:
+          if (!event.key.repeat) { // ignore key repeats
+            int ch = event.key.keysym.sym;
+            SDL_Keymod mod = SDL_GetModState();
+
+            if (ch == SDLK_d && (mod & KMOD_CTRL)) {
+              // CTRL+D to shutdown
+              printf("CTRL-D - shutting down\n");
+              running = false;
+              break;
+            }
+
+            stream.registerButtonPress(ch);
+
+            if (ch == SDLK_o || ch == SDLK_p) {
+              if (mod & KMOD_SHIFT) {
+                // 'O' or 'P' (capitalized)
+                stream.teardown();
+                printf("Updating the keyboard...\n");
+
+                if (ch == SDLK_p) {
+                  rankIndex = (rankIndex + 1) % presets.size();
+                } else { // ch == SDLK_o
+                  rankIndex = (rankIndex + presets.size() - 1) % presets.size();
+                }
+
+                stream.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
+                                    effects, config.parallelization);
+
+                config.rankPreset = presets[rankIndex];
+                config.printConfig();
+                stream.printInstructions();
+                printf("Updated to new preset %s\n",
+                       Sound::Rank::presetStr(presets[rankIndex]).c_str());
+              } else {
+                // plain 'o' or 'p' (lowercase)
+                config.printConfig();
+                stream.printInstructions();
+              }
+            }
+          }
+          break;
+
+        case SDL_KEYUP: {
+          int ch = event.key.keysym.sym;
+          stream.registerButtonRelease(ch);
+        } break;
+        }
+      }
+
+      // Optionally you could add SDL_Delay(1); to not burn CPU
+    }
+
+    SDL_DestroyWindow(window);
   }
 
   endwin(); // End curses mode

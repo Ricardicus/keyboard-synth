@@ -106,38 +106,6 @@ public:
     return static_cast<long>(millis);
   }
 
-  void startKeypressWatchdog() {
-    std::thread([this]() {
-      while (true) {
-        auto now = currentTimeMillis();
-
-        {
-          std::lock_guard<std::mutex> lock(this->mtx);
-
-          for (auto it = notesPressed.begin(); it != notesPressed.end();) {
-            if (now - it->second.time > 1000) {
-              if (it->second.adsr.reached_sustain(it->second.index) &&
-                  !it->second.release) {
-                it->second.release = true;
-              }
-              if (it->second.adsr.length <= it->second.index) {
-                this->ranks[it->second.note].reset();
-                it = notesPressed.erase(it); // erase returns the next iterator
-              } else {
-                ++it;
-              }
-            } else {
-              ++it;
-            }
-          }
-        }
-
-        // Sleep a bit before checking again
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-      }
-    }).detach(); // Detach to run independently
-  }
-
   float generateSample(std::string note, float phase);
 
   class Synth {
@@ -145,18 +113,35 @@ public:
     float volume;
     int octave;
     int detune;
-    Sound::Rank sound;
+    ADSR adsr;
+    Sound::Rank::Preset sound;
+    int sampleRate;
 
     void setVolume(float volume);
     void setOctave(int octave);
     void setDetune(int detune);
-    void setRankPreset(Sound::Rank::Preset sound);
+    void setADSR(ADSR adsr);
+    void setSound(Sound::Rank::Preset sound);
 
-    short getSample();
+    void initialize(int sampleRate);
+
+    short getSample(const std::string &note);
 
   private:
+    void updateFrequencies() {
+      for (auto &kv : this->ranks) {
+        Sound::Rank r = kv.second;
+        for (Sound::Pipe &pipe : r.pipes) {
+          Note note = pipe.first;
+          note.frequencyAltered = note.frequency * 2 *
+                                  pow(2, this->detune / 1200.0) * 2 *
+                                  pow(2, this->octave);
+        }
+      }
+    }
     int index = 0;
     std::map<std::string, Sound::Rank> ranks;
+    bool initialized = false;
   };
 
   struct NotePress {
