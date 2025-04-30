@@ -603,8 +603,7 @@ int main(int argc, char *argv[]) {
     effects.push_back(*config.effectTremolo);
   }
   auto start = std::chrono::high_resolution_clock::now();
-  stream.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects,
-                      config.parallelization);
+  stream.prepareSound(SAMPLERATE, config.adsr, effects);
   auto end = std::chrono::high_resolution_clock::now();
   auto prepTime =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
@@ -725,8 +724,7 @@ int main(int argc, char *argv[]) {
                   rankIndex = (rankIndex + presets.size() - 1) % presets.size();
                 }
 
-                stream.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
-                                    effects, config.parallelization);
+                stream.prepareSound(SAMPLERATE, config.adsr, effects);
 
                 config.rankPreset = presets[rankIndex];
                 config.printConfig();

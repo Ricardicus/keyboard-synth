@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <ncurses.h>
 #include <thread>
 #include <vector>
@@ -76,24 +77,19 @@ void KeyboardStream::printInstructions() {
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 
-void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                                  std::vector<Effect> &effects,
-                                  int nbrThreads) {
+void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
+                                  std::vector<Effect> &effects) {
   this->adsr = adsr;
-  this->waveForm = f;
+  this->sampleRate = sampleRate;
+  this->setupStandardSynthConfig();
 }
 
-void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
-                                  Sound::Rank::Preset preset,
-                                  std::vector<Effect> &effects,
-                                  int nbrThreads) {
-  this->adsr = adsr;
-  this->rankPreset = preset;
-  for (const std::string &note : notes::getNotes()) {
-    float frequency = static_cast<float>(notes::getFrequency(note));
-    this->ranks[note] =
-        Sound::Rank::fromPreset(preset, frequency, adsr.length, sampleRate);
-    ;
+void KeyboardStream::setupStandardSynthConfig() {
+  this->synth = {};
+  for (int i = 0; i < 4; i++) {
+    Oscillator synth = Oscillator(this->sampleRate);
+    synth.setVolume(i == 0 ? 0.5 : 0.0);
+    this->synth.push_back(synth);
   }
 }
 
@@ -101,7 +97,9 @@ void KeyboardStream::registerNote(const std::string &note) {
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
     // Note already exists, just update the time
-    this->ranks[it->second.note].reset();
+    for (Oscillator &oscillator : this->synth) {
+      oscillator.reset(it->second.note);
+    }
     it->second.index = 0;
     it->second.release = false;
     it->second.time = KeyboardStream::currentTimeMillis();
@@ -185,84 +183,60 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
 }
 
 float KeyboardStream::generateSample(std::string note, float phase) {
-  if (this->rankPreset != Sound::Rank::Preset::None) {
-    switch (this->rankPreset) {
-    case Sound::Rank::Preset::Sine:
-      return Sound::sinus(phase);
+  float result = 0;
+  float min = static_cast<float>(std::numeric_limits<short>::min());
+  float max = static_cast<float>(std::numeric_limits<short>::max());
 
-    case Sound::Rank::Preset::Triangular:
-      return Sound::triangular(phase);
-
-    case Sound::Rank::Preset::Square:
-      return Sound::square(phase);
-
-    case Sound::Rank::Preset::Saw:
-      return Sound::saw(phase);
-
-    default: {
-      // Custom synthesis logic needed
-      return this->ranks[note].generateRankSample();
-    }
-    }
+  for (Oscillator &oscillator : this->synth) {
+    result += oscillator.volume * oscillator.getSample(note);
   }
 
-  // Fallback to basic waveform selection
-  switch (this->waveForm) {
-  case Sound::Sine:
-    return Sound::sinus(phase);
+  result =
+      std::clamp(result, static_cast<float>(std::numeric_limits<short>::min()),
+                 static_cast<float>(std::numeric_limits<short>::max()));
 
-  case Sound::Triangular:
-    return Sound::triangular(phase);
-
-  case Sound::Square:
-    return Sound::square(phase);
-
-  case Sound::Saw:
-    return Sound::saw(phase);
-
-  case Sound::WaveFile:
-    // Placeholder for WaveFile sample playback
-    return 0.0f;
-
-  default:
-    return 0.0f;
-  }
+  return result;
 }
 
-void KeyboardStream::Synth::setVolume(float volume) { this->volume = volume; }
+void KeyboardStream::Oscillator::setVolume(float volume) {
+  this->volume = volume;
+}
 
 using Pipe = std::pair<Note, Sound::WaveForm>;
-void KeyboardStream::Synth::setOctave(int octave) {
+void KeyboardStream::Oscillator::setOctave(int octave) {
   this->octave = octave;
   this->updateFrequencies();
 }
 
-void KeyboardStream::Synth::setDetune(int detune) {
+void KeyboardStream::Oscillator::setDetune(int detune) {
   this->detune = detune;
   this->updateFrequencies();
 }
 
-void KeyboardStream::Synth::setADSR(ADSR adsr) { this->adsr = adsr; }
+void KeyboardStream::Oscillator::setADSR(ADSR adsr) { this->adsr = adsr; }
 
-void KeyboardStream::Synth::setSound(Sound::Rank::Preset sound) {
+void KeyboardStream::Oscillator::setSound(Sound::Rank::Preset sound) {
   this->sound = sound;
 }
 
-float KeyboardStream::Synth::getSample(const std::string &note) {
+float KeyboardStream::Oscillator::getSample(const std::string &note) {
+  if (!this->initialized) {
+    this->initialize();
+  }
   float result = 0;
   if (this->ranks.find(note) != this->ranks.end()) {
-    this->ranks[note].generateRankSample();
+    result = this->ranks[note].generateRankSample();
   }
   return result;
 }
 
-void KeyboardStream::Synth::reset(const std::string &note) {
+void KeyboardStream::Oscillator::reset(const std::string &note) {
   if (this->ranks.find(note) != this->ranks.end()) {
     this->ranks[note].reset();
   }
 }
 
-void KeyboardStream::Synth::initialize(int sampleRate) {
+void KeyboardStream::Oscillator::initialize() {
   std::vector<std::string> notes = notes::getNotes();
   // Ensure nbrThreads is sensible
   int nbrThreads = 4;
@@ -282,7 +256,7 @@ void KeyboardStream::Synth::initialize(int sampleRate) {
     for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
       const auto &key = notes[bufferIndex];
       // Bottom row (one octave lower than home row)
-      Note n = Note(key, this->adsr.length, sampleRate);
+      Note n = Note(key, this->adsr.length, this->sampleRate);
 
       float frequency = notes::getFrequency(key);
       Sound::Rank r = Sound::Rank::fromPreset(this->sound, frequency,
@@ -308,4 +282,27 @@ void KeyboardStream::Synth::initialize(int sampleRate) {
   }
 
   this->initialized = true;
+}
+
+std::string KeyboardStream::Oscillator::printSynthConfig() {
+  std::ostringstream out;
+
+  out << "Synth Configuration:\n";
+  out << "--------------------\n";
+  out << "Sample Rate: " << sampleRate << "\n";
+  out << "Volume: " << volume << "\n";
+  out << "Octave: " << octave << "\n";
+  out << "Detune: " << detune << "\n";
+  out << "Sound Preset: " << Sound::Rank::presetStr(sound) << "\n";
+
+  out << "ADSR Envelope:\n";
+  out << "  Amplitude: " << adsr.amplitude << "\n";
+  out << "  Quantas: " << adsr.quantas << "\n";
+  out << "  QADSR: [" << adsr.qadsr[0] << ", " << adsr.qadsr[1] << ", "
+      << adsr.qadsr[2] << ", " << adsr.qadsr[3] << "]\n";
+  out << "  Length: " << adsr.length << "\n";
+  out << "  Quantas Length: " << adsr.quantas_length << "\n";
+  out << "  Sustain Level: " << adsr.sustain_level << "\n";
+
+  return out.str();
 }

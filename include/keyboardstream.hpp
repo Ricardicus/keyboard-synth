@@ -67,10 +67,7 @@ public:
     this->loaderFunc = func;
   }
 
-  void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                    std::vector<Effect> &effects, int nbrThreads);
-  void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
-                    std::vector<Effect> &effects, int nbrThreads);
+  void prepareSound(int sampleRate, ADSR &adsr, std::vector<Effect> &effects);
   void fillBuffer(short *buffer, const int len);
   void registerNote(const std::string &note);
   void registerNoteRelease(const std::string &note);
@@ -108,14 +105,19 @@ public:
 
   float generateSample(std::string note, float phase);
 
-  class Synth {
+  class Oscillator {
   public:
     float volume;
     int octave;
     int detune;
     ADSR adsr;
-    Sound::Rank::Preset sound;
+    Sound::Rank::Preset sound = Sound::Rank::Preset::Sine;
     int sampleRate;
+
+    Oscillator(int sampleRate) {
+      this->sampleRate = sampleRate;
+      this->initialize();
+    }
 
     void setVolume(float volume);
     void setOctave(int octave);
@@ -123,7 +125,9 @@ public:
     void setADSR(ADSR adsr);
     void setSound(Sound::Rank::Preset sound);
 
-    void initialize(int sampleRate);
+    void initialize();
+
+    std::string printSynthConfig();
 
     float getSample(const std::string &note);
     void reset(const std::string &note);
@@ -154,6 +158,8 @@ public:
     int index = 0;
   };
 
+  std::vector<Oscillator> synth;
+
 private:
   std::map<std::string, std::string> soundMap;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
@@ -162,10 +168,8 @@ private:
   int sampleRate;
   std::mutex mtx;
 
-  std::map<std::string, int> keyToBufferIndex;
   std::map<std::string, Note> notes;
   std::map<std::string, NotePress> notesPressed;
-  std::thread keyboardPressWatchdog;
 
   short amplitude = 32767;
   float duration = 0.1f;
@@ -176,6 +180,8 @@ private:
   std::map<std::string, Sound::Rank> ranks;
 
   float volume = 1.0;
+
+  void setupStandardSynthConfig();
 
   std::map<int, std::string> keyPressToNote = {
       {static_cast<int>('1'), "C5"}, {static_cast<int>('2'), "D5"},
