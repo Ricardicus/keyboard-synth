@@ -127,7 +127,7 @@ public:
 
     void initialize();
 
-    std::string printSynthConfig();
+    std::string printSynthConfig() const;
 
     float getSample(const std::string &note);
     void reset(const std::string &note);
@@ -159,6 +159,8 @@ public:
   };
 
   std::vector<Oscillator> synth;
+
+  void printSynthConfig() const;
 
 private:
   std::map<std::string, std::string> soundMap;

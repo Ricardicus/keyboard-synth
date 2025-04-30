@@ -284,7 +284,7 @@ void KeyboardStream::Oscillator::initialize() {
   this->initialized = true;
 }
 
-std::string KeyboardStream::Oscillator::printSynthConfig() {
+std::string KeyboardStream::Oscillator::printSynthConfig() const {
   std::ostringstream out;
 
   out << "Synth Configuration:\n";
@@ -305,4 +305,18 @@ std::string KeyboardStream::Oscillator::printSynthConfig() {
   out << "  Sustain Level: " << adsr.sustain_level << "\n";
 
   return out.str();
+}
+
+void KeyboardStream::printSynthConfig() const {
+  int synthIndex = 1;
+  for (const Oscillator &oscillator : this->synth) {
+    // Section header
+    attron(COLOR_PAIR(7) | A_BOLD);
+    printw("======== Oscillator %d ========\n", synthIndex);
+    attroff(COLOR_PAIR(7) | A_BOLD);
+
+    attron(COLOR_PAIR(4));
+    printw("%s", oscillator.printSynthConfig().c_str());
+    attroff(COLOR_PAIR(4));
+  }
 }
