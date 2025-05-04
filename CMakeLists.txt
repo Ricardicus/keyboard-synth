@@ -67,10 +67,13 @@ find_package(SDL2 QUIET)
 if(SDL2_FOUND)
     message(STATUS "SDL2 found. Building streamtest.")
     
-    add_executable(streamtest src/stream_test.cpp)
+    add_subdirectory(external/civetweb)
 
-    target_include_directories(streamtest PRIVATE ${SDL2_INCLUDE_DIRS})
-    target_link_libraries(streamtest keylib midifile ${SDL2_LIBRARIES})
+    add_executable(streamtest src/stream_test.cpp external/civetweb/src/CivetServer.cpp)
+
+    target_include_directories(streamtest PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(streamtest PRIVATE CIVETWEB)
+    target_link_libraries(streamtest civetweb-c-library keylib midifile ${SDL2_LIBRARIES})
 
     add_executable(audiolizer src/audiolizer.cpp)
 

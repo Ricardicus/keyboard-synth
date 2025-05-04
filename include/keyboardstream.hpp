@@ -107,9 +107,9 @@ public:
 
   class Oscillator {
   public:
-    float volume;
-    int octave;
-    int detune;
+    float volume = 0;
+    int octave = 0;
+    int detune = 0;
     ADSR adsr;
     Sound::Rank::Preset sound = Sound::Rank::Preset::Sine;
     int sampleRate;

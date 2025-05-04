@@ -12,12 +12,74 @@
 #include <stdio.h>
 
 #include <SDL2/SDL.h>
+#include <civetweb.h>
+#include <json.hpp>
+
+using json = nlohmann::json;
 
 #include "adsr.hpp"
 #include "effect.hpp"
 #include "keyboardstream.hpp"
 
 constexpr int BUFFER_SIZE = 512;
+
+// API handler for /api/oscillators
+int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
+  const struct mg_request_info *req_info = mg_get_request_info(conn);
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+
+  if (std::string(req_info->request_method) == "GET") {
+    json response = json::array();
+    for (const auto &osc : kbs->synth) {
+      response.push_back({{"volume", osc.volume},
+                          {"octave", osc.octave},
+                          {"detune", osc.detune}});
+    }
+
+    std::string body = response.dump();
+    mg_printf(conn,
+              "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+              "Content-Length: %zu\r\n\r\n%s",
+              body.size(), body.c_str());
+    return 200;
+
+  } else if (std::string(req_info->request_method) == "POST") {
+    char buffer[1024];
+    int len = mg_read(conn, buffer, sizeof(buffer) - 1);
+    buffer[len] = '\0';
+
+    try {
+      json body = json::parse(buffer);
+      if (!body.contains("id") || !body["id"].is_number_integer()) {
+        mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nMissing 'id'");
+        return 400;
+      }
+
+      int id = body["id"];
+      if (id < 0 || id >= (int)kbs->synth.size()) {
+        mg_printf(conn, "HTTP/1.1 404 Not Found\r\n\r\nInvalid ID");
+        return 404;
+      }
+
+      if (body.contains("volume"))
+        kbs->synth[id].volume = body["volume"];
+      if (body.contains("octave"))
+        kbs->synth[id].octave = body["octave"];
+      if (body.contains("detune"))
+        kbs->synth[id].detune = body["detune"];
+
+      mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+      return 200;
+
+    } catch (...) {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+      return 400;
+    }
+  }
+
+  mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+  return 405;
+}
 
 // MIDI note number to frequency
 float noteToFreq(int note) { return 440.0f * pow(2, (note - 69) / 12.0f); }
@@ -517,6 +579,24 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
   return 0;
 }
 
+void start_http_server(KeyboardStream *kbs) {
+  const char *options[] = {"document_root", "public", "listening_ports", "8080",
+                           nullptr};
+
+  static struct mg_callbacks callbacks = {};
+  static struct mg_context *ctx = mg_start(&callbacks, nullptr, options);
+
+  mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
+
+  printf("[HTTP] Server running at http://localhost:8080\n");
+
+  // Run forever — or you can add shutdown logic
+  while (true)
+    std::this_thread::sleep_for(std::chrono::hours(1));
+
+  mg_stop(ctx);
+}
+
 int main(int argc, char *argv[]) {
   float duration = 0.1f;
   short amplitude = 32767;
@@ -689,6 +769,9 @@ int main(int argc, char *argv[]) {
 
     SDL_Event event;
     bool running = true;
+
+    std::thread http_thread([&stream]() { start_http_server(&stream); });
+    http_thread.detach(); // runs independently, main thread continues
 
     while (running) {
       while (SDL_PollEvent(&event)) {
