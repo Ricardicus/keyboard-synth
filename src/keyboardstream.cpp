@@ -109,6 +109,7 @@ void KeyboardStream::registerNote(const std::string &note) {
     np.time = KeyboardStream::currentTimeMillis();
     np.note = note;
     np.adsr = this->adsr;
+    np.frequency = notes::getFrequency(note);
     np.index = 0;
     this->notesPressed[note] = np;
   }
@@ -139,32 +140,29 @@ void KeyboardStream::registerButtonRelease(int pressed) {
   }
 }
 
-void KeyboardStream::fillBuffer(short *buffer, const int len) {
+void KeyboardStream::fillBuffer(float *buffer, const int len) {
   float deltaT = 1.0f / this->sampleRate;
 
   for (int i = 0; i < len; i++) {
-    int sample = 0.0;
-    short factor = this->notesPressed.size();
-
-    std::lock_guard<std::mutex> lock(this->mtx);
+    float sample = 0.0;
+    int factor = 1;
 
     for (auto it = notesPressed.begin(); it != notesPressed.end();) {
       NotePress &note = it->second;
       int index = note.index;
-      int adsr = note.adsr.response(index);
-      double freq = notes::getFrequency(note.note);
+      float adsr = note.adsr.response(index);
+      double freq = note.frequency;
 
       // Add sine wave at current phase
       if (note.adsr.reached_sustain(index) && !note.release) {
-        adsr = note.adsr.sustain();
+        adsr = static_cast<float>(note.adsr.sustain());
       } else {
         // Advance index for the next sample
-        adsr = note.adsr.response(index);
+        adsr = static_cast<float>(note.adsr.response(index));
         note.index++;
       }
 
-      sample += static_cast<short>(static_cast<float>(adsr) *
-                                   generateSample(note.note, note.phase));
+      sample += adsr * generateSample(note.note, note.phase);
       // Advance phase for next sample
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
@@ -178,7 +176,8 @@ void KeyboardStream::fillBuffer(short *buffer, const int len) {
     }
 
     // Normalize and write to buffer
-    buffer[i] = static_cast<short>(sample / 10); // Adjust volume
+    float gain = 0.0001f; // fixed overall volume
+    buffer[i] = sample * gain;
   }
 }
 

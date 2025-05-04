@@ -90,8 +90,8 @@ bool fileExists(const std::string &file) {
 
 void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *ks = static_cast<KeyboardStream *>(userdata);
-  short *streamBuf = reinterpret_cast<short *>(stream);
-  int samples = len / sizeof(short);
+  float *streamBuf = reinterpret_cast<float *>(stream);
+  int samples = len / sizeof(float);
   ks->fillBuffer(streamBuf, samples);
 }
 
@@ -129,6 +129,13 @@ public:
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
     printw("%.2f\n", volume);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Sample rate: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", SAMPLERATE);
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -613,7 +620,7 @@ int main(int argc, char *argv[]) {
   SDL_AudioSpec desired, obtained;
   SDL_zero(desired);
   desired.freq = SAMPLERATE;
-  desired.format = AUDIO_S16SYS;
+  desired.format = AUDIO_F32SYS;
   desired.channels = 1;
   desired.samples = BUFFER_SIZE;
   desired.callback = audioCallback;

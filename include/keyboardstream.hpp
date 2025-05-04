@@ -20,7 +20,7 @@
 
 #include "json.hpp"
 
-static constexpr int SAMPLERATE = 44100;
+constexpr int SAMPLERATE = 11025;
 
 class KeyboardStream {
 public:
@@ -68,7 +68,7 @@ public:
   }
 
   void prepareSound(int sampleRate, ADSR &adsr, std::vector<Effect> &effects);
-  void fillBuffer(short *buffer, const int len);
+  void fillBuffer(float *buffer, const int len);
   void registerNote(const std::string &note);
   void registerNoteRelease(const std::string &note);
   void registerButtonPress(int note);
@@ -153,6 +153,7 @@ public:
     ADSR adsr;
     std::string note;
     long time;
+    double frequency;
     float phase = 0;
     bool release = false;
     int index = 0;
