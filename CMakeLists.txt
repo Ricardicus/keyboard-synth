@@ -69,11 +69,11 @@ if(SDL2_FOUND)
     
     add_subdirectory(external/civetweb)
 
-    add_executable(streamtest src/stream_test.cpp external/civetweb/src/CivetServer.cpp)
+    add_executable(keyboardstream src/stream_test.cpp external/civetweb/src/CivetServer.cpp)
 
-    target_include_directories(streamtest PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
-    target_compile_definitions(streamtest PRIVATE CIVETWEB)
-    target_link_libraries(streamtest civetweb-c-library keylib midifile ${SDL2_LIBRARIES})
+    target_include_directories(keyboardstream PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(keyboardstream PRIVATE CIVETWEB)
+    target_link_libraries(keyboardstream civetweb-c-library keylib midifile ${SDL2_LIBRARIES})
 
     add_executable(audiolizer src/audiolizer.cpp)
 

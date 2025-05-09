@@ -40,7 +40,6 @@ int input_push_handler(struct mg_connection *conn, void *cbdata) {
 
     std::string note = body["key"];
     kbs->registerNote(note);
-    printw("register note: %s\n", note.c_str());
 
     mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
     return 200;
