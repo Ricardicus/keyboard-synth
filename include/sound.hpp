@@ -140,6 +140,52 @@ public:
   }
 
   float generateRankSample();
+  float generateRankSampleIndex(int index);
+
+  static Sound::Rank::Preset fromString(const std::string &str_) {
+    std::string str = str_;
+    std::transform(str.begin(), str.end(), str.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    Sound::Rank::Preset result;
+    if (str == "triangular") {
+      result = Sound::Rank::Preset::Triangular;
+    } else if (str == "saw") {
+      result = Sound::Rank::Preset::Saw;
+    } else if (str == "square") {
+      result = Sound::Rank::Preset::Square;
+    } else if (str == "triangular") {
+      result = Sound::Rank::Preset::Triangular;
+    } else if (str == "sine") {
+      result = Sound::Rank::Preset::Sine;
+    } else if (str == "supersaw") {
+      result = Sound::Rank::Preset::SuperSaw;
+    } else if (str == "fattriangle") {
+      result = Sound::Rank::Preset::FatTriangle;
+    } else if (str == "pulsesquare") {
+      result = Sound::Rank::Preset::PulseSquare;
+    } else if (str == "sinesawdrone") {
+      result = Sound::Rank::Preset::SineSawDrone;
+    } else if (str == "supersawsub") {
+      result = Sound::Rank::Preset::SuperSawWithSub;
+    } else if (str == "glitchmix") {
+      result = Sound::Rank::Preset::GlitchMix;
+    } else if (str == "lushpad") {
+      result = Sound::Rank::Preset::LushPad;
+    } else if (str == "retrolead") {
+      result = Sound::Rank::Preset::RetroLead;
+    } else if (str == "bassgrowl") {
+      result = Sound::Rank::Preset::BassGrowl;
+    } else if (str == "ambientdrone") {
+      result = Sound::Rank::Preset::AmbientDrone;
+    } else if (str == "synthstab") {
+      result = Sound::Rank::Preset::SynthStab;
+    } else if (str == "glassbells") {
+      result = Sound::Rank::Preset::GlassBells;
+    } else if (str == "organtone") {
+      result = Sound::Rank::Preset::OrganTone;
+    }
+    return result;
+  }
 
   static Rank fromPreset(Sound::Rank::Preset preset, float frequency,
                          int length, int sampleRate) {

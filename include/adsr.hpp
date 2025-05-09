@@ -128,6 +128,12 @@ public:
     int decay_end = attack_end + this->quantas_length * this->qadsr[1];
     return decay_end;
   }
+  int get_release_start_index() {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    return sustain_end;
+  }
 
   std::string getCoolASCIVisualization(const std::string &prefix);
 

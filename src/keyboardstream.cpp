@@ -95,28 +95,31 @@ void KeyboardStream::setupStandardSynthConfig() {
 
 void KeyboardStream::registerNote(const std::string &note) {
   auto it = this->notesPressed.find(note);
+
   if (it != this->notesPressed.end()) {
-    // Note already exists, just update the time
-    for (Oscillator &oscillator : this->synth) {
-      oscillator.reset(it->second.note);
-    }
-    it->second.index = 0;
-    it->second.release = false;
-    it->second.time = KeyboardStream::currentTimeMillis();
-  } else {
-    // Note doesn't exist, create a new NotePress
-    NotePress np;
-    np.time = KeyboardStream::currentTimeMillis();
-    np.note = note;
-    np.adsr = this->adsr;
-    np.frequency = notes::getFrequency(note);
-    np.index = 0;
-    this->notesPressed[note] = np;
+    // Note already exists – create a new entry with release = true
+    NotePress releasedNote;
+    releasedNote = it->second;
+    releasedNote.release = true;
+    releasedNote.phase = 0;
+    releasedNote.time = KeyboardStream::currentTimeMillis();
+    std::string newKey = note + "--" + std::to_string(releasedNote.time);
+    this->notesPressed[newKey] = releasedNote;
   }
+
+  // Always create a fresh note entry
+  NotePress np;
+  np.time = KeyboardStream::currentTimeMillis();
+  np.note = note;
+  np.adsr = this->adsr;
+  np.frequency = notes::getFrequency(note);
+  np.index = 0;
+  np.release = false;
+
+  this->notesPressed[note] = np;
 }
 
 void KeyboardStream::registerNoteRelease(const std::string &note) {
-  std::lock_guard<std::mutex> lock(this->mtx);
   auto it = this->notesPressed.find(note);
   if (it != this->notesPressed.end()) {
     it->second.release = true;
@@ -143,31 +146,35 @@ void KeyboardStream::registerButtonRelease(int pressed) {
 void KeyboardStream::fillBuffer(float *buffer, const int len) {
   float deltaT = 1.0f / this->sampleRate;
 
-  for (int i = 0; i < len; i++) {
-    float sample = 0.0;
-    int factor = 1;
+  auto start = std::chrono::high_resolution_clock::now();
 
+  for (int i = 0; i < len; i++) {
+    float sample = 0.0f;
+
+    std::lock_guard<std::mutex> guard(this->mtx);
     for (auto it = notesPressed.begin(); it != notesPressed.end();) {
       NotePress &note = it->second;
       int index = note.index;
-      float adsr = note.adsr.response(index);
+      float adsr;
       double freq = note.frequency;
 
-      // Add sine wave at current phase
+      // Use ADSR envelope
       if (note.adsr.reached_sustain(index) && !note.release) {
         adsr = static_cast<float>(note.adsr.sustain());
       } else {
-        // Advance index for the next sample
         adsr = static_cast<float>(note.adsr.response(index));
         note.index++;
       }
 
-      sample += adsr * generateSample(note.note, note.phase);
-      // Advance phase for next sample
+      sample += adsr * generateSample(note.note, note.phase, note.rankIndex);
+      note.rankIndex++;
+
+      // Advance phase
       note.phase += 2.0f * M_PI * freq * deltaT;
       if (note.phase > 2.0f * M_PI)
-        note.phase -= 2.0f * M_PI; // Wrap around for stability
+        note.phase -= 2.0f * M_PI;
 
+      // Remove if done
       if (note.index >= note.adsr.getLength()) {
         it = notesPressed.erase(it);
       } else {
@@ -175,19 +182,26 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
       }
     }
 
-    // Normalize and write to buffer
-    float gain = 0.0001f; // fixed overall volume
+    // Output sample
+    float gain = 0.0001f;
     buffer[i] = sample * gain;
   }
+
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> duration = end - start;
+
+  // Optionally keep this if debugging:
+  // printw(" %f (%zu) -", duration.count(), notesPressed.size());
+  refresh();
 }
 
-float KeyboardStream::generateSample(std::string note, float phase) {
+float KeyboardStream::generateSample(std::string note, float phase, int index) {
   float result = 0;
   float min = static_cast<float>(std::numeric_limits<short>::min());
   float max = static_cast<float>(std::numeric_limits<short>::max());
 
   for (Oscillator &oscillator : this->synth) {
-    result += oscillator.volume * oscillator.getSample(note);
+    result += oscillator.volume * oscillator.getSample(note, index);
   }
 
   result =
@@ -218,13 +232,14 @@ void KeyboardStream::Oscillator::setSound(Sound::Rank::Preset sound) {
   this->sound = sound;
 }
 
-float KeyboardStream::Oscillator::getSample(const std::string &note) {
+float KeyboardStream::Oscillator::getSample(const std::string &note,
+                                            int index) {
   if (!this->initialized) {
     this->initialize();
   }
   float result = 0;
   if (this->ranks.find(note) != this->ranks.end()) {
-    result = this->ranks[note].generateRankSample();
+    result = this->ranks[note].generateRankSampleIndex(index);
   }
   return result;
 }
@@ -260,10 +275,7 @@ void KeyboardStream::Oscillator::initialize() {
       float frequency = notes::getFrequency(key);
       Sound::Rank r = Sound::Rank::fromPreset(this->sound, frequency,
                                               this->adsr.length, sampleRate);
-      {
-        std::lock_guard<std::mutex> lock(mtx);
-        this->ranks[key] = r;
-      }
+      { this->ranks[key] = r; }
     }
   };
   // Launch threads

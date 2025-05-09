@@ -20,7 +20,7 @@
 
 #include "json.hpp"
 
-constexpr int SAMPLERATE = 11025;
+constexpr int SAMPLERATE = 44100;
 
 class KeyboardStream {
 public:
@@ -103,7 +103,7 @@ public:
     return static_cast<long>(millis);
   }
 
-  float generateSample(std::string note, float phase);
+  float generateSample(std::string note, float phase, int index);
 
   class Oscillator {
   public:
@@ -129,21 +129,21 @@ public:
 
     std::string printSynthConfig() const;
 
-    float getSample(const std::string &note);
+    float getSample(const std::string &note, int index);
     void reset(const std::string &note);
-
-  private:
     void updateFrequencies() {
       for (auto &kv : this->ranks) {
-        Sound::Rank r = kv.second;
+        Sound::Rank &r = kv.second;
         for (Sound::Pipe &pipe : r.pipes) {
-          Note note = pipe.first;
+          Note &note = pipe.first;
           note.frequencyAltered = note.frequency * 2 *
                                   pow(2, this->detune / 1200.0) * 2 *
                                   pow(2, this->octave);
         }
       }
     }
+
+  private:
     int index = 0;
     std::map<std::string, Sound::Rank> ranks;
     bool initialized = false;
@@ -157,11 +157,27 @@ public:
     float phase = 0;
     bool release = false;
     int index = 0;
+    int rankIndex = 0;
+
+    void debugPrint() const {
+      printw("Note: %s | Time: %ld | Freq: %.2f | Release: %s | Index: %d\n",
+             note.c_str(), time, frequency, release ? "true" : "false", index);
+    }
   };
 
   std::vector<Oscillator> synth;
 
   void printSynthConfig() const;
+  void printNotesPressed() const {
+    printw("=== Notes Pressed (%zu entries) ===\n", notesPressed.size());
+    for (const auto &pair : notesPressed) {
+      const std::string &key = pair.first;
+      const NotePress &np = pair.second;
+      printw("Key: %s\n", key.c_str());
+      np.debugPrint(); // Make sure NotePress::debugPrint() is implemented
+    }
+    printw("===================================\n");
+  }
 
 private:
   std::map<std::string, std::string> soundMap;
@@ -171,8 +187,8 @@ private:
   int sampleRate;
   std::mutex mtx;
 
-  std::map<std::string, Note> notes;
-  std::map<std::string, NotePress> notesPressed;
+  std::unordered_map<std::string, Note> notes;
+  std::unordered_map<std::string, NotePress> notesPressed;
 
   short amplitude = 32767;
   float duration = 0.1f;
@@ -180,13 +196,13 @@ private:
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
-  std::map<std::string, Sound::Rank> ranks;
+  std::unordered_map<std::string, Sound::Rank> ranks;
 
   float volume = 1.0;
 
   void setupStandardSynthConfig();
 
-  std::map<int, std::string> keyPressToNote = {
+  std::unordered_map<int, std::string> keyPressToNote = {
       {static_cast<int>('1'), "C5"}, {static_cast<int>('2'), "D5"},
       {static_cast<int>('3'), "E5"}, {static_cast<int>('4'), "F5"},
       {static_cast<int>('5'), "G5"}, {static_cast<int>('6'), "A5"},

@@ -1,0 +1,32 @@
+.keyboard {
+  position: relative;
+  width: fit-content;
+  margin: 2rem auto;
+  display: flex;
+  height: 200px;
+}
+
+.white-key {
+  width: 40px;
+  height: 200px;
+  background: white;
+  border: 1px solid black;
+  z-index: 1;
+  position: relative;
+}
+
+.black-key {
+  width: 28px;
+  height: 120px;
+  background: black;
+  color: white;
+  position: absolute;
+  z-index: 2;
+  margin-left: -14px;
+  margin-right: -14px;
+  transform: translateX(-50%);
+}
+
+.key:active {
+  opacity: 0.7;
+}

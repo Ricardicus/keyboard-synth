@@ -23,6 +23,61 @@ using json = nlohmann::json;
 
 constexpr int BUFFER_SIZE = 512;
 
+int input_push_handler(struct mg_connection *conn, void *cbdata) {
+  refresh();
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+
+  char buffer[128];
+  int len = mg_read(conn, buffer, sizeof(buffer) - 1);
+  buffer[len] = '\0';
+
+  try {
+    json body = json::parse(buffer);
+    if (!body.contains("key") || !body["key"].is_string()) {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nMissing 'key'");
+      return 400;
+    }
+
+    std::string note = body["key"];
+    kbs->registerNote(note);
+    printw("register note: %s\n", note.c_str());
+
+    mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+    return 200;
+
+  } catch (...) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+    return 400;
+  }
+}
+
+int input_release_handler(struct mg_connection *conn, void *cbdata) {
+  refresh();
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+
+  char buffer[128];
+  int len = mg_read(conn, buffer, sizeof(buffer) - 1);
+  buffer[len] = '\0';
+
+  try {
+    json body = json::parse(buffer);
+    if (!body.contains("key") || !body["key"].is_string()) {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nMissing 'key'");
+      return 400;
+    }
+
+    std::string note = body["key"];
+    kbs->registerNoteRelease(note);
+
+    mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+    return 200;
+
+  } catch (...) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+    return 400;
+  }
+}
+
 // API handler for /api/oscillators
 int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
@@ -33,7 +88,8 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
     for (const auto &osc : kbs->synth) {
       response.push_back({{"volume", osc.volume},
                           {"octave", osc.octave},
-                          {"detune", osc.detune}});
+                          {"detune", osc.detune},
+                          {"sound", Sound::Rank::presetStr(osc.sound)}});
     }
 
     std::string body = response.dump();
@@ -63,10 +119,16 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
 
       if (body.contains("volume"))
         kbs->synth[id].volume = body["volume"];
+      if (body.contains("sound")) {
+        kbs->synth[id].sound = Sound::Rank::fromString(body["sound"]);
+        kbs->synth[id].initialize();
+      }
       if (body.contains("octave"))
         kbs->synth[id].octave = body["octave"];
       if (body.contains("detune"))
         kbs->synth[id].detune = body["detune"];
+
+      kbs->synth[id].updateFrequencies();
 
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
       return 200;
@@ -402,43 +464,9 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     if (arg == "--form") {
       if (i + 1 < argc) {
         std::string form = argv[i + 1];
-        if (form == "triangular") {
-          config.rankPreset = Sound::Rank::Preset::Triangular;
-        } else if (form == "saw") {
-          config.rankPreset = Sound::Rank::Preset::Saw;
-        } else if (form == "square") {
-          config.rankPreset = Sound::Rank::Preset::Square;
-        } else if (form == "triangular") {
-          config.rankPreset = Sound::Rank::Preset::Triangular;
-        } else if (form == "sine") {
-          config.rankPreset = Sound::Rank::Preset::Sine;
-        } else if (form == "supersaw") {
-          config.rankPreset = Sound::Rank::Preset::SuperSaw;
-        } else if (form == "fattriangle") {
-          config.rankPreset = Sound::Rank::Preset::FatTriangle;
-        } else if (form == "pulsesquare") {
-          config.rankPreset = Sound::Rank::Preset::PulseSquare;
-        } else if (form == "sinesawdrone") {
-          config.rankPreset = Sound::Rank::Preset::SineSawDrone;
-        } else if (form == "supersawsub") {
-          config.rankPreset = Sound::Rank::Preset::SuperSawWithSub;
-        } else if (form == "glitchmix") {
-          config.rankPreset = Sound::Rank::Preset::GlitchMix;
-        } else if (form == "lushpad") {
-          config.rankPreset = Sound::Rank::Preset::LushPad;
-        } else if (form == "retrolead") {
-          config.rankPreset = Sound::Rank::Preset::RetroLead;
-        } else if (form == "bassgrowl") {
-          config.rankPreset = Sound::Rank::Preset::BassGrowl;
-        } else if (form == "ambientdrone") {
-          config.rankPreset = Sound::Rank::Preset::AmbientDrone;
-        } else if (form == "synthstab") {
-          config.rankPreset = Sound::Rank::Preset::SynthStab;
-        } else if (form == "glassbells") {
-          config.rankPreset = Sound::Rank::Preset::GlassBells;
-        } else if (form == "organtone") {
-          config.rankPreset = Sound::Rank::Preset::OrganTone;
-        }
+        std::transform(form.begin(), form.end(), form.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+        config.rankPreset = Sound::Rank::fromString(form);
       }
     } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
@@ -594,6 +622,8 @@ void start_http_server(KeyboardStream *kbs) {
   static struct mg_context *ctx = mg_start(&callbacks, nullptr, options);
 
   mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
+  mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
 
   printf("[HTTP] Server running at http://localhost:8080\n");
 
@@ -773,6 +803,18 @@ int main(int argc, char *argv[]) {
       return 1;
     }
     refresh();
+
+    int iscapture = 0; // 0 = output devices, 1 = input devices
+    int count = SDL_GetNumAudioDevices(iscapture);
+    if (count < 0) {
+      printw("SDL_GetNumAudioDevices failed: %s\n", SDL_GetError());
+    } else {
+      printw("Audio devices (%s):\n", iscapture ? "input" : "output");
+      for (int i = 0; i < count; ++i) {
+        const char *name = SDL_GetAudioDeviceName(i, iscapture);
+        printw("  %d: %s\n", i, name);
+      }
+    }
 
     SDL_Event event;
     bool running = true;

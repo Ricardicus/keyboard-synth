@@ -250,6 +250,11 @@ std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr,
   return samples;
 }
 
+float Sound::Rank::generateRankSampleIndex(int index) {
+  this->generatorIndex = index;
+  return this->generateRankSample();
+}
+
 float Sound::Rank::generateRankSample() {
   float val = 0;
   for (const Pipe &pipe : this->pipes) {
