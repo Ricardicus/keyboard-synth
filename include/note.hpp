@@ -20,6 +20,7 @@ public:
   void setBuffer(std::vector<short> &buffer) { this->buffer = buffer; }
   std::vector<short> buffer;
   float frequency = 0;
+  float frequencyAltered = 0;
   int sampleRate = 0;
   int length = 0;
   float volume = 1.0;

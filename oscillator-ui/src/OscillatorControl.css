@@ -1,0 +1,32 @@
+.oscillator-card {
+  background-color: #2d2d2d;
+  padding: 1rem;
+  border-radius: 10px;
+  width: 250px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+.oscillator-card label {
+  display: block;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+
+.oscillator-card input[type="range"] {
+  width: 100%;
+}
+
+.oscillator-card select,
+.oscillator-card input[type="number"] {
+  width: 100%;
+  padding: 0.3rem;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin-top: 0.3rem;
+}
+
+.oscillator-card h3 {
+  margin-top: 0;
+}

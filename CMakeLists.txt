@@ -52,6 +52,7 @@ add_library(keylib STATIC
     src/effect.cpp
     src/adsr.cpp
     src/iir.cpp
+    src/keyboardstream.cpp
 )
 
 # Link dependencies to the keylib library
@@ -62,6 +63,26 @@ target_include_directories(keylib PUBLIC include external/nlohmann external/midi
 # Define the keyboard executable
 add_executable(keyboard src/main.cpp)
 
+find_package(SDL2 QUIET)
+if(SDL2_FOUND)
+    message(STATUS "SDL2 found. Building streamtest.")
+    
+    add_subdirectory(external/civetweb)
+
+    add_executable(keyboardstream src/stream_test.cpp external/civetweb/src/CivetServer.cpp)
+
+    target_include_directories(keyboardstream PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
+    target_compile_definitions(keyboardstream PRIVATE CIVETWEB)
+    target_link_libraries(keyboardstream civetweb-c-library keylib midifile ${SDL2_LIBRARIES})
+
+    add_executable(audiolizer src/audiolizer.cpp)
+
+    target_include_directories(audiolizer PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(audiolizer keylib midifile ${SDL2_LIBRARIES})
+else()
+    message(WARNING "SDL2 not found. Skipping build of streamtest.")
+endif()
+
 # Link keylib to the keyboard executable
-target_link_libraries(keyboard keylib midifile pthread)
+target_link_libraries(keyboard keylib midifile)
 

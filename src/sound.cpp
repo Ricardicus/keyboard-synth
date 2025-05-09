@@ -65,9 +65,9 @@ std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
   return result;
 }
 
-static float sinus(float f) { return sin(f); }
+float Sound::sinus(float f) { return sin(f); }
 
-static float square(float f) {
+float Sound::square(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI) {
     return 1.0;
@@ -75,7 +75,7 @@ static float square(float f) {
   return -1.0;
 }
 
-static float square(float f, float factor) {
+float Sound::square(float f, float factor) {
   f = fmod(f, 2.0 * PI);
   if (f < PI * factor) {
     return 1.0;
@@ -83,7 +83,7 @@ static float square(float f, float factor) {
   return -1.0;
 }
 
-static float triangular(float f) {
+float Sound::triangular(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI / 2.0) {
     return f / (PI / 2.0);
@@ -95,7 +95,7 @@ static float triangular(float f) {
   return 1.0;
 }
 
-static float saw(float f) {
+float Sound::saw(float f) {
   f = fmod(f, 2.0 * PI);
   if (f < PI / 2.0) {
     return f / (PI / 2.0);
@@ -107,7 +107,7 @@ static float saw(float f) {
   return 1.0;
 }
 
-static float white_noise(float f) {
+float Sound::white_noise(float f) {
   return (float)(rand() % 2001 - 1000) /
          1000.0; // Random value between -1.0 and 1.0
 }
@@ -248,6 +248,157 @@ std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr,
   }
 
   return samples;
+}
+
+float Sound::Rank::generateRankSampleIndex(int index) {
+  this->generatorIndex = index;
+  return this->generateRankSample();
+}
+
+float Sound::Rank::generateRankSample() {
+  float val = 0;
+  for (const Pipe &pipe : this->pipes) {
+    Note note = pipe.first;
+    Sound::WaveForm form = pipe.second;
+    float deltaT = 1.0f / note.sampleRate;
+    float addition;
+    float frequency = note.frequency;
+    if (note.frequencyAltered > 0) {
+      frequency = note.frequencyAltered;
+    }
+
+    switch (form) {
+    case Sound::WaveForm::Sine: {
+      addition = note.volume * Sound::sinus(2.0f * PI * frequency *
+                                            this->generatorIndex * deltaT);
+      if (this->effects.size() > 0) {
+        for (int e = 0; e < this->effects.size(); e++) {
+          switch (this->effects[e].effectType) {
+          case Effect::Type::Vibrato: {
+            addition =
+                note.volume *
+                Sound::sinus(
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
+                    this->effects[e].vibratoConfig.depth *
+                        Sound::sinus(2.0f * PI *
+                                     this->effects[e].vibratoConfig.frequency *
+                                     this->generatorIndex * deltaT));
+            break;
+          }
+          default:
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case Sound::WaveForm::Triangular: {
+      addition = note.volume * Sound::triangular(2.0f * PI * frequency *
+                                                 this->generatorIndex * deltaT);
+      if (this->effects.size() > 0) {
+        for (int e = 0; e < this->effects.size(); e++) {
+          switch (this->effects[e].effectType) {
+          case Effect::Type::Vibrato: {
+            addition =
+                note.volume *
+                Sound::triangular(
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
+                    this->effects[e].vibratoConfig.depth *
+                        sin(2.0f * PI *
+                            this->effects[e].vibratoConfig.frequency *
+                            this->generatorIndex * deltaT));
+          }
+          default:
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case Sound::WaveForm::Square: {
+      addition = note.volume * Sound::square(2.0f * PI * frequency *
+                                             this->generatorIndex * deltaT);
+      if (this->effects.size() > 0) {
+        for (int e = 0; e < this->effects.size(); e++) {
+          switch (this->effects[e].effectType) {
+          case Effect::Type::Vibrato: {
+            addition =
+                note.volume *
+                Sound::square(2.0f * PI * frequency * this->generatorIndex *
+                                  deltaT,
+                              this->effects[e].vibratoConfig.depth *
+                                  sin(2.0f * PI *
+                                      this->effects[e].vibratoConfig.frequency *
+                                      this->generatorIndex * deltaT));
+            break;
+          }
+          case Effect::Type::DutyCycle: {
+            addition =
+                note.volume *
+                Sound::square(
+                    2.0f * PI * frequency * this->generatorIndex * deltaT +
+                    this->effects[e].dutyCycleConfig.depth *
+                        sin(2.0f * PI *
+                            this->effects[e].dutyCycleConfig.frequency *
+                            this->generatorIndex * deltaT));
+            break;
+          }
+          default:
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case Sound::WaveForm::Saw: {
+      addition = note.volume * Sound::saw(2.0f * PI * frequency *
+                                          this->generatorIndex * deltaT);
+      if (this->effects.size() > 0) {
+        for (int e = 0; e < this->effects.size(); e++) {
+          switch (this->effects[e].effectType) {
+          case Effect::Type::Vibrato: {
+            addition =
+                note.volume *
+                Sound::saw(2.0f * PI * frequency * this->generatorIndex *
+                               deltaT +
+                           this->effects[e].vibratoConfig.depth *
+                               sin(2.0f * PI *
+                                   this->effects[e].vibratoConfig.frequency *
+                                   this->generatorIndex * deltaT));
+          }
+          default:
+            break;
+          }
+        }
+      }
+      break;
+    }
+    case Sound::WaveForm::WaveFile:
+      break;
+    }
+
+    if (this->effects.size() > 0) {
+      for (int e = 0; e < this->effects.size(); e++) {
+        switch (this->effects[e].effectType) {
+        case Effect::Type::Tremolo: {
+          addition = (this->effects[e].tremoloConfig.depth *
+                      sin(this->effects[e].tremoloConfig.frequency *
+                          this->generatorIndex * deltaT) *
+                      addition) +
+                     (1.0 - this->effects[e].tremoloConfig.depth) * addition;
+          break;
+        }
+        default:
+          break;
+        }
+      }
+    }
+
+    val += addition;
+  }
+
+  this->generatorIndex++;
+  return val;
 }
 
 std::vector<short> Sound::generateWave(Rank &rank) {

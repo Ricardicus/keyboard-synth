@@ -51,7 +51,6 @@ public:
     return *this;
   }
 
-public:
   int response(int x) {
     int value = 0;
     int i;
@@ -65,8 +64,29 @@ public:
     if (x < decay_end)
       return decay(x);
     if (x < sustain_end)
-      return sustain(x);
+      return sustain();
     return release(x);
+  }
+
+  bool reached_sustain(int index) {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    int release_end = sustain_end + this->quantas_length * this->qadsr[3];
+    if (index > decay_end) {
+      return true;
+    }
+    return false;
+  }
+  bool reached_sustain_end(int index) {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    int release_end = sustain_end + this->quantas_length * this->qadsr[3];
+    if (index > sustain_end) {
+      return true;
+    }
+    return false;
   }
 
   int getLength() { return this->length; };
@@ -86,22 +106,33 @@ public:
                    (((float)x - attack_end) / decay_length) *
                        (this->amplitude - this->sustain_level));
   }
-  short sustain(int x) {
-    (void)x;
-    return (short)this->sustain_level;
-  }
+  short sustain() { return (short)this->sustain_level; }
   short release(int x) {
     int sustain_end = this->quantas_length *
                       (this->qadsr[0] + this->qadsr[1] + this->qadsr[2]);
     int release_length = this->length - sustain_end;
-    return (short)this->sustain_level -
-           (((float)x - sustain_end) / release_length) * this->sustain_level;
+    return x > getLength() ? 0
+                           : (short)this->sustain_level -
+                                 (((float)x - sustain_end) / release_length) *
+                                     this->sustain_level;
   }
 
   void update_len() {
     this->quantas =
         this->qadsr[0] + this->qadsr[1] + this->qadsr[2] + this->qadsr[3];
     this->length = this->quantas_length * this->quantas;
+  }
+
+  int get_sustain_start_index() {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    return decay_end;
+  }
+  int get_release_start_index() {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    int decay_end = attack_end + this->quantas_length * this->qadsr[1];
+    int sustain_end = decay_end + this->quantas_length * this->qadsr[2];
+    return sustain_end;
   }
 
   std::string getCoolASCIVisualization(const std::string &prefix);

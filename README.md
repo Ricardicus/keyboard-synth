@@ -110,7 +110,10 @@ sudo apt-get install libopenal-dev
 sudo apt-get install libncurses5-dev
 ```
 
-# Todo
+## Experiments
 
-- API
-
+All of the above is true for the OpenAL implementation. I am now, working on a bit of a side quest.
+I want to test audio libraries that properly support streaming (using timed callbacks) and
+have ventured into the SDL2 waters with that. I am also building a front end, where one can set
+the sound of the keyboard with the browser. All of this is buildable only if one has SDL2 installed.
+The program in question is "keyboardstream". Build like above, launch "./build/keyboardstream" and then visit localhost:8080 to edit the sounds and stuff. I have not added support for reverb and such there yet.. It is different when only parts of the sound are generated in real time. 
