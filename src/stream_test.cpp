@@ -548,17 +548,17 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       effect.effectType = Effect::Type::Iir;
       config.effectIIR = effect;
       config.effectIIR->sampleRate = SAMPLERATE;
-      IIR lowPass = IIRFilters::lowPass(config.effectIIR->sampleRate,
-                                        std::stof(argv[i + 1]));
-      config.effectIIR->iirs.push_back(lowPass);
+      IIR<float> lowPass = IIRFilters::lowPass<float>(
+          config.effectIIR->sampleRate, std::stof(argv[i + 1]));
+      config.effectIIR->iirsf.push_back(lowPass);
     } else if (arg == "--highpass" && i + 1 < argc) {
       Effect effect;
       effect.effectType = Effect::Type::Iir;
       config.effectIIR = effect;
       config.effectIIR->sampleRate = SAMPLERATE;
-      IIR lowPass = IIRFilters::highPass(config.effectIIR->sampleRate,
-                                         std::stof(argv[i + 1]));
-      config.effectIIR->iirs.push_back(lowPass);
+      IIR<float> lowPass = IIRFilters::highPass<float>(
+          config.effectIIR->sampleRate, std::stof(argv[i + 1]));
+      config.effectIIR->iirsf.push_back(lowPass);
     } else if (arg == "--chorus_delay" && i + 1 < argc) {
       if (!config.effectChorus) {
         Effect effect;

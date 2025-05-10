@@ -181,6 +181,7 @@ public:
 
 private:
   std::map<std::string, std::string> soundMap;
+  std::vector<Effect> effects;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
   int bufferSize;

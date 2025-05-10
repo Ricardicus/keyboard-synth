@@ -81,6 +81,7 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
                                   std::vector<Effect> &effects) {
   this->adsr = adsr;
   this->sampleRate = sampleRate;
+  this->effects = effects;
   this->setupStandardSynthConfig();
 }
 
@@ -184,7 +185,8 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
 
     // Output sample
     float gain = 0.0001f;
-    buffer[i] = sample * gain;
+    float entry = sample * gain;
+    buffer[i] = entry;
   }
 
   auto end = std::chrono::high_resolution_clock::now();

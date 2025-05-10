@@ -23,7 +23,8 @@ public:
   std::vector<short> apply_iir(const std::vector<short> &buffer, size_t maxLen);
 
   std::vector<FIR> firs;
-  std::vector<IIR> iirs;
+  std::vector<IIR<short>> iirs;
+  std::vector<IIR<float>> iirsf;
 
   enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle, Tremolo };
 
