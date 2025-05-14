@@ -1,7 +1,32 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig, type PluginOption } from 'vite';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeModulesPolyfillPlugin }  from '@esbuild-plugins/node-modules-polyfill';
+import rollupNodePolyFill               from 'rollup-plugin-polyfill-node';
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
-})
+  optimizeDeps: {
+    esbuildOptions: {
+      plugins: [
+        NodeGlobalsPolyfillPlugin({ buffer: true, process: true }),
+        NodeModulesPolyfillPlugin()
+      ]
+    }
+  },
+
+  resolve: {
+    alias: {
+      util:   'rollup-plugin-polyfill-node/polyfills/util',
+      stream: 'rollup-plugin-polyfill-node/polyfills/stream',
+      // …
+    }
+  },
+
+  build: {
+    rollupOptions: {
+      plugins: [
+        // <–– cast here to silence the overload‐check
+        (rollupNodePolyFill() as PluginOption)
+      ]
+    }
+  }
+});

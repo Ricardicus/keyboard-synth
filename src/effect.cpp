@@ -183,3 +183,67 @@ std::vector<short> Effect::apply_iir(const std::vector<short> &buffer) {
   }
   return buffer_;
 }
+
+EchoEffect::EchoEffect(float rateSeconds, float feedback, float mix,
+                       float sampleRate)
+    : writeIndex(0), feedback(feedback), mix(mix), sampleRate(sampleRate) {
+  setRate(rateSeconds);
+}
+
+void EchoEffect::setRate(float rateSeconds) {
+  // compute new size in samples, never zero
+  size_t newDelay =
+      static_cast<size_t>(std::max(rateSeconds * sampleRate, 1.0f));
+
+  if (newDelay > delaySamples) {
+    // grow: keep existing data, zero-fill the new tail
+    buffer.resize(newDelay, 0.0f);
+  } else if (newDelay < delaySamples) {
+    // shrink: just shorten the window, preserve the first newDelay samples
+    buffer.resize(newDelay);
+    // make sure writeIndex still in range [0, newDelay)
+    writeIndex %= newDelay;
+  }
+  // commit the new length
+  delaySamples = newDelay;
+}
+
+void EchoEffect::setSampleRate(float newSampleRate) {
+  // remember old delay in seconds
+  float oldSeconds = static_cast<float>(delaySamples) / sampleRate;
+  sampleRate = newSampleRate;
+  // re-use your new setRate logic to resize appropriately
+  setRate(oldSeconds);
+}
+
+void EchoEffect::setFeedback(float newFeedback) {
+  if (newFeedback >= 0.0f && newFeedback <= 1.0f) {
+    feedback = newFeedback;
+  }
+}
+
+void EchoEffect::setMix(float newMix) {
+  if (newMix >= 0.0f && newMix <= 1.0f) {
+    mix = newMix;
+  }
+}
+
+void EchoEffect::updateBuffer() {
+  if (delaySamples == 0)
+    delaySamples = 1; // Avoid zero-length buffer
+  buffer.assign(delaySamples, 0.0f);
+  writeIndex = 0;
+}
+
+float EchoEffect::process(float inputSample) {
+  size_t readIndex = (writeIndex + 1) % delaySamples;
+  float delayedSample = buffer[readIndex];
+  float wet = inputSample + delayedSample;
+  float outputSample = (1.0f - mix) * inputSample + mix * wet;
+
+  buffer[writeIndex] = inputSample + delayedSample * feedback;
+
+  writeIndex = (writeIndex + 1) % delaySamples;
+
+  return outputSample;
+}

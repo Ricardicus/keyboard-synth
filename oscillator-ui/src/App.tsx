@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import OscillatorControl from './OscillatorControl';
+import ConfigPanel from './ConfigPanel';
 import Keyboard from './Keyboard';
 import type { Oscillator } from './types';
 import './App.css';
@@ -58,6 +59,7 @@ function App() {
           />
         ))}
       </div>
+      <ConfigPanel />
       <Keyboard />
     </div>
   );

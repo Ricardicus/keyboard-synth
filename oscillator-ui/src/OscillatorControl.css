@@ -30,3 +30,8 @@
 .oscillator-card h3 {
   margin-top: 0;
 }
+
+.knob-wrapper {
+  margin: 1rem 0;
+  text-align: center;
+}

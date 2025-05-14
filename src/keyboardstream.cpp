@@ -184,8 +184,10 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
     }
 
     // Output sample
-    float gain = 0.0001f;
-    float entry = sample * gain;
+    float entry = sample * this->gain;
+
+    entry = this->echo.process(entry);
+
     buffer[i] = entry;
   }
 

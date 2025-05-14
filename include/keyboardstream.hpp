@@ -166,6 +166,8 @@ public:
   };
 
   std::vector<Oscillator> synth;
+  EchoEffect echo{1.0, 0.3, 0.0, SAMPLERATE};
+  float gain = 0.00001f;
 
   void printSynthConfig() const;
   void printNotesPressed() const {

@@ -1,6 +1,7 @@
 #ifndef KEYBOARD_IIR_HPP
 #define KEYBOARD_IIR_HPP
 
+#include <cmath>
 #include <vector>
 
 template <typename T> class IIR {

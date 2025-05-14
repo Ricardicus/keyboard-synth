@@ -64,4 +64,33 @@ private:
   using Complex = std::complex<double>;
 };
 
+class EchoEffect {
+public:
+  EchoEffect(float rateSeconds, float feedback, float mix, float sampleRate);
+
+  void setRate(float rateSeconds);
+  void setFeedback(float feedback);
+  void setMix(float mix);
+  void setSampleRate(float sampleRate);
+
+  float getRate() const {
+    return static_cast<float>(delaySamples) / sampleRate;
+  }
+  float getFeedback() const { return feedback; }
+  float getMix() const { return mix; }
+  float getSampleRate() const { return sampleRate; }
+
+  float process(float inputSample);
+
+private:
+  std::vector<float> buffer;
+  size_t writeIndex;
+  size_t delaySamples;
+  float feedback;
+  float mix;
+  float sampleRate;
+
+  void updateBuffer();
+};
+
 #endif

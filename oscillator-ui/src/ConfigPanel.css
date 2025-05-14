@@ -1,0 +1,74 @@
+.config-panel {
+  background: #1e1e1e;
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 2rem;
+  width: 380px;
+  font-family: sans-serif;
+}
+
+.config-panel h2, .config-panel h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.5rem;
+}
+
+.knob-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1.5rem 0;
+  background: #2a2a2a;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+.knob-wrapper label {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.knob-wrapper div {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.config-panel input[type="number"] {
+  width: 100%;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.config-panel button {
+  margin-top: 2rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  background: #444;
+  border: none;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.config-panel button:hover {
+  background: #666;
+}
+
+.parent-class div[class$="-text"] {
+  opacity: 0;
+}
+
+.knob-wrapper div {
+  opacity: 0;
+}

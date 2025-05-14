@@ -77,6 +77,63 @@ int input_release_handler(struct mg_connection *conn, void *cbdata) {
   }
 }
 
+int config_api_handler(struct mg_connection *conn, void *cbdata) {
+  const struct mg_request_info *req_info = mg_get_request_info(conn);
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+
+  if (std::string(req_info->request_method) == "GET") {
+    // Send current config
+    json response = {{"gain", kbs->gain},
+                     {"echo",
+                      {{"rate", kbs->echo.getRate()},
+                       {"feedback", kbs->echo.getFeedback()},
+                       {"mix", kbs->echo.getMix()},
+                       {"sampleRate", kbs->echo.getSampleRate()}}}};
+
+    std::string body = response.dump();
+    mg_printf(conn,
+              "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+              "Content-Length: %zu\r\n\r\n%s",
+              body.size(), body.c_str());
+    return 200;
+
+  } else if (std::string(req_info->request_method) == "POST") {
+    char buffer[1024];
+    int len = mg_read(conn, buffer, sizeof(buffer) - 1);
+    buffer[len] = '\0';
+
+    try {
+      json body = json::parse(buffer);
+
+      if (body.contains("gain") && body["gain"].is_number()) {
+        kbs->gain = body["gain"];
+      }
+
+      if (body.contains("echo") && body["echo"].is_object()) {
+        json echo = body["echo"];
+        if (echo.contains("rate"))
+          kbs->echo.setRate(echo["rate"]);
+        if (echo.contains("feedback"))
+          kbs->echo.setFeedback(echo["feedback"]);
+        if (echo.contains("mix"))
+          kbs->echo.setMix(echo["mix"]);
+        if (echo.contains("sampleRate"))
+          kbs->echo.setSampleRate(echo["sampleRate"]);
+      }
+
+      mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+      return 200;
+
+    } catch (...) {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+      return 400;
+    }
+  }
+
+  mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+  return 405;
+}
+
 // API handler for /api/oscillators
 int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
@@ -623,6 +680,7 @@ void start_http_server(KeyboardStream *kbs) {
   mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
+  mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
 
   printf("[HTTP] Server running at http://localhost:8080\n");
 
@@ -802,18 +860,6 @@ int main(int argc, char *argv[]) {
       return 1;
     }
     refresh();
-
-    int iscapture = 0; // 0 = output devices, 1 = input devices
-    int count = SDL_GetNumAudioDevices(iscapture);
-    if (count < 0) {
-      printw("SDL_GetNumAudioDevices failed: %s\n", SDL_GetError());
-    } else {
-      printw("Audio devices (%s):\n", iscapture ? "input" : "output");
-      for (int i = 0; i < count; ++i) {
-        const char *name = SDL_GetAudioDeviceName(i, iscapture);
-        printw("  %d: %s\n", i, name);
-      }
-    }
 
     SDL_Event event;
     bool running = true;
