@@ -3,11 +3,26 @@ import type { Oscillator } from './types';
 import Knob from './Knob';
 import { useEffect, useRef, useState } from 'react';
 
+// Presets reordered: basic waveforms first
 const SOUNDS = [
-  'SuperSaw', 'FatTriangle', 'PulseSquare', 'SineSawDrone',
-  'SuperSawWithSub', 'GlitchMix', 'LushPad', 'RetroLead',
-  'BassGrowl', 'AmbientDrone', 'SynthStab', 'GlassBells',
-  'OrganTone', 'Sine', 'Triangular', 'Saw', 'Square', 'None'
+  'Sine',
+  'Triangular',
+  'Saw',
+  'Square',
+  'SuperSaw',
+  'FatTriangle',
+  'PulseSquare',
+  'SineSawDrone',
+  'SuperSawWithSub',
+  'GlitchMix',
+  'LushPad',
+  'RetroLead',
+  'BassGrowl',
+  'AmbientDrone',
+  'SynthStab',
+  'GlassBells',
+  'OrganTone',
+  'None'
 ];
 
 interface Props {
@@ -43,7 +58,7 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
       if (Object.keys(changes).length > 0) {
         onUpdate(id, changes);
       }
-    }, 1000);
+    }, 500);
 
     return () => {
       if (debounceTimer.current) {
