@@ -8,7 +8,8 @@ interface KnobProps {
   value: number;
   onChange: (value: number) => void;
   label?: string;
-  displayValue?: boolean; // ✅ New prop
+  displayValue?: boolean;
+  sensitivity?: number; // pixels per full range
 }
 
 interface KnobState {
@@ -22,15 +23,13 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
     max: 100,
     step: 1,
     label: '',
-    displayValue: false, // ✅ Default to false
+    displayValue: false,
+    sensitivity: 200, // 200px for full sweep
   };
 
   private svgRef = React.createRef<SVGSVGElement>();
-  private centerX = 0;
-  private centerY = 0;
-
-  private static SWEEP = 352;
-  private static START_RAW = 270;
+  private startY = 0;
+  private startValue = 0;
 
   constructor(props: KnobProps) {
     super(props);
@@ -38,10 +37,6 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
   }
 
   componentDidMount() {
-    const svg = this.svgRef.current!;
-    const rect = svg.getBoundingClientRect();
-    this.centerX = rect.left + rect.width / 2;
-    this.centerY = rect.top + rect.height / 2;
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mouseup', this.onMouseUp);
   }
@@ -53,39 +48,49 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
 
   onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    this.startY = e.clientY;
+    this.startValue = this.props.value;
     this.setState({ dragging: true });
   };
 
   onMouseUp = () => {
-    if (this.state.dragging) this.setState({ dragging: false });
+    if (this.state.dragging) {
+      this.setState({ dragging: false });
+    }
   };
 
   onMouseMove = (e: MouseEvent) => {
     if (!this.state.dragging) return;
-    const { min, max, step, onChange } = this.props;
-    const dx = e.clientX - this.centerX;
-    const dy = e.clientY - this.centerY;
-    let raw = Math.atan2(dy, dx) * (180 / Math.PI);
-    raw = raw < 0 ? raw + 360 : raw;
-    let degFromUp = (raw - Knob.START_RAW + 360) % 360;
-    const angle = Math.max(0, Math.min(Knob.SWEEP, degFromUp));
-    const percent = angle / Knob.SWEEP;
-    const rawValue = min! + percent * (max! - min!);
-    const stepped = Math.round(rawValue / step!) * step!;
-    onChange(stepped);
+
+    const { min = 0, max = 100, step = 1, sensitivity = 200, onChange } = this.props;
+
+    // Calculate change based on vertical drag distance
+    const dy = this.startY - e.clientY;
+    const range = max - min;
+    const deltaValue = (dy / sensitivity) * range;
+    let newValue = this.startValue + deltaValue;
+
+    // Snap to step
+    newValue = Math.round(newValue / step) * step;
+    // Clamp
+    newValue = Math.max(min, Math.min(max, newValue));
+
+    if (newValue !== this.props.value) {
+      onChange(newValue);
+    }
   };
 
   render() {
-    const { size, min, max, value, label, displayValue } = this.props;
+    const { size = 80, min = 0, max = 100, value, label, displayValue } = this.props;
 
-    const pct = (value - min!) / (max! - min!);
-    const angle = pct * Knob.SWEEP;
-    const drawRaw = (Knob.START_RAW + angle) % 360;
+    const pct = (value - min) / (max - min);
+    const angle = pct * 352;
+    const drawRaw = (270 + angle) % 360;
 
-    const indicatorLength = (size! - 20) / 2;
+    const indicatorLength = (size - 20) / 2;
     const theta = (drawRaw * Math.PI) / 180;
-    const x2 = size! / 2 + Math.cos(theta) * indicatorLength;
-    const y2 = size! / 2 + Math.sin(theta) * indicatorLength;
+    const x2 = size / 2 + Math.cos(theta) * indicatorLength;
+    const y2 = size / 2 + Math.sin(theta) * indicatorLength;
 
     return (
       <div className="flex flex-col items-center select-none">
@@ -94,19 +99,19 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
           width={size}
           height={size}
           onMouseDown={this.onMouseDown}
-          className="cursor-pointer"
+          className="cursor-row-resize"
         >
           <circle
-            cx={size! / 2}
-            cy={size! / 2}
-            r={(size! - 10) / 2}
+            cx={size / 2}
+            cy={size / 2}
+            r={(size - 10) / 2}
             stroke="#444"
             strokeWidth="10"
             fill="none"
           />
           <line
-            x1={size! / 2}
-            y1={size! / 2}
+            x1={size / 2}
+            y1={size / 2}
             x2={x2}
             y2={y2}
             stroke="#222"
@@ -121,7 +126,7 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
               y="50%"
               dominantBaseline="middle"
               textAnchor="middle"
-              fontSize={size! / 5}
+              fontSize={size / 5}
               fill="#fff"
             >
               {value}

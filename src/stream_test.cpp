@@ -676,6 +676,11 @@ void start_http_server(KeyboardStream *kbs) {
 
   static struct mg_callbacks callbacks = {};
   static struct mg_context *ctx = mg_start(&callbacks, nullptr, options);
+  if (ctx == nullptr) {
+    std::fprintf(
+        stderr, "[HTTP] ERROR: Failed to start CivetWeb server on port 8080\n");
+    return;
+  }
 
   mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
@@ -791,6 +796,9 @@ int main(int argc, char *argv[]) {
   noecho();             // Don't show the key being pressed
   scrollok(stdscr, TRUE);
 
+  std::thread http_thread([&stream]() { start_http_server(&stream); });
+  http_thread.detach(); // runs independently, main thread continues
+
   if (config.midiFile.size() > 0) {
 
     config.printConfig();
@@ -807,41 +815,57 @@ int main(int argc, char *argv[]) {
     midiFile.doTimeAnalysis();
     midiFile.linkNotePairs();
 
-    double totalDuration = midiFile.getFileDurationInSeconds();
-    int totalSamples = SAMPLERATE * totalDuration;
-    std::map<int, std::vector<std::string>> notesMap;
+    // 2) Build notesMap: startSample → vector<(noteKey, duration)>
+    std::map<int, std::vector<std::pair<std::string, float>>> notesMap;
+    for (int track = 0; track < midiFile.getTrackCount(); ++track) {
+      int evCount = midiFile[track].size();
+      for (int evIndex = 0; evIndex < evCount; ++evIndex) {
+        auto &ev = midiFile[track][evIndex];
+        if (!ev.isNoteOn())
+          continue;
+        int note = ev[1];
+        float freq = noteToFreq(note);
+        auto key = notes::getClosestNote(freq);
+        float dur = ev.getDurationInSeconds();
+        int startS = int(ev.seconds * SAMPLERATE);
+        notesMap[startS].emplace_back(key, dur);
+      }
+    }
 
-    for (int track = 0; track < midiFile.getTrackCount(); track++) {
-      for (int event = 0; event < midiFile[track].size(); event++) {
-        if (midiFile[track][event].isNoteOn()) {
-          int note = midiFile[track][event][1];
-          float frequency = noteToFreq(note);
+    // 4) Timing constants
+    const double usPerSample = 1'000'000.0 / SAMPLERATE;
 
-          std::string noteKey = notes::getClosestNote(frequency);
+    auto startTimePoint =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
 
-          float duration = midiFile[track][event].getDurationInSeconds();
-          float startTime = midiFile[track][event].seconds;
+    // 6) Thread A: schedule registerNote()
+    std::thread registerThread([&]() {
+      for (auto const &[startSample, vec] : notesMap) {
+        auto when = startTimePoint + std::chrono::microseconds(
+                                         (long)(startSample * usPerSample));
+        std::this_thread::sleep_until(when);
 
-          int startSample = SAMPLERATE * startTime;
-
-          notesMap[startSample].push_back(noteKey);
+        for (auto const &p : vec) {
+          stream.registerNote(p.first);
         }
       }
-    }
+    });
 
-    printw("Playing the midi file %s\n", config.midiFile.c_str());
-
-    int playPin = 0;
-    for (const auto &entry : notesMap) {
-      int sampleTime = entry.first;
-      std::this_thread::sleep_for(
-          std::chrono::microseconds((sampleTime - playPin) * 23));
-      playPin = sampleTime;
-      const auto &notes = notesMap[sampleTime];
-      for (auto &note : notes) {
-        stream.registerNote(note);
+    // 7) Thread B: schedule registerNoteRelease()
+    std::thread releaseThread([&]() {
+      for (auto const &[startSample, vec] : notesMap) {
+        for (auto const &p : vec) {
+          long offsetUs = long(startSample * usPerSample + p.second * 1e6);
+          auto when = startTimePoint + std::chrono::microseconds(offsetUs);
+          std::this_thread::sleep_until(when);
+          stream.registerNoteRelease(p.first);
+        }
       }
-    }
+    });
+
+    // 9) Wait for both to finish
+    registerThread.join();
+    releaseThread.join();
 
   } else {
 
@@ -863,9 +887,6 @@ int main(int argc, char *argv[]) {
 
     SDL_Event event;
     bool running = true;
-
-    std::thread http_thread([&stream]() { start_http_server(&stream); });
-    http_thread.detach(); // runs independently, main thread continues
 
     while (running) {
       while (SDL_PollEvent(&event)) {
