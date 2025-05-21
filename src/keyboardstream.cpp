@@ -86,11 +86,12 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
 }
 
 void KeyboardStream::setupStandardSynthConfig() {
-  this->synth = {};
+  this->synth.reserve(4);
   for (int i = 0; i < 4; i++) {
-    Oscillator synth = Oscillator(this->sampleRate);
-    synth.setVolume(i == 0 ? 0.5 : 0.0);
-    this->synth.push_back(synth);
+    this->synth.emplace_back(SAMPLERATE);
+  }
+  for (int i = 0; i < 4; i++) {
+    this->synth[i].setVolume(i == 0 ? 0.5 : 0);
   }
 }
 
