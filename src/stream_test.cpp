@@ -84,6 +84,11 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
   if (std::string(req_info->request_method) == "GET") {
     // Send current config
     json response = {{"gain", kbs->gain},
+                     {"adsr",
+                      {{"attack", kbs->adsr.qadsr[0]},
+                       {"decay", kbs->adsr.qadsr[1]},
+                       {"sustain", kbs->adsr.qadsr[2]},
+                       {"release", kbs->adsr.qadsr[3]}}},
                      {"echo",
                       {{"rate", kbs->echo.getRate()},
                        {"feedback", kbs->echo.getFeedback()},

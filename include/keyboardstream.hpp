@@ -104,6 +104,11 @@ public:
   }
 
   float generateSample(std::string note, float phase, int index);
+  struct mutex_holder {
+    std::mutex mutex;
+    mutex_holder() : mutex() {}
+    mutex_holder(mutex_holder const &other) : mutex() {}
+  };
 
   class Oscillator {
   public:
@@ -132,6 +137,7 @@ public:
     float getSample(const std::string &note, int index);
     void reset(const std::string &note);
     void updateFrequencies() {
+      std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
       for (auto &kv : this->ranks) {
         Sound::Rank &r = kv.second;
         for (Sound::Pipe &pipe : r.pipes) {
@@ -145,6 +151,7 @@ public:
 
   private:
     int index = 0;
+    mutex_holder ranksMtx;
     std::map<std::string, Sound::Rank> ranks;
     bool initialized = false;
   };
@@ -181,6 +188,11 @@ public:
     printw("===================================\n");
   }
 
+  short amplitude = 32767;
+  float duration = 0.1f;
+  ADSR adsr =
+      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
+
 private:
   std::map<std::string, std::string> soundMap;
   std::vector<Effect> effects;
@@ -193,10 +205,6 @@ private:
   std::unordered_map<std::string, Note> notes;
   std::unordered_map<std::string, NotePress> notesPressed;
 
-  short amplitude = 32767;
-  float duration = 0.1f;
-  ADSR adsr =
-      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
   std::unordered_map<std::string, Sound::Rank> ranks;

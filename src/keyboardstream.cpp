@@ -243,6 +243,7 @@ float KeyboardStream::Oscillator::getSample(const std::string &note,
     this->initialize();
   }
   float result = 0;
+  std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
   if (this->ranks.find(note) != this->ranks.end()) {
     result = this->ranks[note].generateRankSampleIndex(index);
   }
@@ -250,52 +251,51 @@ float KeyboardStream::Oscillator::getSample(const std::string &note,
 }
 
 void KeyboardStream::Oscillator::reset(const std::string &note) {
+  std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
   if (this->ranks.find(note) != this->ranks.end()) {
     this->ranks[note].reset();
   }
 }
 
 void KeyboardStream::Oscillator::initialize() {
-  std::vector<std::string> notes = notes::getNotes();
-  // Ensure nbrThreads is sensible
-  int nbrThreads = 4;
-  nbrThreads =
-      std::max(1, std::min(nbrThreads, static_cast<int>(notes.size())));
+  auto notes = notes::getNotes();
 
-  // Shared data needs protection
+  int nbrThreads = std::clamp(4, 1, static_cast<int>(notes.size()));
+
   std::mutex mtx;
 
-  // Split notes into chunks
+  // split the work
+  int base = notes.size() / nbrThreads;
+  int extra = notes.size() % nbrThreads;
+
   std::vector<std::thread> threads;
-  int notesPerThread = notes.size() / nbrThreads;
-  int remainder = notes.size() % nbrThreads;
+  threads.reserve(nbrThreads);
 
-  // Lambda to process a range of notes
-  auto processNotes = [&](int start, int end, int threadIndex) {
-    for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
-      const auto &key = notes[bufferIndex];
-      // Bottom row (one octave lower than home row)
-      Note n = Note(key, this->adsr.length, this->sampleRate);
+  auto processNotes = [&](int start, int end) {
+    for (int i = start; i < end; ++i) {
+      auto const &key = notes[i];
+      Note n{key, this->adsr.length, this->sampleRate};
 
-      float frequency = notes::getFrequency(key);
-      Sound::Rank r = Sound::Rank::fromPreset(this->sound, frequency,
-                                              this->adsr.length, sampleRate);
-      { this->ranks[key] = r; }
+      float freq = notes::getFrequency(key);
+      Sound::Rank r = Sound::Rank::fromPreset(
+          this->sound, freq, this->adsr.length, this->sampleRate);
+
+      {
+        std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
+        this->ranks[key] = std::move(r);
+      }
     }
   };
-  // Launch threads
+
   int start = 0;
   for (int t = 0; t < nbrThreads; ++t) {
-    int extra = (t < remainder) ? 1 : 0; // Distribute remainder
-    int end = start + notesPerThread + extra;
-    threads.emplace_back(processNotes, start, end, t);
-    start = end;
+    int count = base + (t < extra ? 1 : 0);
+    threads.emplace_back(processNotes, start, start + count);
+    start += count;
   }
 
-  // Wait for all threads to finish
-  for (auto &thread : threads) {
-    thread.join();
-  }
+  for (auto &th : threads)
+    th.join();
 
   this->initialized = true;
 }
