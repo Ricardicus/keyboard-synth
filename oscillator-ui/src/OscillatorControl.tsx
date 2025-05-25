@@ -1,28 +1,28 @@
-import './OscillatorControl.css';
-import type { Oscillator } from './types';
-import Knob from './Knob';
-import { useEffect, useRef, useState } from 'react';
+import "./OscillatorControl.css";
+import type { Oscillator } from "./types";
+import Knob from "./Knob";
+import { useEffect, useRef, useState } from "react";
 
 // Presets reordered: basic waveforms first
 const SOUNDS = [
-  'Sine',
-  'Triangular',
-  'Saw',
-  'Square',
-  'SuperSaw',
-  'FatTriangle',
-  'PulseSquare',
-  'SineSawDrone',
-  'SuperSawWithSub',
-  'GlitchMix',
-  'LushPad',
-  'RetroLead',
-  'BassGrowl',
-  'AmbientDrone',
-  'SynthStab',
-  'GlassBells',
-  'OrganTone',
-  'None'
+  "Sine",
+  "Triangular",
+  "Saw",
+  "Square",
+  "SuperSaw",
+  "FatTriangle",
+  "PulseSquare",
+  "SineSawDrone",
+  "SuperSawWithSub",
+  "GlitchMix",
+  "LushPad",
+  "RetroLead",
+  "BassGrowl",
+  "AmbientDrone",
+  "SynthStab",
+  "GlassBells",
+  "OrganTone",
+  "None",
 ];
 
 interface Props {
@@ -51,8 +51,12 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
     debounceTimer.current = setTimeout(() => {
       const changes: Partial<Oscillator> = {};
       for (const key in localData) {
-        if (localData[key as keyof Oscillator] !== data[key as keyof Oscillator]) {
-          changes[key as keyof Oscillator] = localData[key as keyof Oscillator] as any;
+        if (
+          localData[key as keyof Oscillator] !== data[key as keyof Oscillator]
+        ) {
+          changes[key as keyof Oscillator] = localData[
+            key as keyof Oscillator
+          ] as any;
         }
       }
       if (Object.keys(changes).length > 0) {
@@ -68,7 +72,7 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
   }, [localData, data, id, onUpdate]);
 
   const handleChange = (key: keyof Oscillator, value: any) => {
-    setLocalData(prev => ({ ...prev, [key]: value }));
+    setLocalData((prev) => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -79,10 +83,12 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
         Sound:
         <select
           value={localData.sound}
-          onChange={e => handleChange('sound', e.target.value)}
+          onChange={(e) => handleChange("sound", e.target.value)}
         >
-          {SOUNDS.map(s => (
-            <option key={s} value={s}>{s}</option>
+          {SOUNDS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
           ))}
         </select>
       </label>
@@ -95,35 +101,45 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
           max="1"
           step="0.01"
           value={localData.volume}
-          onChange={e => handleChange('volume', parseFloat(e.target.value))}
+          onChange={(e) => handleChange("volume", parseFloat(e.target.value))}
         />
       </label>
-
-      <div className="knob-wrapper">
-        <Knob
-          size={80}
-          min={-120}
-          max={120}
-          step={1}
-          value={localData.detune}
-          displayValue={true}
-          onChange={v => handleChange('detune', v)}
-          label="Detune (¢)"
-        />
-      </div>
-
-      <div className="knob-wrapper">
-        <Knob
-          size={80}
-          min={-4}
-          max={4}
-          step={1}
-          value={localData.octave}
-          onChange={v => handleChange('octave', v)}
-          label="Octave"
-          displayValue={true}
-        />
-      </div>
+      <center>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                <div className="knob-wrapper">
+                  <Knob
+                    size={80}
+                    min={-120}
+                    max={120}
+                    step={1}
+                    value={localData.detune}
+                    displayValue={true}
+                    onChange={(v) => handleChange("detune", v)}
+                    label="Detune (¢)"
+                  />
+                </div>
+              </td>
+              <td>
+                <div className="knob-wrapper">
+                  <Knob
+                    size={80}
+                    min={-4}
+                    max={4}
+                    step={1}
+                    value={localData.octave}
+                    onChange={(v) => handleChange("octave", v)}
+                    label="Octave"
+                    displayValue={true}
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </center>
     </div>
   );
 }

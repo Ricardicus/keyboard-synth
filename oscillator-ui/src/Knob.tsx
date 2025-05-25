@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface KnobProps {
   size?: number;
@@ -22,7 +22,7 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
     min: 0,
     max: 100,
     step: 1,
-    label: '',
+    label: "",
     displayValue: false,
     sensitivity: 200, // 200px for full sweep
   };
@@ -37,13 +37,13 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
   }
 
   componentDidMount() {
-    window.addEventListener('mousemove', this.onMouseMove);
-    window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener("mousemove", this.onMouseMove);
+    window.addEventListener("mouseup", this.onMouseUp);
   }
 
   componentWillUnmount() {
-    window.removeEventListener('mousemove', this.onMouseMove);
-    window.removeEventListener('mouseup', this.onMouseUp);
+    window.removeEventListener("mousemove", this.onMouseMove);
+    window.removeEventListener("mouseup", this.onMouseUp);
   }
 
   onMouseDown = (e: React.MouseEvent) => {
@@ -62,7 +62,13 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
   onMouseMove = (e: MouseEvent) => {
     if (!this.state.dragging) return;
 
-    const { min = 0, max = 100, step = 1, sensitivity = 200, onChange } = this.props;
+    const {
+      min = 0,
+      max = 100,
+      step = 1,
+      sensitivity = 200,
+      onChange,
+    } = this.props;
 
     // Calculate change based on vertical drag distance
     const dy = this.startY - e.clientY;
@@ -81,7 +87,14 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
   };
 
   render() {
-    const { size = 80, min = 0, max = 100, value, label, displayValue } = this.props;
+    const {
+      size = 80,
+      min = 0,
+      max = 100,
+      value,
+      label,
+      displayValue,
+    } = this.props;
 
     const pct = (value - min) / (max - min);
     const angle = pct * 352;
@@ -134,7 +147,9 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
           )}
         </svg>
 
-        {label && <div className="mt-2 text-sm font-medium text-black">{label}</div>}
+        {label && (
+          <div className="mt-2 text-sm font-medium text-black">{label}</div>
+        )}
       </div>
     );
   }

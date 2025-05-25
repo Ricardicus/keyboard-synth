@@ -126,6 +126,19 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
           kbs->echo.setSampleRate(echo["sampleRate"]);
       }
 
+      if (body.contains("adsr") && body["adsr"].is_object()) {
+        json adsr = body["adsr"];
+        if (adsr.contains("attack"))
+          kbs->adsr.qadsr[0] = adsr["attack"];
+        if (adsr.contains("decay"))
+          kbs->adsr.qadsr[1] = adsr["decay"];
+        if (adsr.contains("sustain"))
+          kbs->adsr.qadsr[2] = adsr["sustain"];
+        if (adsr.contains("release"))
+          kbs->adsr.qadsr[3] = adsr["release"];
+        kbs->adsr.update_len();
+      }
+
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
       return 200;
 

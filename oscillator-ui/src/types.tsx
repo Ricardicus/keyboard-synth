@@ -3,4 +3,4 @@ export interface Oscillator {
   octave: number;
   sound: string;
   volume: number;
-};
+}
