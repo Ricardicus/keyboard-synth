@@ -82,7 +82,13 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
   this->adsr = adsr;
   this->sampleRate = sampleRate;
   this->effects = effects;
-  this->setupStandardSynthConfig();
+  if (!this->soundMap.empty()) {
+    this->synth.emplace_back(SAMPLERATE);
+    this->synth[0].setVolume(0.5);
+    this->synth[0].setSoundMap(this->soundMap);
+  } else {
+    this->setupStandardSynthConfig();
+  }
 }
 
 void KeyboardStream::setupStandardSynthConfig() {
@@ -216,6 +222,35 @@ float KeyboardStream::generateSample(std::string note, float phase, int index) {
   return result;
 }
 
+void KeyboardStream::Oscillator::setSoundMap(
+    std::map<std::string, std::string> &soundMap) {
+  for (const auto &[key, value] : soundMap) {
+    std::cout << "Key: " << key << ", Value: " << value << std::endl;
+    int channels, wavSampleRate, bps, size;
+    char *data;
+    if ((data = loadWAV(value, channels, wavSampleRate, bps, size)) != NULL) {
+      if (channels == 2) {
+        std::vector<short> buffer_left_in, buffer_right_in;
+        splitChannels(data, size, buffer_left_in, buffer_right_in);
+
+        std::vector<short> buffer_left_effect_out = buffer_left_in;
+        std::vector<short> buffer_right_effect_out = buffer_right_in;
+
+        std::vector<short> interleaved;
+        interleaved.reserve(buffer_left_effect_out.size() * 2);
+        for (size_t i = 0; i < buffer_left_effect_out.size(); ++i) {
+          interleaved.push_back(buffer_left_effect_out[i]);
+          interleaved.push_back(buffer_right_effect_out[i]);
+        }
+        this->samples[key] = interleaved;
+      } else {
+        std::vector<short> buffer = convertToVector(data, size);
+        this->samples[key] = buffer;
+      }
+    }
+  }
+}
+
 void KeyboardStream::Oscillator::setVolume(float volume) {
   this->volume = volume;
 }
@@ -239,6 +274,18 @@ void KeyboardStream::Oscillator::setSound(Sound::Rank::Preset sound) {
 
 float KeyboardStream::Oscillator::getSample(const std::string &note,
                                             int index) {
+  if (!this->samples.empty()) {
+    if (this->samples.find(note) != this->samples.end()) {
+      int indexMax = static_cast<int>(this->samples[note].size());
+      if (index < indexMax) {
+        float maxVal16 =
+            static_cast<float>(std::numeric_limits<int16_t>::max());
+        return static_cast<float>(this->samples[note][index]) / maxVal16;
+      }
+      return 0.0;
+    }
+    return 0.0;
+  }
   if (!this->initialized) {
     this->initialize();
   }

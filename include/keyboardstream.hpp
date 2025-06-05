@@ -17,6 +17,7 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
+#include "waveread.hpp"
 
 #include "json.hpp"
 
@@ -148,12 +149,14 @@ public:
         }
       }
     }
+    void setSoundMap(std::map<std::string, std::string> &soundMap);
 
   private:
     int index = 0;
     mutex_holder ranksMtx;
     std::map<std::string, Sound::Rank> ranks;
     bool initialized = false;
+    std::map<std::string, std::vector<short>> samples;
   };
 
   struct NotePress {
