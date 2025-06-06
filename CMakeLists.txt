@@ -73,7 +73,7 @@ if(SDL2_FOUND)
     
     add_subdirectory(external/civetweb)
 
-    add_executable(keyboardstream src/stream_test.cpp external/civetweb/src/CivetServer.cpp)
+    add_executable(keyboardstream src/main_stream.cpp external/civetweb/src/CivetServer.cpp)
 
     target_include_directories(keyboardstream PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
     target_compile_definitions(keyboardstream PRIVATE CIVETWEB)
