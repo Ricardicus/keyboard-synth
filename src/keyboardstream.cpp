@@ -81,7 +81,22 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
                                   std::vector<Effect> &effects) {
   this->adsr = adsr;
   this->sampleRate = sampleRate;
-  this->effects = effects;
+  {
+    // First entry of the effects vector is dedicated to IIR high-pass and
+    // low-pass filters: effects[0][0] -> High-pass filter effects[0][1] ->
+    // Low-pass filter
+    Effect effect;
+    effect.effectType = Effect::Type::Iir;
+    effect.sampleRate = sampleRate;
+    IIR<float> highPass = IIRFilters::highPass<float>(sampleRate, 0.0);
+    IIR<float> lowPass =
+        IIRFilters::lowPass<float>(sampleRate, sampleRate * 0.5);
+    effect.iirsf.push_back(highPass);
+    effect.iirsf.push_back(lowPass);
+    this->effects.push_back(effect);
+  }
+  this->effects.insert(this->effects.end(), effects.begin(), effects.end());
+
   if (!this->soundMap.empty()) {
     this->synth.emplace_back(SAMPLERATE);
     this->synth[0].setVolume(0.5);
@@ -159,7 +174,6 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
   for (int i = 0; i < len; i++) {
     float sample = 0.0f;
 
-    std::lock_guard<std::mutex> guard(this->mtx);
     for (auto it = notesPressed.begin(); it != notesPressed.end();) {
       NotePress &note = it->second;
       int index = note.index;
@@ -192,9 +206,15 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
 
     // Output sample
     float entry = sample * this->gain;
-
+    // Apply global echo
     entry = this->echo.process(entry);
-
+    // Apply global iir filters
+    for (int e = 0; e < this->effects.size(); e++) {
+      for (int i = 0; i < this->effects[e].iirsf.size(); i++) {
+        entry = this->effects[e].iirsf[i].process(entry);
+      }
+    }
+    // Write to buffer
     buffer[i] = entry;
   }
 
@@ -274,6 +294,7 @@ void KeyboardStream::Oscillator::setSound(Sound::Rank::Preset sound) {
 
 float KeyboardStream::Oscillator::getSample(const std::string &note,
                                             int index) {
+  // check if we are using wave samples
   if (!this->samples.empty()) {
     if (this->samples.find(note) != this->samples.end()) {
       int indexMax = static_cast<int>(this->samples[note].size());
@@ -286,6 +307,7 @@ float KeyboardStream::Oscillator::getSample(const std::string &note,
     }
     return 0.0;
   }
+  // using raw synth
   if (!this->initialized) {
     this->initialize();
   }

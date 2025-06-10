@@ -1,6 +1,8 @@
 #ifndef KEYBOARD_ADSR_HPP
 #define KEYBOARD_ADSR_HPP
+#include <json.hpp>
 #include <ncurses.h>
+#include <optional>
 #include <stdio.h>
 #include <string>
 
@@ -49,6 +51,44 @@ public:
       this->qadsr[3] = other.qadsr[3];
     }
     return *this;
+  }
+  nlohmann::json toJson() const {
+    return {
+        {"qadsr", this->qadsr},
+        {"amplitude", this->amplitude},
+        {"sustain", this->sustain_level},
+        {"qlength", this->quantas_length},
+    };
+  }
+
+  static std::optional<ADSR> fromJson(const nlohmann::json &json) {
+    // Presence + basic type checks
+    if (!json.contains("qadsr") || !json["qadsr"].is_array() ||
+        json["qadsr"].size() != 4)
+      return std::nullopt;
+    if (!json.contains("amplitude") || !json["amplitude"].is_number())
+      return std::nullopt;
+    if (!json.contains("sustain") || !json["sustain"].is_number_integer())
+      return std::nullopt;
+    if (!json.contains("qlength") || !json["qlength"].is_number_integer())
+      return std::nullopt;
+
+    // Verify every qadsr entry is an integer
+    for (const auto &v : json["qadsr"])
+      if (!v.is_number_integer())
+        return std::nullopt;
+
+    // All checks passed ─ populate the struct
+    ADSR adsr;
+    auto vec = json.at("qadsr").get<std::vector<int>>();
+    if (vec.size() == 4) {
+      std::copy(vec.begin(), vec.end(), adsr.qadsr);
+    }
+    adsr.amplitude = json["amplitude"].get<float>();
+    adsr.sustain_level = static_cast<short>(json["sustain"].get<int>());
+    adsr.quantas_length = json["qlength"].get<int>();
+
+    return adsr; // wrapped in std::optional
   }
 
   int response(int x) {

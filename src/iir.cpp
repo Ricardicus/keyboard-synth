@@ -11,6 +11,9 @@ template <> short IIR<short>::peek() {
 }
 
 template <> short IIR<short>::process(short in) {
+  if (this->bypass) {
+    return in;
+  }
   if (this->memoryY.size() == 0) {
     return 0;
   }
@@ -40,6 +43,9 @@ template <> float IIR<float>::peek() {
 }
 
 template <> float IIR<float>::process(float in) {
+  if (this->bypass) {
+    return in;
+  }
   if (this->memoryY.size() == 0) {
     return 0;
   }

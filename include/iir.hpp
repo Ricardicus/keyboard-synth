@@ -2,6 +2,8 @@
 #define KEYBOARD_IIR_HPP
 
 #include <cmath>
+#include <json.hpp>
+#include <optional>
 #include <vector>
 
 template <typename T> class IIR {
@@ -27,11 +29,47 @@ public:
   T process(T in);
   T peek();
 
+  nlohmann::json toJson() const {
+    return nlohmann::json{{"memory", memory},
+                          {"as", as},
+                          {"bs", bs},
+                          {"presentable", presentable},
+                          {"bypass", bypass}};
+  }
+
+  static std::optional<IIR<T>> fromJson(const nlohmann::json &j) {
+    if (!j.contains("memory") || !j["memory"].is_number_integer()) {
+      return std::nullopt;
+    }
+
+    IIR<T> iir(j["memory"].get<int>());
+
+    if (j.contains("as") && j["as"].is_array()) {
+      iir.setAs(j["as"].get<std::vector<double>>());
+    }
+
+    if (j.contains("bs") && j["bs"].is_array()) {
+      iir.setBs(j["bs"].get<std::vector<double>>());
+    }
+
+    if (j.contains("presentable") && j["presentable"].is_number()) {
+      iir.presentable = j["presentable"].get<float>();
+    }
+
+    if (j.contains("bypass") && j["bypass"].is_boolean()) {
+      iir.bypass = j["bypass"].get<bool>();
+    }
+
+    return iir;
+  }
+
   int memory;
   std::vector<T> memoryX;
   std::vector<T> memoryY;
   std::vector<double> as;
   std::vector<double> bs;
+  float presentable = 0;
+  bool bypass = false;
 };
 
 namespace IIRFilters {
@@ -57,6 +95,8 @@ template <typename T> IIR<T> lowPass(int sampleRate, float cutoffFreq) {
   IIR<T> filter(3);
   filter.setAs(as);
   filter.setBs(bs);
+
+  filter.presentable = cutoffFreq;
   return filter;
 }
 
@@ -81,6 +121,8 @@ template <typename T> IIR<T> highPass(int sampleRate, float cutoffFreq) {
   IIR<T> filter(3);
   filter.setAs(as);
   filter.setBs(bs);
+
+  filter.presentable = cutoffFreq;
   return filter;
 }
 

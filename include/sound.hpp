@@ -4,7 +4,9 @@
 #include "adsr.hpp"
 #include "effect.hpp"
 #include "note.hpp"
+#include <json.hpp>
 #include <vector>
+
 namespace Sound {
 enum WaveForm { Sine, Triangular, Square, Saw, WaveFile };
 
@@ -77,6 +79,24 @@ public:
     Saw,
     None
   };
+
+  static nlohmann::json presetToJson(Preset p) {
+    int pInt = p;
+    std::string pStr = presetStr(p);
+    return {{"type", pInt}, {"name", pStr}};
+  };
+
+  static std::optional<Preset> jsonToPreset(const nlohmann::json &j) {
+    if (!j.is_object() || !j.contains("type") || !j["type"].is_number_integer())
+      return std::nullopt;
+
+    int type = j["type"].get<int>();
+    if (type < static_cast<int>(Preset::SuperSaw) ||
+        type > static_cast<int>(Preset::None))
+      return std::nullopt;
+
+    return static_cast<Preset>(type);
+  }
 
   static std::string presetStr(Preset p) {
     std::string result;

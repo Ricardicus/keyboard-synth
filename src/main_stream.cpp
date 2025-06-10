@@ -23,6 +23,103 @@ using json = nlohmann::json;
 
 constexpr int BUFFER_SIZE = 512;
 
+static std::string utc_iso8601() {
+  using namespace std::chrono;
+  auto now = system_clock::now();
+  std::time_t tt = system_clock::to_time_t(now);
+  std::tm tm{};
+#ifdef _WIN32 // MSVC secure variants
+  gmtime_s(&tm, &tt);
+#else
+  gmtime_r(&tt, &tm);
+#endif
+  char buf[32];
+  std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &tm);
+  return buf;
+}
+
+int save_api_handler(struct mg_connection *conn, void *cbdata) {
+  const struct mg_request_info *req = mg_get_request_info(conn);
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+
+  /* Only POST is allowed ---------------------------------------------------*/
+  if (std::string{req->request_method} != "POST") {
+    mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+    return 405;
+  }
+
+  /* Read request body ------------------------------------------------------*/
+  char buf[2048];
+  int n = mg_read(conn, buf, sizeof(buf) - 1);
+  buf[n] = '\0';
+
+  json body;
+  try {
+    body = json::parse(buf);
+  } catch (...) {
+    mg_printf(conn,
+              "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}");
+    return 400;
+  }
+
+  /* Validate ---------------------------------------------------------------*/
+  if (!body.contains("name") || !body["name"].is_string()) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'name' field "
+                    "required\"}");
+    return 400;
+  }
+  const std::string presetName = body["name"];
+
+  /* Compose the preset record ---------------------------------------------*/
+  json preset = {{"name", presetName},
+                 {"datetime", utc_iso8601()},
+                 {"configuration", kbs->toJson()}};
+
+  /* File paths -------------------------------------------------------------*/
+  const std::filesystem::path presetPath = "synths/keyboard_presets.json";
+  std::filesystem::create_directories(
+      presetPath.parent_path()); // make sure ./synths exists
+
+  /* Load / create wrapper object { "presets": [] } -------------------------*/
+  json fileObj;
+  if (std::ifstream in{presetPath}; in.good()) {
+    try {
+      in >> fileObj;
+    } catch (...) { /* corrupted file – start fresh */
+    }
+  }
+  if (!fileObj.contains("presets") || !fileObj["presets"].is_array())
+    fileObj["presets"] = json::array();
+
+  /* Update or insert -------------------------------------------------------*/
+  bool updated = false;
+  for (auto &p : fileObj["presets"]) {
+    if (p.contains("name") && p["name"] == presetName) {
+      p = preset; // overwrite whole record
+      updated = true;
+      break;
+    }
+  }
+  if (!updated)
+    fileObj["presets"].push_back(preset);
+
+  /* Write back atomically --------------------------------------------------*/
+  {
+    const auto tmp = presetPath.string() + ".tmp";
+    std::ofstream out{tmp, std::ios::trunc};
+    out << fileObj.dump(2);
+    out.close();
+    std::filesystem::rename(tmp, presetPath); // replace original
+  }
+
+  /* Done -------------------------------------------------------------------*/
+  mg_printf(conn,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            "{\"status\":\"ok\",\"updated\":%s}",
+            updated ? "true" : "false");
+  return 200;
+}
+
 int input_push_handler(struct mg_connection *conn, void *cbdata) {
   refresh();
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
@@ -93,7 +190,9 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                       {{"rate", kbs->echo.getRate()},
                        {"feedback", kbs->echo.getFeedback()},
                        {"mix", kbs->echo.getMix()},
-                       {"sampleRate", kbs->echo.getSampleRate()}}}};
+                       {"sampleRate", kbs->echo.getSampleRate()}}},
+                     {"highpass", kbs->effects[0].iirsf[0].presentable},
+                     {"lowpass", kbs->effects[0].iirsf[1].presentable}};
 
     std::string body = response.dump();
     mg_printf(conn,
@@ -137,6 +236,18 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         if (adsr.contains("release"))
           kbs->adsr.qadsr[3] = adsr["release"];
         kbs->adsr.update_len();
+      }
+
+      if (body.contains("highpass") && body["highpass"].is_number()) {
+        float cutoff = body["highpass"];
+        IIR<float> hp = IIRFilters::highPass<float>(SAMPLERATE, cutoff);
+        kbs->effects[0].iirsf[0] = hp;
+      }
+
+      if (body.contains("lowpass") && body["lowpass"].is_number()) {
+        float cutoff = body["lowpass"];
+        IIR<float> lp = IIRFilters::lowPass<float>(SAMPLERATE, cutoff);
+        kbs->effects[0].iirsf[1] = lp;
       }
 
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
@@ -631,9 +742,9 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       effect.effectType = Effect::Type::Iir;
       config.effectIIR = effect;
       config.effectIIR->sampleRate = SAMPLERATE;
-      IIR<float> lowPass = IIRFilters::highPass<float>(
+      IIR<float> highPass = IIRFilters::highPass<float>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
-      config.effectIIR->iirsf.push_back(lowPass);
+      config.effectIIR->iirsf.push_back(highPass);
     } else if (arg == "--chorus_delay" && i + 1 < argc) {
       if (!config.effectChorus) {
         Effect effect;
@@ -704,6 +815,7 @@ void start_http_server(KeyboardStream *kbs) {
   mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/save", save_api_handler, kbs);
 
   printf("[HTTP] Server running at http://localhost:8080\n");
 
@@ -720,7 +832,7 @@ int main(int argc, char *argv[]) {
   int maxPolyphony = 50;
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
-  KeyboardStream stream(BUFFER_SIZE, SAMPLERATE);
+  KeyboardStream stream(SAMPLERATE);
   bool running = true;
   if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
     std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;

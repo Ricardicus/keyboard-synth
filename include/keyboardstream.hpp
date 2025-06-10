@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -25,8 +26,7 @@ constexpr int SAMPLERATE = 44100;
 
 class KeyboardStream {
 public:
-  KeyboardStream(int bufferSize, int sampleRate)
-      : bufferSize(bufferSize), sampleRate(sampleRate) {}
+  KeyboardStream(int sampleRate) : sampleRate(sampleRate) {}
   ~KeyboardStream() { teardown(); }
 
   void setup() {}
@@ -125,6 +125,53 @@ public:
       this->initialize();
     }
 
+    // In the future, add effects here too
+    nlohmann::json toJson() const {
+      return {{"sound", Sound::Rank::presetToJson(this->sound)},
+              {"volume", this->volume},
+              {"octave", this->octave},
+              {"detune", this->detune},
+              {"adsr", this->adsr.toJson()},
+              {"sampleRate", this->sampleRate}};
+    };
+
+    static std::optional<Oscillator> fromJson(const nlohmann::json &j) {
+      // Ensure sampleRate exists and is valid
+      if (!j.contains("sampleRate") || !j["sampleRate"].is_number_integer())
+        return std::nullopt;
+
+      int sampleRate = j["sampleRate"].get<int>();
+      Oscillator osc(sampleRate);
+
+      // Parse volume, octave, detune (optional; default to existing values)
+      if (j.contains("volume") && j["volume"].is_number())
+        osc.volume = j["volume"].get<float>();
+
+      if (j.contains("octave") && j["octave"].is_number_integer())
+        osc.octave = j["octave"].get<int>();
+
+      if (j.contains("detune") && j["detune"].is_number_integer())
+        osc.detune = j["detune"].get<int>();
+
+      // Parse ADSR
+      if (j.contains("adsr")) {
+        auto adsrOpt = ADSR::fromJson(j["adsr"]);
+        if (!adsrOpt)
+          return std::nullopt;
+        osc.adsr = *adsrOpt;
+      }
+
+      // Parse Sound Preset
+      if (j.contains("sound")) {
+        auto presetOpt = Sound::Rank::jsonToPreset(j["sound"]);
+        if (!presetOpt)
+          return std::nullopt;
+        osc.sound = *presetOpt;
+      }
+
+      return osc;
+    }
+
     void setVolume(float volume);
     void setOctave(int octave);
     void setDetune(int detune);
@@ -153,6 +200,7 @@ public:
 
   private:
     int index = 0;
+    std::vector<Effect> effects;
     mutex_holder ranksMtx;
     std::map<std::string, Sound::Rank> ranks;
     bool initialized = false;
@@ -191,19 +239,76 @@ public:
     printw("===================================\n");
   }
 
+  std::string serialize() { return this->toJson().dump(); };
+  KeyboardStream deserialize(std::string &keyboardstream);
+
   short amplitude = 32767;
   float duration = 0.1f;
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
+  std::vector<Effect> effects;
+
+  nlohmann::json toJson() const {
+    std::vector<nlohmann::json> synthJson, effectsJson;
+
+    for (int i = 0; i < this->synth.size(); i++) {
+      synthJson.push_back(this->synth[i].toJson());
+    }
+    for (int i = 0; i < this->effects.size(); i++) {
+      effectsJson.push_back(this->effects[i].toJson());
+    }
+
+    return {{"adsr", this->adsr.toJson()},
+            {"effects", effectsJson},
+            {"sampleRate", sampleRate},
+            {"oscillators", synthJson}};
+  }
+
+  static std::optional<KeyboardStream> fromJson(const nlohmann::json &j) {
+    // ----- sample rate -----
+    if (!j.contains("sampleRate"))
+      return std::nullopt;
+
+    int sr = j["sampleRate"].get<int>();
+
+    // ----- ADSR -----
+    if (!j.contains("adsr"))
+      return std::nullopt;
+
+    auto adsrOpt = ADSR::fromJson(j["adsr"]);
+    if (!adsrOpt)
+      return std::nullopt;
+
+    // ----- Build KeyboardStream -----
+    KeyboardStream ks(sr);
+    ks.adsr = *adsrOpt;
+
+    // ----- Effects -----
+    if (j.contains("effects") && j["effects"].is_array()) {
+      for (const auto &e : j["effects"]) {
+        auto effectOpt = Effect::fromJson(e);
+        if (effectOpt)
+          ks.effects.push_back(*effectOpt);
+      }
+    }
+
+    // ----- Oscillators ("synth") -----
+    if (j.contains("oscillators") && j["oscillators"].is_array()) {
+      for (const auto &o : j["oscillators"]) {
+        auto oscOpt = Oscillator::fromJson(o);
+        if (oscOpt)
+          ks.synth.push_back(*oscOpt);
+      }
+    }
+
+    return std::optional<KeyboardStream>{std::move(ks)};
+  }
 
 private:
   std::map<std::string, std::string> soundMap;
-  std::vector<Effect> effects;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
-  int bufferSize;
   int sampleRate;
-  std::mutex mtx;
 
   std::unordered_map<std::string, Note> notes;
   std::unordered_map<std::string, NotePress> notesPressed;

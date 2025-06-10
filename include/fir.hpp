@@ -5,9 +5,12 @@
 #include "waveread.hpp"
 #include <algorithm>
 #include <iostream>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
+
+#include <json.hpp>
 class FIR {
 public:
   FIR(std::vector<short> &buffer_, int sampleRate_) {
@@ -30,6 +33,34 @@ public:
   std::vector<short> convolute(int max_size);
   std::vector<float> getIR() { return this->impulseResponse; };
   size_t getIRLen() { return this->impulseResponse.size(); };
+
+  nlohmann::json toJson() const {
+    return nlohmann::json{{"impulseResponse", this->impulseResponse},
+                          {"sampleRate", this->sampleRate},
+                          {"normalize", this->normalize}};
+  };
+
+  static std::optional<FIR> fromJson(const nlohmann::json &j) {
+    if (!j.contains("sampleRate") || !j["sampleRate"].is_number_integer()) {
+      return std::nullopt;
+    }
+
+    FIR fir(j["sampleRate"].get<int>());
+
+    if (j.contains("buffer") && j["buffer"].is_array()) {
+      fir.setBuffer(j["buffer"].get<std::vector<short>>());
+    }
+
+    if (j.contains("impulseResponse") && j["impulseResponse"].is_array()) {
+      fir.setIR(j["impulseResponse"].get<std::vector<float>>());
+    }
+
+    if (j.contains("normalize") && j["normalize"].is_boolean()) {
+      fir.setNormalization(j["normalize"].get<bool>());
+    }
+
+    return fir;
+  };
 
 private:
   float ir(int index);
