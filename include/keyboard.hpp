@@ -116,9 +116,10 @@ public:
   }
 
   void prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                    std::vector<Effect> &effects, int nbrThreads);
-  void prepareSound(int sampleRate, ADSR &adsr, Sound::Rank::Preset preset,
-                    std::vector<Effect> &effects, int nbrThreads);
+                    std::vector<Effect<short>> &effects, int nbrThreads);
+  void prepareSound(int sampleRate, ADSR &adsr,
+                    Sound::Rank<short>::Preset preset,
+                    std::vector<Effect<short>> &effects, int nbrThreads);
   void registerNote(const std::string &note);
   void registerButtonPress(int note);
   void playNote(const std::string &note);

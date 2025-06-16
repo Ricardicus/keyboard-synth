@@ -24,20 +24,18 @@ bool fileExists(const std::string &file) {
   return std::filesystem::exists(file);
 }
 
-constexpr int SAMPLERATE = 44100;
-
 class PlayConfig {
 public:
   ADSR adsr;
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
-  Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
+  Sound::Rank<short>::Preset rankPreset = Sound::Rank<short>::Preset::None;
   std::string waveFile;
   std::string midiFile;
-  std::optional<Effect> effectFIR = std::nullopt;
-  std::optional<Effect> effectChorus = std::nullopt;
-  std::optional<Effect> effectIIR = std::nullopt;
-  std::optional<Effect> effectVibrato = std::nullopt;
-  std::optional<Effect> effectTremolo = std::nullopt;
+  std::optional<Effect<short>> effectFIR = std::nullopt;
+  std::optional<Effect<short>> effectChorus = std::nullopt;
+  std::optional<Effect<short>> effectIIR = std::nullopt;
+  std::optional<Effect<short>> effectVibrato = std::nullopt;
+  std::optional<Effect<short>> effectTremolo = std::nullopt;
   float volume = 1.0;
   float duration = 0.1f;
   int parallelization = 8; // Number of threads to use in keyboard preparation
@@ -73,8 +71,8 @@ public:
     printw("  Waveform: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%s\n", rankPreset != Sound::Rank::Preset::None
-                       ? Sound::Rank::presetStr(rankPreset).c_str()
+    printw("%s\n", rankPreset != Sound::Rank<short>::Preset::None
+                       ? Sound::Rank<short>::presetStr(rankPreset).c_str()
                        : Sound::typeOfWave(waveForm).c_str());
     attroff(COLOR_PAIR(5));
 
@@ -191,55 +189,80 @@ public:
       }
     }
 
+    /* ------- Chorus
+     * -----------------------------------------------------------*/
     if (effectChorus) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("  Chorus: delay=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f ", effectChorus->chorusConfig.delay);
-      attroff(COLOR_PAIR(5));
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("depth=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f\n", effectChorus->chorusConfig.depth);
-      attroff(COLOR_PAIR(5));
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("voices=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%d\n", effectChorus->chorusConfig.numVoices);
-      attroff(COLOR_PAIR(5));
+      if (const auto *c =
+              std::get_if<Effect<short>::ChorusConfig>(&effectChorus->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Chorus: delay=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", c->delay);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", c->depth);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("voices=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%d\n", c->numVoices);
+        attroff(COLOR_PAIR(5));
+      }
+    } else {
+      printw("  No chorus\n");
     }
 
+    /* ------- Vibrato
+     * ----------------------------------------------------------*/
     if (effectVibrato) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("  Vibrato: frequency=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f ", effectVibrato->vibratoConfig.frequency);
-      attroff(COLOR_PAIR(5));
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("depth=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f\n", effectVibrato->vibratoConfig.depth);
-      attroff(COLOR_PAIR(5));
+      if (const auto *v = std::get_if<Effect<short>::VibratoConfig>(
+              &effectVibrato->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Vibrato: frequency=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", v->frequency);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", v->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    } else {
+      printw("  No vibrato\n");
     }
 
+    /* ------- Tremolo
+     * ----------------------------------------------------------*/
     if (effectTremolo) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("  Tremolo: frequency=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f ", effectTremolo->tremoloConfig.frequency);
-      attroff(COLOR_PAIR(5));
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("depth=");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%f\n", effectTremolo->tremoloConfig.depth);
-      attroff(COLOR_PAIR(5));
+      if (const auto *t = std::get_if<Effect<short>::TremoloConfig>(
+              &effectTremolo->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Tremolo: frequency=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", t->frequency);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", t->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    } else {
+      printw("  No tremolo\n");
     }
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -321,45 +344,75 @@ void loaderFunc(unsigned ticks, unsigned tick) {
 }
 
 int parseArguments(int argc, char *argv[], PlayConfig &config) {
+  auto ensureVibrato = [&](float defFreq = 6.0f, float defDepth = 0.3f) {
+    if (!config.effectVibrato) {
+      Effect<short> e;
+      e.effectType = Effect<short>::Type::Vibrato;
+      e.config = Effect<short>::VibratoConfig{defFreq, defDepth};
+      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      config.effectVibrato = e;
+    }
+  };
+  auto ensureChorus = [&](float defDelay = 0.05f, float defDepth = 3.0f,
+                          int defVoices = 3) {
+    /* Create the effect only if it does not exist or is of another type */
+    if (!config.effectChorus) {
+      Effect<short> e;
+      e.effectType = Effect<short>::Type::Chorus;
+      e.config = Effect<short>::ChorusConfig{defDelay, defDepth, defVoices};
+      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      config.effectChorus = e;
+    }
+  };
+  auto ensureTremolo = [&](float defFreq = 5.0f, float defDepth = 0.5f) {
+    if (!config.effectTremolo) {
+      Effect<short> e;
+      e.effectType = Effect<short>::Type::Tremolo;
+      e.config = Effect<short>::TremoloConfig{defFreq, defDepth};
+      e.sampleRate = SAMPLERATE; // set once
+      config.effectTremolo = e;
+    }
+  };
+
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "--form") {
       if (i + 1 < argc) {
         std::string form = argv[i + 1];
         if (form == "triangular") {
-          config.rankPreset = Sound::Rank::Preset::Triangular;
+          config.rankPreset = Sound::Rank<short>::Preset::Triangular;
         } else if (form == "saw") {
-          config.rankPreset = Sound::Rank::Preset::Saw;
+          config.rankPreset = Sound::Rank<short>::Preset::Saw;
         } else if (form == "square") {
-          config.rankPreset = Sound::Rank::Preset::Square;
+          config.rankPreset = Sound::Rank<short>::Preset::Square;
         } else if (form == "sine") {
-          config.rankPreset = Sound::Rank::Preset::Sine;
+          config.rankPreset = Sound::Rank<short>::Preset::Sine;
         } else if (form == "supersaw") {
-          config.rankPreset = Sound::Rank::Preset::SuperSaw;
+          config.rankPreset = Sound::Rank<short>::Preset::SuperSaw;
         } else if (form == "fattriangle") {
-          config.rankPreset = Sound::Rank::Preset::FatTriangle;
+          config.rankPreset = Sound::Rank<short>::Preset::FatTriangle;
         } else if (form == "pulsesquare") {
-          config.rankPreset = Sound::Rank::Preset::PulseSquare;
+          config.rankPreset = Sound::Rank<short>::Preset::PulseSquare;
         } else if (form == "sinesawdrone") {
-          config.rankPreset = Sound::Rank::Preset::SineSawDrone;
+          config.rankPreset = Sound::Rank<short>::Preset::SineSawDrone;
         } else if (form == "supersawsub") {
-          config.rankPreset = Sound::Rank::Preset::SuperSawWithSub;
+          config.rankPreset = Sound::Rank<short>::Preset::SuperSawWithSub;
         } else if (form == "glitchmix") {
-          config.rankPreset = Sound::Rank::Preset::GlitchMix;
+          config.rankPreset = Sound::Rank<short>::Preset::GlitchMix;
         } else if (form == "lushpad") {
-          config.rankPreset = Sound::Rank::Preset::LushPad;
+          config.rankPreset = Sound::Rank<short>::Preset::LushPad;
         } else if (form == "retrolead") {
-          config.rankPreset = Sound::Rank::Preset::RetroLead;
+          config.rankPreset = Sound::Rank<short>::Preset::RetroLead;
         } else if (form == "bassgrowl") {
-          config.rankPreset = Sound::Rank::Preset::BassGrowl;
+          config.rankPreset = Sound::Rank<short>::Preset::BassGrowl;
         } else if (form == "ambientdrone") {
-          config.rankPreset = Sound::Rank::Preset::AmbientDrone;
+          config.rankPreset = Sound::Rank<short>::Preset::AmbientDrone;
         } else if (form == "synthstab") {
-          config.rankPreset = Sound::Rank::Preset::SynthStab;
+          config.rankPreset = Sound::Rank<short>::Preset::SynthStab;
         } else if (form == "glassbells") {
-          config.rankPreset = Sound::Rank::Preset::GlassBells;
+          config.rankPreset = Sound::Rank<short>::Preset::GlassBells;
         } else if (form == "organtone") {
-          config.rankPreset = Sound::Rank::Preset::OrganTone;
+          config.rankPreset = Sound::Rank<short>::Preset::OrganTone;
         }
       }
     } else if (arg == "--notes" && i + 1 < argc) {
@@ -386,98 +439,72 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     } else if (arg == "-e" || arg == "--echo") {
       FIR fir(SAMPLERATE);
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
-      Effect effect;
+      Effect<short> effect;
       effect.sampleRate = SAMPLERATE;
-      effect.effectType = Effect::Type::Fir;
+      effect.effectType = Effect<short>::Type::Fir;
       config.effectFIR = effect;
       config.effectFIR->addFIR(fir);
-    } else if (arg == "--chorus") {
-      Effect effect;
-      effect.effectType = Effect::Type::Chorus;
-      config.effectChorus = effect;
-      config.effectChorus->sampleRate = SAMPLERATE;
-    } else if (arg == "--vibrato") {
-      Effect effect;
-      effect.effectType = Effect::Type::Vibrato;
-      config.effectVibrato = effect;
-      config.effectVibrato->sampleRate = SAMPLERATE;
+
+    } else if (arg == "--vibrato") { // enable with defaults
+      ensureVibrato();               // only creates if missing
+
     } else if (arg == "--vibrato_depth" && i + 1 < argc) {
-      if (!config.effectVibrato) {
-        Effect effect;
-        effect.effectType = Effect::Type::Vibrato;
-        config.effectVibrato = effect;
-        config.effectVibrato->sampleRate = SAMPLERATE;
-      }
-      config.effectVibrato->vibratoConfig.depth = std::stof(argv[i + 1]);
+      ensureVibrato(); // keep existing freq
+      auto &v =
+          std::get<Effect<short>::VibratoConfig>(config.effectVibrato->config);
+      v.depth = std::stof(argv[i + 1]); // change depth only
+
     } else if (arg == "--vibrato_frequency" && i + 1 < argc) {
-      if (!config.effectVibrato) {
-        Effect effect;
-        effect.effectType = Effect::Type::Vibrato;
-        config.effectVibrato = effect;
-        config.effectVibrato->sampleRate = SAMPLERATE;
-      }
-      config.effectVibrato->vibratoConfig.frequency = std::stof(argv[i + 1]);
-    } else if (arg == "--tremolo") {
-      Effect effect;
-      effect.effectType = Effect::Type::Tremolo;
-      config.effectTremolo = effect;
-      config.effectTremolo->sampleRate = SAMPLERATE;
+      ensureVibrato(); // keep existing depth
+      auto &v =
+          std::get<Effect<short>::VibratoConfig>(config.effectVibrato->config);
+      v.frequency = std::stof(argv[i + 1]); // change frequency only
+    } else if (arg == "--tremolo") {        // enable with defaults
+      ensureTremolo();
+
     } else if (arg == "--tremolo_depth" && i + 1 < argc) {
-      if (!config.effectTremolo) {
-        Effect effect;
-        effect.effectType = Effect::Type::Tremolo;
-        config.effectTremolo = effect;
-        config.effectTremolo->sampleRate = SAMPLERATE;
-      }
-      config.effectTremolo->tremoloConfig.depth = std::stof(argv[i + 1]);
+      ensureTremolo(); // keep existing freq
+      auto &v =
+          std::get<Effect<short>::TremoloConfig>(config.effectVibrato->config);
+      v.depth = std::stof(argv[i + 1]);
     } else if (arg == "--tremolo_frequency" && i + 1 < argc) {
-      if (!config.effectTremolo) {
-        Effect effect;
-        effect.effectType = Effect::Type::Tremolo;
-        config.effectTremolo = effect;
-        config.effectTremolo->sampleRate = SAMPLERATE;
-      }
-      config.effectTremolo->tremoloConfig.frequency = std::stof(argv[i + 1]);
+      ensureTremolo(); // keep existing depth
+      auto &v =
+          std::get<Effect<short>::TremoloConfig>(config.effectVibrato->config);
+      v.frequency = std::stof(argv[i + 1]);
     } else if (arg == "--lowpass" && i + 1 < argc) {
-      Effect effect;
-      effect.effectType = Effect::Type::Iir;
+      Effect<short> effect;
+      effect.effectType = Effect<short>::Type::Iir;
       config.effectIIR = effect;
       config.effectIIR->sampleRate = SAMPLERATE;
       IIR<short> lowPass = IIRFilters::lowPass<short>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
     } else if (arg == "--highpass" && i + 1 < argc) {
-      Effect effect;
-      effect.effectType = Effect::Type::Iir;
+      Effect<short> effect;
+      effect.effectType = Effect<short>::Type::Iir;
       config.effectIIR = effect;
       config.effectIIR->sampleRate = SAMPLERATE;
       IIR<short> lowPass = IIRFilters::highPass<short>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
+    } else if (arg == "--chorus") { // enable with defaults
+      ensureChorus();
     } else if (arg == "--chorus_delay" && i + 1 < argc) {
-      if (!config.effectChorus) {
-        Effect effect;
-        effect.effectType = Effect::Type::Chorus;
-        config.effectChorus = effect;
-        config.effectChorus->sampleRate = SAMPLERATE;
-      }
-      config.effectChorus->chorusConfig.delay = std::stof(argv[i + 1]);
+      ensureChorus();
+      auto &v =
+          std::get<Effect<short>::ChorusConfig>(config.effectVibrato->config);
+      v.delay = std::stof(argv[i + 1]);
     } else if (arg == "--chorus_depth" && i + 1 < argc) {
-      if (!config.effectChorus) {
-        Effect effect;
-        effect.effectType = Effect::Type::Chorus;
-        config.effectChorus = effect;
-        config.effectChorus->sampleRate = SAMPLERATE;
-      }
-      config.effectChorus->chorusConfig.depth = std::stof(argv[i + 1]);
+      ensureChorus();
+      auto &v =
+          std::get<Effect<short>::ChorusConfig>(config.effectVibrato->config);
+      v.depth = std::stof(argv[i + 1]);
     } else if (arg == "--chorus_voices" && i + 1 < argc) {
-      if (!config.effectChorus) {
-        Effect effect;
-        effect.effectType = Effect::Type::Chorus;
-        config.effectChorus = effect;
-        config.effectChorus->sampleRate = SAMPLERATE;
-      }
-      config.effectChorus->chorusConfig.numVoices = std::atoi(argv[i + 1]);
+      ensureChorus();
+      auto &v =
+          std::get<Effect<short>::ChorusConfig>(config.effectVibrato->config);
+      v.numVoices = std::atoi(argv[i + 1]);
     } else if (arg == "--parallelization" && i + 1 < argc) {
       config.parallelization = std::atoi(argv[i + 1]);
     } else if (arg == "--midi" && i + 1 < argc) {
@@ -486,9 +513,9 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       FIR fir(SAMPLERATE);
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
-      Effect effect;
+      Effect<short> effect;
       effect.sampleRate = SAMPLERATE;
-      effect.effectType = Effect::Type::Fir;
+      effect.effectType = Effect<short>::Type::Fir;
       config.effectFIR = effect;
       config.effectFIR->addFIR(fir);
     } else if (arg == "--sustain" && i + 1 < argc) {
@@ -516,24 +543,24 @@ int main(int argc, char *argv[]) {
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   Keyboard keyboard(maxPolyphony);
   int rankIndex = 0;
-  std::vector<Sound::Rank::Preset> presets = {
-      Sound::Rank::Preset::Sine,
-      Sound::Rank::Preset::Saw,
-      Sound::Rank::Preset::Square,
-      Sound::Rank::Preset::Triangular,
-      Sound::Rank::Preset::SuperSaw,
-      Sound::Rank::Preset::FatTriangle,
-      Sound::Rank::Preset::PulseSquare,
-      Sound::Rank::Preset::SineSawDrone,
-      Sound::Rank::Preset::SuperSawWithSub,
-      Sound::Rank::Preset::GlitchMix,
-      Sound::Rank::Preset::OrganTone,
-      Sound::Rank::Preset::LushPad,
-      Sound::Rank::Preset::RetroLead,
-      Sound::Rank::Preset::BassGrowl,
-      Sound::Rank::Preset::AmbientDrone,
-      Sound::Rank::Preset::SynthStab,
-      Sound::Rank::Preset::GlassBells};
+  std::vector<Sound::Rank<short>::Preset> presets = {
+      Sound::Rank<short>::Preset::Sine,
+      Sound::Rank<short>::Preset::Saw,
+      Sound::Rank<short>::Preset::Square,
+      Sound::Rank<short>::Preset::Triangular,
+      Sound::Rank<short>::Preset::SuperSaw,
+      Sound::Rank<short>::Preset::FatTriangle,
+      Sound::Rank<short>::Preset::PulseSquare,
+      Sound::Rank<short>::Preset::SineSawDrone,
+      Sound::Rank<short>::Preset::SuperSawWithSub,
+      Sound::Rank<short>::Preset::GlitchMix,
+      Sound::Rank<short>::Preset::OrganTone,
+      Sound::Rank<short>::Preset::LushPad,
+      Sound::Rank<short>::Preset::RetroLead,
+      Sound::Rank<short>::Preset::BassGrowl,
+      Sound::Rank<short>::Preset::AmbientDrone,
+      Sound::Rank<short>::Preset::SynthStab,
+      Sound::Rank<short>::Preset::GlassBells};
 
   PlayConfig config;
   config.adsr = adsr;
@@ -553,7 +580,7 @@ int main(int argc, char *argv[]) {
   }
   keyboard.setLoaderFunc(loaderFunc);
   keyboard.setVolume(config.volume);
-  std::vector<Effect> effects;
+  std::vector<Effect<short>> effects;
   if (config.effectFIR) {
     effects.push_back(*config.effectFIR);
   }
@@ -665,7 +692,7 @@ int main(int argc, char *argv[]) {
         config.printConfig();
         keyboard.printInstructions();
         printw("Updated to new preset %s\n",
-               Sound::Rank::presetStr(presets[rankIndex]).c_str());
+               Sound::Rank<short>::presetStr(presets[rankIndex]).c_str());
       } else if (ch == 'W' || ch == 'E') {
         keyboard.setVolume(keyboard.getVolume() - (ch == 'E' ? -0.1 : 0.1));
         keyboard.teardown();

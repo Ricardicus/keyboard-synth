@@ -12,6 +12,7 @@
 #include "fir.hpp"
 #include "keyboardstream.hpp"
 #include "notes.hpp"
+#include "sound.hpp"
 #include "waveread.hpp"
 
 void KeyboardStream::printInstructions() {
@@ -78,21 +79,21 @@ void KeyboardStream::printInstructions() {
 }
 
 void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
-                                  std::vector<Effect> &effects) {
+                                  std::vector<Effect<float>> &effects) {
   this->adsr = adsr;
   this->sampleRate = sampleRate;
   {
     // First entry of the effects vector is dedicated to IIR high-pass and
     // low-pass filters: effects[0][0] -> High-pass filter effects[0][1] ->
     // Low-pass filter
-    Effect effect;
-    effect.effectType = Effect::Type::Iir;
+    Effect<float> effect;
+    effect.effectType = Effect<float>::Type::Iir;
     effect.sampleRate = sampleRate;
     IIR<float> highPass = IIRFilters::highPass<float>(sampleRate, 0.0);
     IIR<float> lowPass =
         IIRFilters::lowPass<float>(sampleRate, sampleRate * 0.5);
-    effect.iirsf.push_back(highPass);
-    effect.iirsf.push_back(lowPass);
+    effect.iirs.push_back(highPass);
+    effect.iirs.push_back(lowPass);
     this->effects.push_back(effect);
   }
   this->effects.insert(this->effects.end(), effects.begin(), effects.end());
@@ -101,6 +102,7 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
     this->synth.emplace_back(SAMPLERATE);
     this->synth[0].setVolume(0.5);
     this->synth[0].setSoundMap(this->soundMap);
+    this->synth[0].setEffects(this->effects);
   } else {
     this->setupStandardSynthConfig();
   }
@@ -113,6 +115,7 @@ void KeyboardStream::setupStandardSynthConfig() {
   }
   for (int i = 0; i < 4; i++) {
     this->synth[i].setVolume(i == 0 ? 0.5 : 0);
+    this->synth[i].setEffects(this->effects);
   }
 }
 
@@ -206,12 +209,12 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
 
     // Output sample
     float entry = sample * this->gain;
-    // Apply global echo
-    entry = this->echo.process(entry);
+    // Apply global post effects
+    entry = Sound::applyPostEffects(entry, this->effects);
     // Apply global iir filters
     for (int e = 0; e < this->effects.size(); e++) {
-      for (int i = 0; i < this->effects[e].iirsf.size(); i++) {
-        entry = this->effects[e].iirsf[i].process(entry);
+      for (int i = 0; i < this->effects[e].iirs.size(); i++) {
+        entry = this->effects[e].iirs[i].process(entry);
       }
     }
     // Write to buffer
@@ -288,7 +291,7 @@ void KeyboardStream::Oscillator::setDetune(int detune) {
 
 void KeyboardStream::Oscillator::setADSR(ADSR adsr) { this->adsr = adsr; }
 
-void KeyboardStream::Oscillator::setSound(Sound::Rank::Preset sound) {
+void KeyboardStream::Oscillator::setSound(Sound::Rank<float>::Preset sound) {
   this->sound = sound;
 }
 
@@ -328,6 +331,7 @@ void KeyboardStream::Oscillator::reset(const std::string &note) {
 
 void KeyboardStream::Oscillator::initialize() {
   auto notes = notes::getNotes();
+  printw("keyboard stream init\n");
 
   int nbrThreads = std::clamp(4, 1, static_cast<int>(notes.size()));
 
@@ -341,13 +345,18 @@ void KeyboardStream::Oscillator::initialize() {
   threads.reserve(nbrThreads);
 
   auto processNotes = [&](int start, int end) {
+    std::vector<Effect<float>> effectsClone(effects);
     for (int i = start; i < end; ++i) {
       auto const &key = notes[i];
       Note n{key, this->adsr.length, this->sampleRate};
 
       float freq = notes::getFrequency(key);
-      Sound::Rank r = Sound::Rank::fromPreset(
+      Sound::Rank<float> r = Sound::Rank<float>::fromPreset(
           this->sound, freq, this->adsr.length, this->sampleRate);
+      r.adsr = adsr;
+      for (int e = 0; e < effectsClone.size(); e++) {
+        r.addEffect(effectsClone[e]);
+      }
 
       {
         std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
@@ -378,7 +387,7 @@ std::string KeyboardStream::Oscillator::printSynthConfig() const {
   out << "Volume: " << volume << "\n";
   out << "Octave: " << octave << "\n";
   out << "Detune: " << detune << "\n";
-  out << "Sound Preset: " << Sound::Rank::presetStr(sound) << "\n";
+  out << "Sound Preset: " << Sound::Rank<float>::presetStr(sound) << "\n";
 
   out << "ADSR Envelope:\n";
   out << "  Amplitude: " << adsr.amplitude << "\n";

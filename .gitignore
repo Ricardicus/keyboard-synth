@@ -2,3 +2,4 @@
 build
 .DS_Store
 media/.DS_Store
+synths/*

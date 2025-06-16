@@ -1,34 +1,185 @@
 #ifndef KEYBOARD_EFFECTS_HPP
 #define KEYBOARD_EFFECTS_HPP
 
+#include <cmath>
 #include <json.hpp>
 #include <map>
 #include <optional>
+#include <variant>
 #include <vector>
 
 #include "fir.hpp"
 #include "iir.hpp"
 
-class Effect {
+#ifndef SAMPLERATE
+#define SAMPLERATE 44100
+#endif
+
+template <typename T> class EchoEffect {
 public:
-  Effect() {}
-  Effect(std::vector<FIR> &firs_) { this->firs = firs_; }
+  EchoEffect(float rateSeconds = 1.0f, float feedback = 0.3f, float mix = 1.0f,
+             float sampleRate = static_cast<float>(SAMPLERATE))
+      : writeIndex(0), delaySamples(0), feedback(feedback), mix(mix),
+        sampleRate(sampleRate) {
+    setRate(rateSeconds);
+  }
 
-  void addFIR(FIR &fir) { this->firs.push_back(fir); }
-  std::vector<short> apply(const std::vector<short> &buffer);
-  std::vector<short> apply(const std::vector<short> &buffer, size_t maxLen);
+  // ── setters ────────────────────────────────────────────────────────────
+  void setFeedback(float fb) { feedback = std::clamp(fb, 0.0f, 1.0f); }
+  void setMix(float m) { mix = std::clamp(m, 0.0f, 1.0f); }
+  void setSampleRate(float sr) {
+    sampleRate = sr;
+    setRate(getRate());
+  }
 
-  std::vector<short> apply_chorus(const std::vector<short> &buffer);
-  std::vector<short> apply_fir(const std::vector<short> &buffer);
-  std::vector<short> apply_fir(const std::vector<short> &buffer, size_t maxLen);
-  std::vector<short> apply_iir(const std::vector<short> &buffer);
-  std::vector<short> apply_iir(const std::vector<short> &buffer, size_t maxLen);
+  // ── getters ────────────────────────────────────────────────────────────
+  float getRate() const {
+    return static_cast<float>(delaySamples) / sampleRate;
+  }
+  float getFeedback() const { return feedback; }
+  float getMix() const { return mix; }
+  float getSampleRate() const { return sampleRate; }
 
-  std::vector<FIR> firs;
-  std::vector<IIR<short>> iirs;
-  std::vector<IIR<float>> iirsf;
+  T process(T inputSample);
 
-  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle, Tremolo };
+  // ── JSON serialisation ────────────────────────────────────────────────
+  nlohmann::json toJson() const {
+    return {{"rateSeconds", getRate()},
+            {"feedback", feedback},
+            {"mix", mix},
+            {"sampleRate", sampleRate}};
+  }
+
+  static std::optional<EchoEffect> fromJson(const nlohmann::json &j) {
+    // required keys
+    if (!j.contains("rateSeconds") || !j.contains("feedback") ||
+        !j.contains("mix") || !j.contains("sampleRate"))
+      return std::nullopt;
+
+    if (!j["rateSeconds"].is_number() || !j["feedback"].is_number() ||
+        !j["mix"].is_number() || !j["sampleRate"].is_number())
+      return std::nullopt;
+
+    float rateSec = j["rateSeconds"].get<float>();
+    float fb = j["feedback"].get<float>();
+    float mx = j["mix"].get<float>();
+    float sr = j["sampleRate"].get<float>();
+
+    if (rateSec <= 0.0f || sr <= 0.0f || fb < 0.0f || fb > 1.0f || mx < 0.0f ||
+        mx > 1.0f)
+      return std::nullopt;
+
+    return EchoEffect(rateSec, fb, mx, sr);
+  }
+
+  void setRate(float rateSeconds) {
+    // compute new size in samples, never zero
+    size_t newDelay =
+        static_cast<size_t>(std::max(rateSeconds * sampleRate, 1.0f));
+
+    if (newDelay > delaySamples) {
+      // grow: keep existing data, zero-fill the new tail
+      buffer.resize(newDelay, 0.0f);
+    } else if (newDelay < delaySamples) {
+      // shrink: just shorten the window, preserve the first newDelay samples
+      buffer.resize(newDelay);
+      // make sure writeIndex still in range [0, newDelay)
+      writeIndex %= newDelay;
+    }
+    // commit the new length
+    delaySamples = newDelay;
+  }
+
+  float feedback;
+  float mix;
+  float sampleRate;
+
+private:
+  std::vector<T> buffer;
+  size_t writeIndex;
+  size_t delaySamples;
+
+  void updateBuffer() {
+    buffer.assign(delaySamples > 0 ? delaySamples : 1, 0.0f);
+    writeIndex = 0;
+  }
+};
+
+template <typename T> class Effect {
+public:
+  // ── nested config structs ─────────────────────────────────────────────
+  struct ChorusConfig {
+    float delay;   // seconds
+    float depth;   // seconds
+    int numVoices; // number of LFO voices
+    nlohmann::json toJson() const {
+      return {{"delay", delay}, {"depth", depth}, {"numVoices", numVoices}};
+    }
+    static std::optional<ChorusConfig> fromJson(const nlohmann::json &j) {
+      if (!j.contains("delay") || !j.contains("depth") ||
+          !j.contains("numVoices"))
+        return std::nullopt;
+      if (!j["delay"].is_number() || !j["depth"].is_number() ||
+          !j["numVoices"].is_number_integer())
+        return std::nullopt;
+      return ChorusConfig{j["delay"].get<float>(), j["depth"].get<float>(),
+                          j["numVoices"].get<int>()};
+    }
+  };
+
+  struct VibratoConfig {
+    float frequency; // Hz
+    float depth;     // semitones / ratio
+    nlohmann::json toJson() const {
+      return {{"frequency", frequency}, {"depth", depth}};
+    }
+    static std::optional<VibratoConfig> fromJson(const nlohmann::json &j) {
+      if (!j.contains("frequency") || !j.contains("depth"))
+        return std::nullopt;
+      if (!j["frequency"].is_number() || !j["depth"].is_number())
+        return std::nullopt;
+      VibratoConfig v{j["frequency"].get<float>(), j["depth"].get<float>()};
+      return v;
+    }
+  };
+
+  struct DutyCycleConfig {
+    float frequency; // Hz
+    float depth;     // duty (0..1)
+    nlohmann::json toJson() const {
+      return {{"frequency", frequency}, {"depth", depth}};
+    }
+    static std::optional<DutyCycleConfig> fromJson(const nlohmann::json &j) {
+      if (!j.contains("frequency") || !j.contains("depth"))
+        return std::nullopt;
+      if (!j["frequency"].is_number() || !j["depth"].is_number())
+        return std::nullopt;
+      return DutyCycleConfig{j["frequency"].get<float>(),
+                             j["depth"].get<float>()};
+    }
+  };
+
+  struct TremoloConfig {
+    float frequency; // Hz
+    float depth;     // 0..1
+    nlohmann::json toJson() const {
+      return {{"frequency", frequency}, {"depth", depth}};
+    }
+    static std::optional<TremoloConfig> fromJson(const nlohmann::json &j) {
+      if (!j.contains("frequency") || !j.contains("depth"))
+        return std::nullopt;
+      if (!j["frequency"].is_number() || !j["depth"].is_number())
+        return std::nullopt;
+      TremoloConfig t{j["frequency"].get<float>(), j["depth"].get<float>()};
+      return t;
+    }
+  };
+
+  // ── enum & variant ───────────────────────────────────────────────────
+  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle, Tremolo, Echo };
+  using ConfigVariant =
+      std::variant<std::monostate, ChorusConfig, VibratoConfig, DutyCycleConfig,
+                   TremoloConfig, EchoEffect<T>>;
 
   static std::string typeToStr(Type t) {
     switch (t) {
@@ -44,248 +195,145 @@ public:
       return "DutyCycle";
     case Tremolo:
       return "Tremolo";
+    case Echo:
+      return "Echo";
+    default:
+      return "Unknown";
     }
-    return "Unknown (interesting)";
-  };
+  }
 
   static nlohmann::json typeToJson(Type t) {
-    int tInt = t;
-    std::string tStr = typeToStr(t);
+    return {{"type", static_cast<int>(t)}, {"typeStr", typeToStr(t)}};
+  }
 
-    return {
-        {"type", tInt},
-        {"typeStr", tStr},
-    };
-  };
+  // ── helpers for std::variant access ──────────────────────────────────
+  template <typename B> static const B *getIf(const ConfigVariant &v) {
+    return std::get_if<B>(&v);
+  }
+  template <typename B> static B *getIf(ConfigVariant &v) {
+    return std::get_if<B>(&v);
+  }
 
-  typedef struct ChorusConfig {
-    float delay;
-    float depth;
-    int numVoices;
-    ChorusConfig(float lfoRate, float depth, int numVoices)
-        : delay(lfoRate), depth(depth), numVoices(numVoices) {}
-    nlohmann::json toJson() const {
-      return {
-          {"delay", this->delay},
-          {"depth", this->depth},
-          {"numVoices", this->numVoices},
-      };
-    };
-    static std::optional<ChorusConfig> fromJson(const nlohmann::json &j) {
-      if (!j.contains("delay") || !j["delay"].is_number() ||
-          !j.contains("depth") || !j["depth"].is_number() ||
-          !j.contains("numVoices") || !j["numVoices"].is_number_integer())
-        return std::nullopt;
+  // ── data members ─────────────────────────────────────────────────────
+  Type effectType = Fir;
+  ConfigVariant config = std::monostate{};
 
-      return ChorusConfig{j["delay"].get<float>(), j["depth"].get<float>(),
-                          j["numVoices"].get<int>()};
-    }
+  std::vector<FIR> firs;
+  std::vector<IIR<T>> iirs;
+  int sampleRate = SAMPLERATE;
 
-  } ChorusConfig;
+  // ── ctor helpers ─────────────────────────────────────────────────────
+  Effect() = default;
+  Effect(std::vector<FIR> &firs_) { this->firs = firs_; }
 
-  typedef struct VibratoConfig {
-    float frequency;
-    float depth;
-
-    nlohmann::json toJson() const {
-      return {
-          {"frequency", this->frequency},
-          {"depth", this->depth},
-      };
-    };
-    static std::optional<VibratoConfig> fromJson(const nlohmann::json &j) {
-      if (!j.contains("frequency") || !j["frequency"].is_number() ||
-          !j.contains("depth") || !j["depth"].is_number())
-        return std::nullopt;
-
-      VibratoConfig v;
-      v.frequency = j["frequency"].get<float>();
-      v.depth = j["depth"].get<float>();
-      return v;
-    }
-
-  } VibratoConfig;
-
-  typedef struct DutyCycleConfig {
-    float frequency; // Frequency of PWM modulation
-    float depth;     // Depth of modulation
-    DutyCycleConfig(float frequency, float depth)
-        : frequency(frequency), depth(depth) {}
-    nlohmann::json toJson() const {
-      return {
-          {"frequency", this->frequency},
-          {"depth", this->depth},
-      };
-    };
-
-    static std::optional<DutyCycleConfig> fromJson(const nlohmann::json &j) {
-      if (!j.contains("frequency") || !j["frequency"].is_number() ||
-          !j.contains("depth") || !j["depth"].is_number())
-        return std::nullopt;
-
-      return DutyCycleConfig{j["frequency"].get<float>(),
-                             j["depth"].get<float>()};
-    }
-  } DutyCycleConfig;
-
-  typedef struct TremoloConfig {
-    float frequency;
-    float depth;
-    nlohmann::json toJson() const {
-      return {
-          {"frequency", this->frequency},
-          {"depth", this->depth},
-      };
-    };
-    static std::optional<TremoloConfig> fromJson(const nlohmann::json &j) {
-      if (!j.contains("frequency") || !j["frequency"].is_number() ||
-          !j.contains("depth") || !j["depth"].is_number())
-        return std::nullopt;
-
-      TremoloConfig t;
-      t.frequency = j["frequency"].get<float>();
-      t.depth = j["depth"].get<float>();
-      return t;
-    }
-
-  } TremoloConfig;
-
-  Type effectType = Type::Fir;
-  ChorusConfig chorusConfig{0.05f, 3, 3};
-  VibratoConfig vibratoConfig{6, 0.3};
-  DutyCycleConfig dutyCycleConfig{2.0f, 0.5f}; // Default values (2 Hz, 50%)
-  TremoloConfig tremoloConfig{18.0f, 1.0f};    // Default values (2 Hz, 50%)
-  int sampleRate = 44100;
-
+  // ── JSON serialisation ───────────────────────────────────────────────
   nlohmann::json toJson() const {
-    std::vector<nlohmann::json> firsJson;
-    std::vector<nlohmann::json> iirsJson;
-    std::vector<nlohmann::json> iirsfJson;
+    nlohmann::json j = {{"type", typeToJson(effectType)}};
 
-    for (int i = 0; i < this->firs.size(); i++) {
-      firsJson.push_back(this->firs[i].toJson());
+    auto add = [&](auto &&tag, auto &&ptr) {
+      if (ptr)
+        j[tag] = ptr->toJson();
+    };
+    switch (effectType) {
+    case Chorus:
+      add("chorus", getIf<ChorusConfig>(config));
+      break;
+    case Vibrato:
+      add("vibrato", getIf<VibratoConfig>(config));
+      break;
+    case DutyCycle:
+      add("dutycycle", getIf<DutyCycleConfig>(config));
+      break;
+    case Tremolo:
+      add("tremoloConfig", getIf<TremoloConfig>(config));
+      break;
+    case Echo:
+      add("echo", getIf<EchoEffect<T>>(config));
+      break;
+    default:
+      break; // Fir / Iir have no extra JSON fields
     }
-    for (int i = 0; i < this->iirs.size(); i++) {
-      iirsJson.push_back(this->iirs[i].toJson());
+
+    if (!firs.empty())
+      for (const auto &f : firs)
+        j["firs"].push_back(f.toJson());
+    if (!iirs.empty())
+      for (const auto &f : iirs)
+        j["iirs"].push_back(f.toJson());
+    if (sampleRate != SAMPLERATE)
+      j["sampleRate"] = sampleRate;
+    return j;
+  }
+
+  static std::optional<Effect<T>> fromJson(const nlohmann::json &j) {
+    // validate effect type object
+    if (!j.contains("type") || !j["type"].is_object() ||
+        !j["type"].contains("type") || !j["type"]["type"].is_number_integer())
+      return std::nullopt;
+
+    Effect<T> e;
+    e.effectType = static_cast<Type>(j["type"]["type"].get<int>());
+
+    auto trySetConfig = [&](auto &&tag, auto fromJsonFn) {
+      if (!j.contains(tag))
+        return true; // optional if absent
+      auto opt = fromJsonFn(j[tag]);
+      if (!opt)
+        return false;
+      e.config = *opt;
+      return true;
+    };
+
+    switch (e.effectType) {
+    case Chorus:
+      if (!trySetConfig("chorus", ChorusConfig::fromJson))
+        return std::nullopt;
+      break;
+    case Vibrato:
+      if (!trySetConfig("vibrato", VibratoConfig::fromJson))
+        return std::nullopt;
+      break;
+    case DutyCycle:
+      if (!trySetConfig("dutycycle", DutyCycleConfig::fromJson))
+        return std::nullopt;
+      break;
+    case Tremolo:
+      if (!trySetConfig("tremoloConfig", TremoloConfig::fromJson))
+        return std::nullopt;
+      break;
+    case Echo:
+      if (!trySetConfig("echo", EchoEffect<T>::fromJson))
+        return std::nullopt;
+      break;
+    default:
+      break; // Fir / Iir
     }
-    for (int i = 0; i < this->iirsf.size(); i++) {
-      iirsfJson.push_back(this->iirsf[i].toJson());
-    }
 
-    return {{"type", typeToJson(this->effectType)},
-            {"chorus", this->chorusConfig.toJson()},
-            {"vibrato", this->vibratoConfig.toJson()},
-            {"dutycycle", this->dutyCycleConfig.toJson()},
-            {"tremoloConfig", this->tremoloConfig.toJson()},
-            {"firs", firsJson},
-            {"iirs", iirsJson},
-            {"iirsf", iirsfJson}};
-  };
+    // FIR / IIR arrays
+    if (j.contains("firs"))
+      for (const auto &node : j["firs"])
+        if (auto f = FIR::fromJson(node))
+          e.firs.push_back(*f);
+    if (j.contains("iirs"))
+      for (const auto &node : j["iirs"])
+        if (auto f = IIR<T>::fromJson(node))
+          e.iirs.push_back(*f);
 
-  static std::optional<Effect> fromJson(const nlohmann::json &j) {
-    // ---------- validate presence & shape ----------
-    if (!j.contains("type") || !j["type"].is_object())
-      return std::nullopt;
-    if (!j["type"].contains("type") || !j["type"]["type"].is_number_integer())
-      return std::nullopt;
-
-    // ---------- parse nested configs ----------
-    auto chorusOpt =
-        ChorusConfig::fromJson(j.value("chorus", nlohmann::json{}));
-    auto vibratoOpt =
-        VibratoConfig::fromJson(j.value("vibrato", nlohmann::json{}));
-    auto dutyOpt =
-        DutyCycleConfig::fromJson(j.value("dutycycle", nlohmann::json{}));
-    auto tremOpt =
-        TremoloConfig::fromJson(j.value("tremoloConfig", nlohmann::json{}));
-
-    if (!chorusOpt || !vibratoOpt || !dutyOpt || !tremOpt)
-      return std::nullopt;
-
-    // ---------- build Effect ----------
-    Effect cfg;
-    cfg.effectType = static_cast<Type>(j["type"]["type"].get<int>());
-    cfg.chorusConfig = *chorusOpt;
-    cfg.vibratoConfig = *vibratoOpt;
-    cfg.dutyCycleConfig = *dutyOpt;
-    cfg.tremoloConfig = *tremOpt;
-
-    // Optional: sampleRate
     if (j.contains("sampleRate") && j["sampleRate"].is_number_integer())
-      cfg.sampleRate = j["sampleRate"].get<int>();
+      e.sampleRate = j["sampleRate"].get<int>();
 
-    // ---------- parse firs ----------
-    if (j.contains("firs") && j["firs"].is_array()) {
-      for (const auto &item : j["firs"]) {
-        auto firOpt = FIR::fromJson(item);
-        if (firOpt) {
-          cfg.firs.push_back(*firOpt);
-        }
-      }
-    }
-
-    // ---------- parse iirs (assumed IIR<short>) ----------
-    if (j.contains("iirs") && j["iirs"].is_array()) {
-      for (const auto &item : j["iirs"]) {
-        auto iirOpt = IIR<short>::fromJson(item);
-        if (iirOpt) {
-          cfg.iirs.push_back(*iirOpt);
-        }
-      }
-    }
-
-    // ---------- parse iirsf (assumed IIR<float>) ----------
-    if (j.contains("iirsf") && j["iirsf"].is_array()) {
-      for (const auto &item : j["iirsf"]) {
-        auto iirfOpt = IIR<float>::fromJson(item);
-        if (iirfOpt) {
-          cfg.iirsf.push_back(*iirfOpt);
-        }
-      }
-    }
-
-    return cfg;
+    return e;
   }
 
-private:
-  using Complex = std::complex<double>;
-};
+  void addFIR(FIR &fir) { this->firs.push_back(fir); }
+  std::vector<T> apply(const std::vector<T> &buffer);
+  std::vector<T> apply(const std::vector<T> &buffer, size_t maxLen);
 
-class EchoEffect {
-public:
-  EchoEffect(float rateSeconds, float feedback, float mix, float sampleRate);
-
-  void setRate(float rateSeconds);
-  void setFeedback(float feedback);
-  void setMix(float mix);
-  void setSampleRate(float sampleRate);
-
-  float getRate() const {
-    return static_cast<float>(delaySamples) / sampleRate;
-  }
-  float getFeedback() const { return feedback; }
-  float getMix() const { return mix; }
-  float getSampleRate() const { return sampleRate; }
-
-  float process(float inputSample);
-
-  nlohmann::json toJson() const {
-    return {
-        {"feedback", this->feedback},
-        {"mix", this->mix},
-        {"sampleRate", this->sampleRate},
-    };
-  };
-
-private:
-  std::vector<float> buffer;
-  size_t writeIndex;
-  size_t delaySamples;
-  float feedback;
-  float mix;
-  float sampleRate;
-
-  void updateBuffer();
+  std::vector<T> apply_chorus(const std::vector<T> &buffer);
+  std::vector<T> apply_fir(const std::vector<T> &buffer);
+  std::vector<T> apply_fir(const std::vector<T> &buffer, size_t maxLen);
+  std::vector<T> apply_iir(const std::vector<T> &buffer);
+  std::vector<T> apply_iir(const std::vector<T> &buffer, size_t maxLen);
 };
 
 #endif

@@ -26,6 +26,12 @@ function fromLogScale(knobValue: number): number {
   return minGain * Math.pow(maxGain / minGain, knobValue / 100);
 }
 
+function formatFrequency(value: number): string {
+  return value >= 1000
+    ? `${(value / 1000).toFixed(2)} kHz`
+    : `${value.toFixed(2)} Hz`;
+}
+
 // Re‑usable wrapper around a knob + readout
 const knobWrapper = "flex flex-col items-center space-y-2";
 
@@ -38,6 +44,8 @@ const ConfigPanel: React.FC = () => {
     sustain: 10,
     release: 5,
   });
+  const [highpass, setHighpass] = useState<number>(0);
+  const [lowpass, setLowpass] = useState<number>(21000);
 
   const isFirstUpdate = useRef(true);
   const debounceTimer = useRef<number | undefined>(undefined);
@@ -59,6 +67,8 @@ const ConfigPanel: React.FC = () => {
           sustain: data.adsr.sustain,
           release: data.adsr.release,
         });
+        setHighpass(data.highpass || 0);
+        setLowpass(data.lowpass || 21000);
         isFirstUpdate.current = false;
       });
   }, []);
@@ -81,9 +91,11 @@ const ConfigPanel: React.FC = () => {
           sustain: adsr.sustain,
           release: adsr.release,
         },
+        highpass: highpass,
+        lowpass: lowpass,
       }),
     });
-  }, [gainKnob, echo, adsr]);
+  }, [gainKnob, echo, adsr, highpass, lowpass]);
 
   useEffect(() => {
     if (isFirstUpdate.current) return;
@@ -97,7 +109,7 @@ const ConfigPanel: React.FC = () => {
       if (debounceTimer.current !== undefined)
         window.clearTimeout(debounceTimer.current);
     };
-  }, [gainKnob, echo, adsr, postConfig]);
+  }, [gainKnob, echo, adsr, highpass, lowpass, postConfig]);
 
   /* ----------------------- Helpers ----------------------- */
   const updateEcho = (key: keyof Echo, value: number) =>
@@ -188,6 +200,49 @@ const ConfigPanel: React.FC = () => {
                           label="Mix"
                         />
                         <span>{(echo.mix / 100).toFixed(2)}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </center>
+          </div>
+        </section>
+
+        {/* ----------------------- Filter Cutoffs ----------------------- */}
+        <section className="flex-1 flex flex-col items-center">
+          <h2 className="text-xl font-bold mb-4 text-center">Filters</h2>
+          <div className="overflow-x-auto">
+            <center>
+              <table className="mx-auto w-max">
+                <tbody>
+                  <tr className="align-top">
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={0}
+                          max={21000}
+                          step={10}
+                          value={highpass}
+                          onChange={setHighpass}
+                          label="Highpass"
+                        />
+                        <span>{formatFrequency(highpass)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={0}
+                          max={21000}
+                          step={10}
+                          value={lowpass}
+                          onChange={setLowpass}
+                          label="Lowpass"
+                        />
+                        <span>{formatFrequency(lowpass)}</span>
                       </div>
                     </td>
                   </tr>

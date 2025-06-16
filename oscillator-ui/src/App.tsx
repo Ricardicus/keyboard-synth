@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import OscillatorControl from "./OscillatorControl";
 import ConfigPanel from "./ConfigPanel";
 import Keyboard from "./Keyboard";
+import Presets from "./Presets";
 import type { Oscillator } from "./types";
 import "./App.css";
 
@@ -76,6 +77,7 @@ function App() {
     <div className="app">
       <h1>Keyboard Settings</h1>
       <ConfigPanel />
+      <Presets />
       <h1>Oscillators</h1>
       <div className="oscillator-grid">
         {oscillators.map((osc, i) => (

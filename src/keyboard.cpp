@@ -106,7 +106,8 @@ void Keyboard::printInstructions() {
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
-                            std::vector<Effect> &effects, int nbrThreads) {
+                            std::vector<Effect<short>> &effects,
+                            int nbrThreads) {
   int length = adsr.getLength();
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
@@ -127,7 +128,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
 
   // Lambda to process a range of notes
   auto processNotes = [&](int start, int end, int threadIndex) {
-    std::vector<Effect> effectsClone(effects);
+    std::vector<Effect<short>> effectsClone(effects);
     for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
       const auto &key = notes[bufferIndex];
       Note n = Note(key, length, sampleRate);
@@ -250,8 +251,9 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
-                            Sound::Rank::Preset preset,
-                            std::vector<Effect> &effects, int nbrThreads) {
+                            Sound::Rank<short>::Preset preset,
+                            std::vector<Effect<short>> &effects,
+                            int nbrThreads) {
   std::vector<std::string> notes = notes::getNotes();
   assert(notes.size() == this->buffers.size());
   int bufferIndex = 0;
@@ -272,14 +274,14 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
 
   // Lambda to process a range of notes
   auto processNotes = [&](int start, int end, int threadIndex) {
-    std::vector<Effect> effectsClone(effects);
+    std::vector<Effect<short>> effectsClone(effects);
     for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
       const auto &key = notes[bufferIndex];
       // Bottom row (one octave lower than home row)
       Note n = Note(key, adsr.length, sampleRate);
 
-      Sound::Rank r =
-          Sound::Rank::fromPreset(preset, n.frequency, adsr.length, sampleRate);
+      Sound::Rank<short> r = Sound::Rank<short>::fromPreset(
+          preset, n.frequency, adsr.length, sampleRate);
       r.adsr = adsr;
       for (int e = 0; e < effectsClone.size(); e++) {
         r.addEffect(effectsClone[e]);

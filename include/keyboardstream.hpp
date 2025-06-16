@@ -22,7 +22,9 @@
 
 #include "json.hpp"
 
-constexpr int SAMPLERATE = 44100;
+#ifndef SAMPLERATE
+#define SAMPLERATE 44100
+#endif
 
 class KeyboardStream {
 public:
@@ -68,7 +70,8 @@ public:
     this->loaderFunc = func;
   }
 
-  void prepareSound(int sampleRate, ADSR &adsr, std::vector<Effect> &effects);
+  void prepareSound(int sampleRate, ADSR &adsr,
+                    std::vector<Effect<float>> &effects);
   void fillBuffer(float *buffer, const int len);
   void registerNote(const std::string &note);
   void registerNoteRelease(const std::string &note);
@@ -117,7 +120,7 @@ public:
     int octave = 0;
     int detune = 0;
     ADSR adsr;
-    Sound::Rank::Preset sound = Sound::Rank::Preset::Sine;
+    Sound::Rank<float>::Preset sound = Sound::Rank<float>::Preset::Sine;
     int sampleRate;
 
     Oscillator(int sampleRate) {
@@ -127,7 +130,7 @@ public:
 
     // In the future, add effects here too
     nlohmann::json toJson() const {
-      return {{"sound", Sound::Rank::presetToJson(this->sound)},
+      return {{"sound", Sound::Rank<float>::presetToJson(this->sound)},
               {"volume", this->volume},
               {"octave", this->octave},
               {"detune", this->detune},
@@ -163,7 +166,7 @@ public:
 
       // Parse Sound Preset
       if (j.contains("sound")) {
-        auto presetOpt = Sound::Rank::jsonToPreset(j["sound"]);
+        auto presetOpt = Sound::Rank<float>::jsonToPreset(j["sound"]);
         if (!presetOpt)
           return std::nullopt;
         osc.sound = *presetOpt;
@@ -176,7 +179,7 @@ public:
     void setOctave(int octave);
     void setDetune(int detune);
     void setADSR(ADSR adsr);
-    void setSound(Sound::Rank::Preset sound);
+    void setSound(Sound::Rank<float>::Preset sound);
 
     void initialize();
 
@@ -187,7 +190,7 @@ public:
     void updateFrequencies() {
       std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
       for (auto &kv : this->ranks) {
-        Sound::Rank &r = kv.second;
+        Sound::Rank<float> &r = kv.second;
         for (Sound::Pipe &pipe : r.pipes) {
           Note &note = pipe.first;
           note.frequencyAltered = note.frequency * 2 *
@@ -197,12 +200,17 @@ public:
       }
     }
     void setSoundMap(std::map<std::string, std::string> &soundMap);
+    void setEffects(std::vector<Effect<float>> &effects) {
+      this->effects = effects;
+      initialize();
+    }
+
+    std::vector<Effect<float>> effects;
 
   private:
     int index = 0;
-    std::vector<Effect> effects;
     mutex_holder ranksMtx;
-    std::map<std::string, Sound::Rank> ranks;
+    std::map<std::string, Sound::Rank<float>> ranks;
     bool initialized = false;
     std::map<std::string, std::vector<short>> samples;
   };
@@ -224,7 +232,6 @@ public:
   };
 
   std::vector<Oscillator> synth;
-  EchoEffect echo{1.0, 0.3, 0.0, SAMPLERATE};
   float gain = 0.00001f;
 
   void printSynthConfig() const;
@@ -246,7 +253,7 @@ public:
   float duration = 0.1f;
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE *duration));
-  std::vector<Effect> effects;
+  std::vector<Effect<float>> effects;
 
   nlohmann::json toJson() const {
     std::vector<nlohmann::json> synthJson, effectsJson;
@@ -286,7 +293,7 @@ public:
     // ----- Effects -----
     if (j.contains("effects") && j["effects"].is_array()) {
       for (const auto &e : j["effects"]) {
-        auto effectOpt = Effect::fromJson(e);
+        auto effectOpt = Effect<float>::fromJson(e);
         if (effectOpt)
           ks.effects.push_back(*effectOpt);
       }
@@ -314,8 +321,8 @@ private:
   std::unordered_map<std::string, NotePress> notesPressed;
 
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
-  Sound::Rank::Preset rankPreset = Sound::Rank::Preset::None;
-  std::unordered_map<std::string, Sound::Rank> ranks;
+  Sound::Rank<float>::Preset rankPreset = Sound::Rank<float>::Preset::None;
+  std::unordered_map<std::string, Sound::Rank<float>> ranks;
 
   float volume = 1.0;
 
