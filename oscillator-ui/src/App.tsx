@@ -76,19 +76,31 @@ function App() {
   return (
     <div className="app">
       <h1>Keyboard Settings</h1>
-      <ConfigPanel />
-      <Presets />
-      <h1>Oscillators</h1>
-      <div className="oscillator-grid">
-        {oscillators.map((osc, i) => (
-          <OscillatorControl
-            key={i}
-            id={i}
-            data={osc}
-            onUpdate={updateOscillator}
-          />
-        ))}
-      </div>
+      <center>
+        <table>
+          <tbody>
+            <tr>
+              <td>
+                <ConfigPanel />
+                <Presets />
+              </td>
+              <td>
+                <h1>Oscillators</h1>
+                <div className="oscillator-grid">
+                  {oscillators.map((osc, i) => (
+                    <OscillatorControl
+                      key={i}
+                      id={i}
+                      data={osc}
+                      onUpdate={updateOscillator}
+                    />
+                  ))}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </center>
       <Keyboard />
     </div>
   );

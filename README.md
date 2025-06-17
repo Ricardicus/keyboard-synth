@@ -117,3 +117,21 @@ I want to test audio libraries that properly support streaming (using timed call
 have ventured into the SDL2 waters with that. I am also building a front end, where one can set
 the sound of the keyboard with the browser. All of this is buildable only if one has SDL2 installed.
 The program in question is "keyboardstream". Build like above, launch "./build/keyboardstream" and then visit localhost:8080 to edit the sounds and stuff. I have not added support for reverb and such there yet.. It is different when only parts of the sound are generated in real time. 
+
+### SDL 2 as audio engine 
+
+I am now working on a keyboard that is streaming-based. The OpenAL implementation is relying on pre-allocated buffers
+associated with each keypress. In my streaming-based keyboard, I instead fill a buffer with a hard time constraint in SDL2 making each sound generated live as the keys are pressed. This makes it easy to implement such things as filters and echos. The Reverb must be treated differenly, as the impulse response is larger than the time constraint. There are methods for that, I might be able to implement it. I am curious. To launch the streaming keyboard, run:
+
+```
+# Needs SDL2 installed, additional requirements than the ./build/keyboard
+# and is built conditionally if those requirements are fulfilled.
+./build/keyboardstream
+```
+
+It also features a keyboard configuration program that is hosted on port 8080, that you can visit at http://localhost:8080. As of the day of writing, that configuration panel looks like this:
+
+
+![Keyboard Config](media/images/keyboardconf.png)
+
+

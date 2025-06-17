@@ -41,10 +41,13 @@ static std::string utc_iso8601() {
 int presets_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+  const std::filesystem::path presetPath = "synths/keyboard_presets.json";
+  kbs->lock();
 
   /* Only POST is allowed ---------------------------------------------------*/
   if (std::string{req->request_method} != "POST") {
     mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+    kbs->unlock();
     return 405;
   }
 
@@ -60,31 +63,35 @@ int presets_api_handler(struct mg_connection *conn, void *cbdata) {
   } catch (...) {
     mg_printf(conn,
               "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"Invalid JSON\"}");
+    kbs->unlock();
     return 400;
   }
   if (!body.contains("method") || !body["method"].is_string()) {
-    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'name' field "
-                    "required\"}");
+    mg_printf(conn,
+              "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'method' field "
+              "required\"}");
+    kbs->unlock();
     return 400;
   }
   const std::string method = body["method"];
 
-  /* Validate ---------------------------------------------------------------*/
-  if (!body.contains("name") || !body["name"].is_string()) {
-    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'name' field "
-                    "required\"}");
-    return 400;
-  }
-  const std::string presetName = body["name"];
-
-  /* Compose the preset record ---------------------------------------------*/
-  json preset = {{"name", presetName},
-                 {"datetime", utc_iso8601()},
-                 {"configuration", kbs->toJson()}};
   if (method == "save") {
+    /* Validate
+     * ---------------------------------------------------------------*/
+    if (!body.contains("name") || !body["name"].is_string()) {
+      mg_printf(conn,
+                "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'name' field "
+                "required\"}");
+      kbs->unlock();
+      return 400;
+    }
+    const std::string presetName = body["name"];
+    /* Compose the preset record ---------------------------------------------*/
+    json preset = {{"name", presetName},
+                   {"datetime", utc_iso8601()},
+                   {"configuration", kbs->toJson()}};
     /* File paths
      * -------------------------------------------------------------*/
-    const std::filesystem::path presetPath = "synths/keyboard_presets.json";
     std::filesystem::create_directories(
         presetPath.parent_path()); // make sure ./synths exists
 
@@ -121,13 +128,110 @@ int presets_api_handler(struct mg_connection *conn, void *cbdata) {
       out.close();
       std::filesystem::rename(tmp, presetPath); // replace original
     }
-  }
+  } else if (method == "load") {
+    /* Validate
+     * ---------------------------------------------------------------*/
+    if (!body.contains("preset") || !body["preset"].is_string()) {
+      mg_printf(conn,
+                "HTTP/1.1 400 Bad Request\r\n\r\n{\"error\":\"'preset' field "
+                "required in request body\"}");
+      kbs->unlock();
+      return 400;
+    }
+    const std::string presetName = body["preset"];
+    /* Compose the preset record ---------------------------------------------*/
+    json preset = {{"name", presetName},
+                   {"datetime", utc_iso8601()},
+                   {"configuration", kbs->toJson()}};
+    /* Load / create wrapper object { "presets": [] }
+     * -------------------------*/
+    json fileObj;
+    if (std::ifstream in{presetPath}; in.good()) {
+      try {
+        in >> fileObj;
+      } catch (...) {
+        mg_printf(
+            conn,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            "{\"status\":\"failed\",\"message\":\"invalid presets file\"}");
+        kbs->unlock();
+        return 200;
+      }
+    }
+    if (!fileObj.contains("presets") || !fileObj["presets"].is_array())
+      fileObj["presets"] = json::array();
 
+    /* Update or insert
+     * -------------------------------------------------------*/
+    for (auto &p : fileObj["presets"]) {
+      if (p.contains("name") && p["name"] == presetName &&
+          p.contains("configuration")) {
+        if (!kbs->loadJson(p["configuration"])) {
+          mg_printf(conn,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+                    "{\"status\":\"ok\",\"message\":\"Preset loaded\"}");
+          kbs->unlock();
+          return 200;
+        } else {
+          mg_printf(conn,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+                    "{\"status\":\"failed\",\"message\":\"Invalid preset\"}");
+          kbs->unlock();
+          return 200;
+        }
+      }
+    }
+
+    mg_printf(conn, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+                    "{\"status\":\"failed\",\"message\":\"Preset not found\"}");
+    kbs->unlock();
+    return 200;
+  } else if (method == "list") {
+
+    /* Load / create wrapper object { "presets": [] }
+     * -------------------------*/
+    json fileObj;
+    if (std::ifstream in{presetPath}; in.good()) {
+      try {
+        in >> fileObj;
+      } catch (...) {
+        mg_printf(
+            conn,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            "{\"status\":\"failed\",\"message\":\"invalid presets file\"}");
+        kbs->unlock();
+        return 200;
+      }
+    }
+    if (!fileObj.contains("presets") || !fileObj["presets"].is_array())
+      fileObj["presets"] = json::array();
+
+    /* Update or insert
+     * -------------------------------------------------------*/
+    json response;
+    std::vector<json> names;
+    for (auto &p : fileObj["presets"]) {
+      if (p.contains("name")) {
+        json entry;
+        entry["name"] = p["name"];
+        names.push_back(entry);
+      }
+    }
+    response["status"] = "ok";
+    response["presets"] = names;
+    mg_printf(conn,
+              "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+              "%s",
+              response.dump().c_str());
+    kbs->unlock();
+    return 200;
+  }
   /* Done -------------------------------------------------------------------*/
   mg_printf(conn,
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
             "{\"status\":\"ok\",\"updated\":%s}",
             updated ? "true" : "false");
+  kbs->unlock();
   return 200;
 }
 
@@ -188,6 +292,7 @@ int input_release_handler(struct mg_connection *conn, void *cbdata) {
 int config_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+  kbs->lock();
 
   if (std::string(req_info->request_method) == "GET") {
     // Send current config
@@ -220,6 +325,7 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
               "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
               "Content-Length: %zu\r\n\r\n%s",
               body.size(), body.c_str());
+    kbs->unlock();
     return 200;
 
   } else if (std::string(req_info->request_method) == "POST") {
@@ -281,15 +387,18 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
       }
 
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+      kbs->unlock();
       return 200;
 
     } catch (...) {
       mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+      kbs->unlock();
       return 400;
     }
   }
 
   mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+  kbs->unlock();
   return 405;
 }
 
@@ -297,6 +406,7 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
 int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+  kbs->lock();
 
   if (std::string(req_info->request_method) == "GET") {
     json response = json::array();
@@ -312,6 +422,7 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
               "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
               "Content-Length: %zu\r\n\r\n%s",
               body.size(), body.c_str());
+    kbs->unlock();
     return 200;
 
   } else if (std::string(req_info->request_method) == "POST") {
@@ -323,12 +434,15 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
       json body = json::parse(buffer);
       if (!body.contains("id") || !body["id"].is_number_integer()) {
         mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nMissing 'id'");
+
+        kbs->unlock();
         return 400;
       }
 
       int id = body["id"];
       if (id < 0 || id >= (int)kbs->synth.size()) {
         mg_printf(conn, "HTTP/1.1 404 Not Found\r\n\r\nInvalid ID");
+        kbs->unlock();
         return 404;
       }
 
@@ -346,15 +460,18 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
       kbs->synth[id].updateFrequencies();
 
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
+      kbs->unlock();
       return 200;
 
     } catch (...) {
       mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON");
+      kbs->unlock();
       return 400;
     }
   }
 
   mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
+  kbs->unlock();
   return 405;
 }
 
@@ -369,7 +486,9 @@ void audioCallback(void *userdata, Uint8 *stream, int len) {
   auto *ks = static_cast<KeyboardStream *>(userdata);
   float *streamBuf = reinterpret_cast<float *>(stream);
   int samples = len / sizeof(float);
+  ks->lock();
   ks->fillBuffer(streamBuf, samples);
+  ks->unlock();
 }
 
 class PlayConfig {
@@ -896,7 +1015,8 @@ void start_http_server(KeyboardStream *kbs) {
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/presets", presets_api_handler, kbs);
 
-  printf("[HTTP] Server running at http://localhost:8080\n");
+  printw("\nHttp server for synth configuration running on port 8080, "
+         "http://localhost:8080\n");
 
   // Run forever — or you can add shutdown logic
   while (true)
@@ -913,6 +1033,7 @@ int main(int argc, char *argv[]) {
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   KeyboardStream stream(SAMPLERATE);
   bool running = true;
+  int port = 8080;
   if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
     std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
     return 1;

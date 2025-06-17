@@ -37,11 +37,17 @@ const Presets: React.FC<PresetsProps> = ({ onLoaded, onSaved }) => {
     const fetchPresets = async () => {
       setIsFetching(true);
       try {
-        const res = await fetch("/api/presets");
+        const res = await fetch("/api/presets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "list" }),
+        });
         if (!res.ok) {
           throw new Error(`Failed to fetch presets (status ${res.status})`);
         }
+
         const data: PresetsResponse = await res.json();
+        console.log(data);
         setPresets(data.presets ?? []);
       } catch (err) {
         console.error(err);

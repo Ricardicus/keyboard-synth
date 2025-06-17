@@ -100,7 +100,7 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
     const angle = pct * 352;
     const drawRaw = (270 + angle) % 360;
 
-    const indicatorLength = (size - 20) / 2;
+    const indicatorLength = (size - 20) / 3;
     const theta = (drawRaw * Math.PI) / 180;
     const x2 = size / 2 + Math.cos(theta) * indicatorLength;
     const y2 = size / 2 + Math.sin(theta) * indicatorLength;
@@ -117,7 +117,7 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
           <circle
             cx={size / 2}
             cy={size / 2}
-            r={(size - 10) / 2}
+            r={(size - 10) / 6}
             stroke="#444"
             strokeWidth="10"
             fill="none"
@@ -127,16 +127,16 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
             y1={size / 2}
             x2={x2}
             y2={y2}
-            stroke="#222"
-            strokeWidth="4"
+            stroke="#fff"
+            strokeWidth="8"
             strokeLinecap="round"
           />
-          <circle cx={x2} cy={y2} r={8} fill="#fff" />
+          <circle cx={size / 2} cy="10%" r={4} fill="#fff" />
 
           {displayValue && (
             <text
               x="50%"
-              y="50%"
+              y="90%"
               dominantBaseline="middle"
               textAnchor="middle"
               fontSize={size / 5}

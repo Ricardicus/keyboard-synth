@@ -331,49 +331,22 @@ void KeyboardStream::Oscillator::reset(const std::string &note) {
 
 void KeyboardStream::Oscillator::initialize() {
   auto notes = notes::getNotes();
-  printw("keyboard stream init\n");
 
-  int nbrThreads = std::clamp(4, 1, static_cast<int>(notes.size()));
+  std::vector<Effect<float>> effectsClone(effects);
+  for (int i = 0; i < notes.size(); ++i) {
+    auto const &key = notes[i];
+    Note n{key, this->adsr.length, this->sampleRate};
 
-  std::mutex mtx;
-
-  // split the work
-  int base = notes.size() / nbrThreads;
-  int extra = notes.size() % nbrThreads;
-
-  std::vector<std::thread> threads;
-  threads.reserve(nbrThreads);
-
-  auto processNotes = [&](int start, int end) {
-    std::vector<Effect<float>> effectsClone(effects);
-    for (int i = start; i < end; ++i) {
-      auto const &key = notes[i];
-      Note n{key, this->adsr.length, this->sampleRate};
-
-      float freq = notes::getFrequency(key);
-      Sound::Rank<float> r = Sound::Rank<float>::fromPreset(
-          this->sound, freq, this->adsr.length, this->sampleRate);
-      r.adsr = adsr;
-      for (int e = 0; e < effectsClone.size(); e++) {
-        r.addEffect(effectsClone[e]);
-      }
-
-      {
-        std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
-        this->ranks[key] = std::move(r);
-      }
+    float freq = notes::getFrequency(key);
+    Sound::Rank<float> r = Sound::Rank<float>::fromPreset(
+        this->sound, freq, this->adsr.length, this->sampleRate);
+    r.adsr = adsr;
+    for (int e = 0; e < effectsClone.size(); e++) {
+      r.addEffect(effectsClone[e]);
     }
-  };
 
-  int start = 0;
-  for (int t = 0; t < nbrThreads; ++t) {
-    int count = base + (t < extra ? 1 : 0);
-    threads.emplace_back(processNotes, start, start + count);
-    start += count;
+    { this->ranks[key] = std::move(r); }
   }
-
-  for (auto &th : threads)
-    th.join();
 
   this->initialized = true;
 }
