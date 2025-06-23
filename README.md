@@ -121,7 +121,7 @@ The program in question is "keyboardstream". Build like above, launch "./build/k
 ### SDL 2 as audio engine 
 
 I am now working on a keyboard that is streaming-based. The OpenAL implementation is relying on pre-allocated buffers
-associated with each keypress. In my streaming-based keyboard, I instead fill a buffer with a hard time constraint in SDL2 making each sound generated live as the keys are pressed. This makes it easy to implement such things as filters and echos. The Reverb must be treated differenly, as the impulse response is larger than the time constraint. There are methods for that, I might be able to implement it. I am curious. To launch the streaming keyboard, run:
+associated with each keypress. In my streaming-based keyboard, I instead fill a buffer with a hard time constraint in SDL2 making each sound generated live as the keys are pressed. This makes it easy to implement such things as filters and echos. The Reverb must be treated differenly, as the impulse response is larger than the time constraint. There are methods for that, I might implement it because I am curious. To launch the streaming keyboard, run:
 
 ```
 # Needs SDL2 installed, additional requirements than the ./build/keyboard
