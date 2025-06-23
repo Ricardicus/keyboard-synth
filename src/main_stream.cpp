@@ -298,13 +298,25 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
     // Send current config
     std::optional<std::reference_wrapper<EchoEffect<float>>> echoConf =
         std::nullopt;
+    std::optional<std::reference_wrapper<Effect<float>::VibratoConfig>>
+        vibConf = std::nullopt;
+    std::optional<std::reference_wrapper<Effect<float>::TremoloConfig>>
+        tremConf = std::nullopt;
     for (int e = 0; e < kbs->effects.size(); e++) {
       if (auto echo = std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
         echoConf = std::ref(*echo);
       }
+      if (auto echo = std::get_if<Effect<float>::VibratoConfig>(
+              &kbs->effects[e].config)) {
+        vibConf = std::ref(*echo);
+      }
+      if (auto echo = std::get_if<Effect<float>::TremoloConfig>(
+              &kbs->effects[e].config)) {
+        tremConf = std::ref(*echo);
+      }
     }
     json response;
-    if (echoConf) {
+    if (echoConf && vibConf && tremConf) {
       response = {{"gain", kbs->gain},
                   {"adsr",
                    {{"attack", kbs->adsr.qadsr[0]},
@@ -316,6 +328,12 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                     {"feedback", echoConf->get().getFeedback()},
                     {"mix", echoConf->get().getMix()},
                     {"sampleRate", echoConf->get().getSampleRate()}}},
+                  {"tremolo",
+                   {{"depth", tremConf->get().depth},
+                    {"frequency", tremConf->get().frequency}}},
+                  {"vibrato",
+                   {{"depth", vibConf->get().depth},
+                    {"frequency", vibConf->get().frequency}}},
                   {"highpass", kbs->effects[0].iirs[0].presentable},
                   {"lowpass", kbs->effects[0].iirs[1].presentable}};
     }
@@ -339,14 +357,28 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
       if (body.contains("gain") && body["gain"].is_number()) {
         kbs->gain = body["gain"];
       }
+
       std::optional<std::reference_wrapper<EchoEffect<float>>> echoConf =
           std::nullopt;
+      std::optional<std::reference_wrapper<Effect<float>::VibratoConfig>>
+          vibConf = std::nullopt;
+      std::optional<std::reference_wrapper<Effect<float>::TremoloConfig>>
+          tremConf = std::nullopt;
       for (int e = 0; e < kbs->effects.size(); e++) {
         if (auto echo =
                 std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
           echoConf = std::ref(*echo);
         }
+        if (auto echo = std::get_if<Effect<float>::VibratoConfig>(
+                &kbs->effects[e].config)) {
+          vibConf = std::ref(*echo);
+        }
+        if (auto echo = std::get_if<Effect<float>::TremoloConfig>(
+                &kbs->effects[e].config)) {
+          tremConf = std::ref(*echo);
+        }
       }
+
       if (echoConf) {
         if (body.contains("echo") && body["echo"].is_object()) {
           json echo = body["echo"];
@@ -374,6 +406,26 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         kbs->adsr.update_len();
       }
 
+      if (tremConf && body.contains("tremolo") && body["tremolo"].is_object()) {
+        json tremolo = body["tremolo"];
+        if (tremolo.contains("depth")) {
+          tremConf->get().depth = tremolo["depth"];
+        }
+        if (tremolo.contains("frequency")) {
+          tremConf->get().frequency = tremolo["frequency"];
+        }
+      }
+
+      if (vibConf && body.contains("vibrato") && body["vibrato"].is_object()) {
+        json vibrato = body["vibrato"];
+        if (vibrato.contains("depth")) {
+          vibConf->get().depth = vibrato["depth"];
+        }
+        if (vibrato.contains("frequency")) {
+          vibConf->get().frequency = vibrato["frequency"];
+        }
+      }
+
       if (body.contains("highpass") && body["highpass"].is_number()) {
         float cutoff = body["highpass"];
         IIR<float> hp = IIRFilters::highPass<float>(SAMPLERATE, cutoff);
@@ -385,6 +437,8 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         IIR<float> lp = IIRFilters::lowPass<float>(SAMPLERATE, cutoff);
         kbs->effects[0].iirs[1] = lp;
       }
+
+      kbs->copyEffectsToSynths();
 
       mg_printf(conn, "HTTP/1.1 200 OK\r\n\r\n");
       kbs->unlock();
@@ -923,16 +977,15 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       v.frequency = std::stof(argv[i + 1]); // change frequency only
     } else if (arg == "--tremolo") {        // enable with defaults
       ensureTremolo();
-
     } else if (arg == "--tremolo_depth" && i + 1 < argc) {
       ensureTremolo(); // keep existing freq
       auto &v =
-          std::get<Effect<float>::TremoloConfig>(config.effectVibrato->config);
+          std::get<Effect<float>::TremoloConfig>(config.effectTremolo->config);
       v.depth = std::stof(argv[i + 1]);
     } else if (arg == "--tremolo_frequency" && i + 1 < argc) {
       ensureTremolo(); // keep existing depth
       auto &v =
-          std::get<Effect<float>::TremoloConfig>(config.effectVibrato->config);
+          std::get<Effect<float>::TremoloConfig>(config.effectTremolo->config);
       v.frequency = std::stof(argv[i + 1]);
     } else if (arg == "--lowpass" && i + 1 < argc) {
       Effect<float> effect;
@@ -994,6 +1047,9 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       return -1;
     }
   }
+  // make sure there is always tremolo and vibrato
+  ensureTremolo(6.0, 0.0);
+  ensureVibrato(6.0, 0.0);
   return 0;
 }
 

@@ -79,6 +79,12 @@ public:
   void registerButtonRelease(int note);
   void printInstructions();
 
+  void copyEffectsToSynths() {
+    for (int i = 0; i < this->synth.size(); i++) {
+      this->synth[i].setEffects(this->effects);
+    }
+  }
+
   void loadSoundMap(std::string soundMapFile) {
     // Open the file for reading
     std::ifstream file(soundMapFile);

@@ -246,7 +246,8 @@ template <> float Sound::Rank<float>::generateRankSample() {
     float t = this->generatorIndex * deltaT;
     float phase = 2.0f * PI * frequency * t;
     float duty = 0.0;
-    short envelope = adsr.response(this->generatorIndex);
+    short envelope =
+        adsr.amplitude; // TODO: adsr.response(this->generatorIndex);
     applyEffects(t, phase, duty, envelope, effects);
 
     switch (form) {
@@ -272,7 +273,7 @@ template <> float Sound::Rank<float>::generateRankSample() {
       break;
     }
 
-    val += addition;
+    val += (static_cast<float>(envelope) / adsr.amplitude) * addition;
   }
 
   this->generatorIndex++;
