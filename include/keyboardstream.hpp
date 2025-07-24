@@ -405,4 +405,267 @@ private:
       {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},
       {static_cast<int>('p'), [this]() { this->changeOctave(1); }}};
 };
+
+class KeyboardStreamPlayConfig {
+public:
+  ADSR adsr;
+  Sound::WaveForm waveForm = Sound::WaveForm::Sine;
+  Sound::Rank<float>::Preset rankPreset = Sound::Rank<float>::Preset::None;
+  std::string waveFile;
+  std::string midiFile;
+  std::optional<Effect<float>> effectFIR = std::nullopt;
+  std::optional<Effect<float>> effectChorus = std::nullopt;
+  std::optional<Effect<float>> effectIIR = std::nullopt;
+  std::optional<Effect<float>> effectVibrato = std::nullopt;
+  std::optional<Effect<float>> effectTremolo = std::nullopt;
+  bool effectReverb = false;
+  EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};
+  float volume = 1.0;
+  float duration = 0.1f;
+  int parallelization = 8; // Number of threads to use in keyboard preparation
+
+  void printConfig() {
+    start_color(); // Enable color functionality
+
+    // Define color pairs
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);  // Green for visualization
+    init_pair(4, COLOR_WHITE, COLOR_BLACK);  // White Bold (Section Titles)
+    init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Orange/Yellow (Values)
+
+    // Print configuration details
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("Keyboard sound configuration:\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Volume: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%.2f\n", volume);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Sample rate: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", SAMPLERATE);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Notes-wave-map: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", waveFile.size() > 0 ? waveFile.c_str() : "none");
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Waveform: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", rankPreset != Sound::Rank<float>::Preset::None
+                       ? Sound::Rank<float>::presetStr(rankPreset).c_str()
+                       : Sound::typeOfWave(waveForm).c_str());
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  ADSR:\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Amplitude: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.amplitude);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Quantas: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.quantas);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    QADSR: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d %d %d %d\n", adsr.qadsr[0], adsr.qadsr[1], adsr.qadsr[2],
+           adsr.qadsr[3]);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.length);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Quantas_length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.quantas_length);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Sustain_level: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%d\n", adsr.sustain_level);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("    Visualization: [see below]\n");
+    attroff(A_BOLD | COLOR_PAIR(4));
+
+    // Print the cool ASCII visualization in **green**
+    attron(COLOR_PAIR(2) | A_BOLD);
+    printw("%s", adsr.getCoolASCIVisualization("    ").c_str());
+    attroff(COLOR_PAIR(2) | A_BOLD);
+
+    if (effectFIR) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  FIRs: ");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%lu\n", effectFIR->firs.size());
+      attroff(COLOR_PAIR(5));
+      for (size_t i = 0; i < effectFIR->firs.size(); i++) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] IR length: ", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        printw("%zu, Normalized: %s\n", effectFIR->firs[i].getIRLen(),
+               effectFIR->firs[i].getNormalization() ? "true" : "false");
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    if (effectIIR) {
+      attron(A_BOLD | COLOR_PAIR(4));
+      printw("  IIRs: ");
+      attroff(A_BOLD | COLOR_PAIR(4));
+      attron(COLOR_PAIR(5));
+      printw("%lu\n", effectIIR->iirs.size());
+      attroff(COLOR_PAIR(5));
+      for (size_t i = 0; i < effectIIR->iirs.size(); i++) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] Memory: ", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        printw("%u\n", effectIIR->iirs[i].memory);
+        attroff(COLOR_PAIR(5));
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] poles:", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        for (int a = 0; a < effectIIR->iirs[i].as.size(); a++) {
+          printw(" %f", effectIIR->iirs[i].as[a]);
+        }
+        printw("\n");
+        attroff(COLOR_PAIR(5));
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("    [%lu] zeroes:", i + 1);
+        attroff(A_BOLD | COLOR_PAIR(4));
+
+        attron(COLOR_PAIR(5));
+        for (int b = 0; b < effectIIR->iirs[i].bs.size(); b++) {
+          printw(" %f", effectIIR->iirs[i].bs[b]);
+        }
+        printw("\n");
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    /* ------- Chorus
+     * -----------------------------------------------------------*/
+    if (effectChorus) {
+      if (const auto *c =
+              std::get_if<Effect<float>::ChorusConfig>(&effectChorus->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Chorus: delay=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", c->delay);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", c->depth);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("voices=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%d\n", c->numVoices);
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    /* ------- Vibrato
+     * ----------------------------------------------------------*/
+    if (effectVibrato) {
+      if (const auto *v = std::get_if<Effect<float>::VibratoConfig>(
+              &effectVibrato->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Vibrato: frequency=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", v->frequency);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", v->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    /* ------- Tremolo
+     * ----------------------------------------------------------*/
+    if (effectTremolo) {
+      if (const auto *t = std::get_if<Effect<float>::TremoloConfig>(
+              &effectTremolo->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Tremolo: frequency=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f ", t->frequency);
+        attroff(COLOR_PAIR(5));
+
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", t->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  note length: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%.2f s\n", duration * adsr.quantas);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  A4 frequency: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%.2f Hz\n", notes::getFrequency("A4"));
+    attroff(COLOR_PAIR(5));
+
+    refresh(); // Refresh the screen to apply changes
+  }
+};
+
 #endif

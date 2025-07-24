@@ -172,7 +172,10 @@ void KeyboardStream::registerButtonRelease(int pressed) {
 void KeyboardStream::fillBuffer(float *buffer, const int len) {
   float deltaT = 1.0f / this->sampleRate;
 
-  auto start = std::chrono::high_resolution_clock::now();
+  // auto start = std::chrono::high_resolution_clock::now();
+
+  // if (notesPressed.size() == 0)
+  //   return;
 
   for (int i = 0; i < len; i++) {
     float sample = 0.0f;
@@ -220,13 +223,12 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
     // Write to buffer
     buffer[i] = entry;
   }
-
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> duration = end - start;
+  // auto end = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double, std::milli> duration = end - start;
 
   // Optionally keep this if debugging:
   // printw(" %f (%zu) -", duration.count(), notesPressed.size());
-  refresh();
+  // refresh();
 }
 
 float KeyboardStream::generateSample(std::string note, float phase, int index) {

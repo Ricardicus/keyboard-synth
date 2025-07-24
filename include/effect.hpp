@@ -15,6 +15,44 @@
 #define SAMPLERATE 44100
 #endif
 
+template <typename T> class Adder;
+template <typename T> class Piper;
+
+template <typename T> class AllPassEffect {
+public:
+  AllPassEffect(size_t delaySamples, T g) : buf(delaySamples, 0), g(g), w(0) {}
+  T process(T x) {
+    size_t r = (w + 1) % buf.size();
+    T y = -g * x + buf[r] + g * z; // z = earlier output
+    buf[w] = x + g * y;
+    z = y;
+    w = r;
+    return y;
+  }
+
+  // ── JSON serialisation ────────────────────────────────────────────────
+  nlohmann::json toJson() const {
+    return {{"delaySamples", buf.size()}, {"gain", g}};
+  }
+
+  static std::optional<AllPassEffect> fromJson(const nlohmann::json &j) {
+    // required keys
+    if (!j.contains("delaySamples") || !j.contains("gain"))
+      return std::nullopt;
+
+    if (!j["delaySamples"].is_number() || !j["gain"].is_number())
+      return std::nullopt;
+
+    size_t size = j["delaySamples"].get<int>();
+    float gain = j["gain"].get<float>();
+
+    return AllPassEffect(size, gain);
+  }
+  std::vector<T> buf;
+  T g, z{0};
+  size_t w;
+};
+
 template <typename T> class EchoEffect {
 public:
   EchoEffect(float rateSeconds = 1.0f, float feedback = 0.3f, float mix = 1.0f,
@@ -176,10 +214,22 @@ public:
   };
 
   // ── enum & variant ───────────────────────────────────────────────────
-  enum Type { Fir, Iir, Chorus, Vibrato, DutyCycle, Tremolo, Echo };
+  enum Type {
+    Fir,
+    Iir,
+    Chorus,
+    Vibrato,
+    DutyCycle,
+    Tremolo,
+    Echo,
+    AllPass,
+    Sum,
+    Pipe
+  };
   using ConfigVariant =
       std::variant<std::monostate, ChorusConfig, VibratoConfig, DutyCycleConfig,
-                   TremoloConfig, EchoEffect<T>>;
+                   TremoloConfig, EchoEffect<T>, AllPassEffect<T>, Adder<T>,
+                   Piper<T>>;
 
   static std::string typeToStr(Type t) {
     switch (t) {
@@ -197,6 +247,12 @@ public:
       return "Tremolo";
     case Echo:
       return "Echo";
+    case AllPass:
+      return "AllPass";
+    case Sum:
+      return "Adder";
+    case Pipe:
+      return "Piper";
     default:
       return "Unknown";
     }
@@ -245,8 +301,10 @@ public:
       add("dutycycle", getIf<DutyCycleConfig>(config));
       break;
     case Tremolo:
-      add("tremoloConfig", getIf<TremoloConfig>(config));
+      add("tremolo", getIf<TremoloConfig>(config));
       break;
+    case AllPass:
+      add("allpass", getIf<AllPassEffect<T>>(config));
     case Echo:
       add("echo", getIf<EchoEffect<T>>(config));
       break;
@@ -298,7 +356,11 @@ public:
         return std::nullopt;
       break;
     case Tremolo:
-      if (!trySetConfig("tremoloConfig", TremoloConfig::fromJson))
+      if (!trySetConfig("tremolo", TremoloConfig::fromJson))
+        return std::nullopt;
+      break;
+    case AllPass:
+      if (!trySetConfig("allpass", AllPassEffect<T>::fromJson))
         return std::nullopt;
       break;
     case Echo:
@@ -334,6 +396,61 @@ public:
   std::vector<T> apply_fir(const std::vector<T> &buffer, size_t maxLen);
   std::vector<T> apply_iir(const std::vector<T> &buffer);
   std::vector<T> apply_iir(const std::vector<T> &buffer, size_t maxLen);
+};
+
+template <typename T> class Adder {
+public:
+  Adder(std::vector<Effect<T>> effects) : effects(effects) {}
+  T process(T x) {
+    T result = x;
+    for (int e = 0; e < effects.size(); e++) {
+      if (auto echo = std::get_if<EchoEffect<T>>(&effects[e].config)) {
+        result += echo->process(result);
+      } else if (auto allpass =
+                     std::get_if<AllPassEffect<T>>(&effects[e].config)) {
+        result += allpass->process(result);
+      } else if (auto sum = std::get_if<Adder<T>>(&effects[e].config)) {
+        result += sum->process(result);
+      } else if (auto pipe = std::get_if<Piper<T>>(&effects[e].config)) {
+        result += pipe->process(result);
+      }
+      result /= effects.size();
+    }
+    return result;
+  }
+  std::vector<Effect<T>> effects;
+};
+
+template <typename T> class Piper {
+public:
+  Piper(std::vector<std::vector<Effect<T>>> pipes, std::vector<float> mix)
+      : pipes(pipes), mix(mix) {
+    assert(pipes.size() == mix.size());
+  }
+  T process(T x) {
+    T final_result = 0;
+    size_t size = pipes.size();
+    for (int p = 0; p < pipes.size(); p++) {
+      T result = x;
+      auto &effects = pipes[p];
+      for (int e = 0; e < effects.size(); e++) {
+        if (auto echo = std::get_if<EchoEffect<float>>(&effects[e].config)) {
+          result = echo->process(result);
+        } else if (auto allpass =
+                       std::get_if<AllPassEffect<float>>(&effects[e].config)) {
+          result = allpass->process(result);
+        } else if (auto sum = std::get_if<Adder<float>>(&effects[e].config)) {
+          result = sum->process(result);
+        } else if (auto pipe = std::get_if<Piper<float>>(&effects[e].config)) {
+          result = pipe->process(result);
+        }
+      }
+      final_result += result * mix[p];
+    }
+    return final_result;
+  }
+  std::vector<std::vector<Effect<T>>> pipes;
+  std::vector<float> mix;
 };
 
 #endif

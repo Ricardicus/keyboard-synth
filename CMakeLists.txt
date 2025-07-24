@@ -5,6 +5,7 @@ project(OpenAL_C4Note)
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
@@ -73,7 +74,7 @@ if(SDL2_FOUND)
     
     add_subdirectory(external/civetweb)
 
-    add_executable(keyboardstream src/main_stream.cpp external/civetweb/src/CivetServer.cpp)
+    add_executable(keyboardstream src/main_stream.cpp src/api.cpp external/civetweb/src/CivetServer.cpp)
 
     target_include_directories(keyboardstream PRIVATE civetweb ${SDL2_INCLUDE_DIRS})
     target_compile_definitions(keyboardstream PRIVATE CIVETWEB)

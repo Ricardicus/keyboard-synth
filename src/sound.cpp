@@ -133,6 +133,13 @@ float Sound::applyPostEffects(float sample,
   for (int e = 0; e < effects.size(); e++) {
     if (auto echo = std::get_if<EchoEffect<float>>(&effects[e].config)) {
       result = echo->process(result);
+    } else if (auto allpass =
+                   std::get_if<AllPassEffect<float>>(&effects[e].config)) {
+      result = allpass->process(result);
+    } else if (auto sum = std::get_if<Adder<float>>(&effects[e].config)) {
+      result = sum->process(result);
+    } else if (auto pipe = std::get_if<Piper<float>>(&effects[e].config)) {
+      result = pipe->process(result);
     }
   }
   return result;
@@ -145,6 +152,9 @@ short Sound::applyPostEffects(short sample,
   for (int e = 0; e < effects.size(); e++) {
     if (auto echo = std::get_if<EchoEffect<short>>(&effects[e].config)) {
       result = echo->process(result);
+    } else if (auto allpass =
+                   std::get_if<AllPassEffect<short>>(&effects[e].config)) {
+      result = allpass->process(result);
     }
   }
   return result;
