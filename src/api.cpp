@@ -283,6 +283,8 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         vibConf = std::nullopt;
     std::optional<std::reference_wrapper<Effect<float>::TremoloConfig>>
         tremConf = std::nullopt;
+    std::optional<std::reference_wrapper<Piper<float>>> reverbMixConf =
+        std::nullopt;
     for (int e = 0; e < kbs->effects.size(); e++) {
       if (auto echo = std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
         echoConf = std::ref(*echo);
@@ -295,9 +297,12 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
               &kbs->effects[e].config)) {
         tremConf = std::ref(*echo);
       }
+      if (auto reverbMix = std::get_if<Piper<float>>(&kbs->effects[e].config)) {
+        reverbMixConf = std::ref(*reverbMix);
+      }
     }
     json response;
-    if (echoConf && vibConf && tremConf) {
+    if (echoConf && vibConf && tremConf && reverbMixConf) {
       response = {{"gain", kbs->gain},
                   {"adsr",
                    {{"attack", kbs->adsr.qadsr[0]},
@@ -312,6 +317,9 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                   {"tremolo",
                    {{"depth", tremConf->get().depth},
                     {"frequency", tremConf->get().frequency}}},
+                  {"reverb",
+                   {{"dry", reverbMixConf->get().mix[1]},
+                    {"wet", reverbMixConf->get().mix[0]}}},
                   {"vibrato",
                    {{"depth", vibConf->get().depth},
                     {"frequency", vibConf->get().frequency}}},
@@ -345,6 +353,8 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
           vibConf = std::nullopt;
       std::optional<std::reference_wrapper<Effect<float>::TremoloConfig>>
           tremConf = std::nullopt;
+      std::optional<std::reference_wrapper<Piper<float>>> reverbMixConf =
+          std::nullopt;
       for (int e = 0; e < kbs->effects.size(); e++) {
         if (auto echo =
                 std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
@@ -357,6 +367,10 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         if (auto echo = std::get_if<Effect<float>::TremoloConfig>(
                 &kbs->effects[e].config)) {
           tremConf = std::ref(*echo);
+        }
+        if (auto reverbMix =
+                std::get_if<Piper<float>>(&kbs->effects[e].config)) {
+          reverbMixConf = std::ref(*reverbMix);
         }
       }
 
@@ -417,6 +431,20 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         float cutoff = body["lowpass"];
         IIR<float> lp = IIRFilters::lowPass<float>(SAMPLERATE, cutoff);
         kbs->effects[0].iirs[1] = lp;
+      }
+
+      if (reverbMixConf && body.contains("reverb") &&
+          body["reverb"].is_object()) {
+        json reverb = body["reverb"];
+        if (reverb.contains("wet")) {
+          reverbMixConf->get().mix[0] = reverb["wet"];
+          printf("Setting wet to: %f\n", reverb["wet"]);
+        }
+        if (reverb.contains("dry")) {
+          reverbMixConf->get().mix[1] = reverb["dry"];
+        }
+      } else {
+        printf("Nope, no reverb\n");
       }
 
       kbs->copyEffectsToSynths();

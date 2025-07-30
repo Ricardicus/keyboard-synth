@@ -4,8 +4,8 @@ import Knob from "./Knob";
 
 interface Echo {
   rate: number;
-  feedback: number;
-  mix: number;
+  feedback: number; // 0..100 UI, normalized on POST
+  mix: number;      // 0..100 UI, normalized on POST
 }
 
 interface ADSR {
@@ -18,6 +18,11 @@ interface ADSR {
 interface Modulator {
   depth: number;
   frequency: number;
+}
+
+interface Reverb {
+  wet: number;
+  dry: number;
 }
 
 const minGain = 0.000001;
@@ -53,7 +58,6 @@ const ConfigPanel: React.FC = () => {
   const [highpass, setHighpass] = useState<number>(0);
   const [lowpass, setLowpass] = useState<number>(21000);
 
-  // New: Vibrato & Tremolo
   const [vibrato, setVibrato] = useState<Modulator>({
     depth: 0,
     frequency: 5,
@@ -62,6 +66,8 @@ const ConfigPanel: React.FC = () => {
     depth: 0,
     frequency: 5,
   });
+
+  const [reverb, setReverb] = useState<Reverb>({ wet: 50, dry: 50 });
 
   const isFirstUpdate = useRef(true);
   const debounceTimer = useRef<number | undefined>(undefined);
@@ -93,6 +99,12 @@ const ConfigPanel: React.FC = () => {
           depth: data.tremolo?.depth ?? 0,
           frequency: data.tremolo?.frequency ?? 5,
         });
+
+        setReverb({
+          dry: Math.round((data.reverb?.dry ?? 0.5) * 100),
+          wet: Math.round((data.reverb?.wet ?? 0.5) * 100),
+        });
+
         isFirstUpdate.current = false;
       });
   }, []);
@@ -119,9 +131,15 @@ const ConfigPanel: React.FC = () => {
         lowpass,
         vibrato,
         tremolo,
+
+        // Post normalized reverb mix (0..1 floats)
+        reverb: {
+          wet: reverb.wet / 100,
+          dry: reverb.dry / 100,
+        },
       }),
     });
-  }, [gainKnob, echo, adsr, highpass, lowpass, vibrato, tremolo]);
+  }, [gainKnob, echo, adsr, highpass, lowpass, vibrato, tremolo, reverb]);
 
   useEffect(() => {
     if (isFirstUpdate.current) return;
@@ -135,7 +153,17 @@ const ConfigPanel: React.FC = () => {
       if (debounceTimer.current !== undefined)
         window.clearTimeout(debounceTimer.current);
     };
-  }, [gainKnob, echo, adsr, highpass, lowpass, vibrato, tremolo, postConfig]);
+  }, [
+    gainKnob,
+    echo,
+    adsr,
+    highpass,
+    lowpass,
+    vibrato,
+    tremolo,
+    reverb,
+    postConfig,
+  ]);
 
   /* ----------------------- Helpers ----------------------- */
   const updateEcho = (key: keyof Echo, value: number) =>
@@ -146,12 +174,13 @@ const ConfigPanel: React.FC = () => {
     setVibrato((prev) => ({ ...prev, [key]: value }));
   const updateTremolo = (key: keyof Modulator, value: number) =>
     setTremolo((prev) => ({ ...prev, [key]: value }));
+  const updateReverb = (key: keyof Reverb, value: number) =>
+    setReverb((prev) => ({ ...prev, [key]: value }));
 
   /* ----------------------- Render ----------------------- */
   return (
     <div className="config-panel p-6 bg-gray-50 rounded-lg shadow-md flex justify-center">
       <div className="flex flex-col space-y-12 lg:flex-row lg:space-y-0 lg:space-x-12 justify-center">
-
 
         {/* ----------------------- Filter Cutoffs ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
@@ -340,7 +369,7 @@ const ConfigPanel: React.FC = () => {
           </div>
         </section>
 
-        {/* ----------------------- Vibrato ----------------------- */}
+        {/* ----------------------- Vibrato & Tremolo ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
           <table>
             <tbody>
@@ -350,7 +379,6 @@ const ConfigPanel: React.FC = () => {
                     Vibrato
                   </h2>
                 </td>
-                {/* ----------------------- Tremolo ----------------------- */}
                 <td>
                   <h2 className="text-xl font-bold mb-4 text-center">
                     Tremolo
@@ -375,7 +403,7 @@ const ConfigPanel: React.FC = () => {
                                   onChange={(v) =>
                                     updateVibrato(
                                       "depth",
-                                      parseFloat(v.toFixed(1)),
+                                      parseFloat(v.toFixed(1))
                                     )
                                   }
                                   label="Depth"
@@ -424,7 +452,7 @@ const ConfigPanel: React.FC = () => {
                                   onChange={(v) =>
                                     updateTremolo(
                                       "depth",
-                                      parseFloat(v.toFixed(2)),
+                                      parseFloat(v.toFixed(2))
                                     )
                                   }
                                   label="Depth"
@@ -459,6 +487,49 @@ const ConfigPanel: React.FC = () => {
               </tr>
             </tbody>
           </table>
+        </section>
+
+        {/* ----------------------- Reverb Mix ----------------------- */}
+        <section className="flex-1 flex flex-col items-center">
+          <h2 className="text-xl font-bold mb-4 text-center">Reverb Mix</h2>
+          <div className="overflow-x-auto">
+            <center>
+              <table className="mx-auto w-max">
+                <tbody>
+                  <tr className="align-top">
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={reverb.wet}
+                          onChange={(v) => updateReverb("wet", v)}
+                          label="Wet"
+                        />
+                        <span>{(reverb.wet / 100).toFixed(2)}</span>
+                      </div>
+                    </td>
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={reverb.dry}
+                          onChange={(v) => updateReverb("dry", v)}
+                          label="Dry"
+                        />
+                        <span>{(reverb.dry / 100).toFixed(2)}</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </center>
+          </div>
         </section>
       </div>
     </div>
