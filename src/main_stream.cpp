@@ -412,6 +412,7 @@ int main(int argc, char *argv[]) {
   if (config.effectTremolo) {
     effects.push_back(*config.effectTremolo);
   }
+
   {
     // Adding Reverb
     std::vector<Effect<float>> effects_sum;
@@ -467,6 +468,10 @@ int main(int argc, char *argv[]) {
     reverb_pipes.push_back(pipe_effects);
     reverb_pipes.push_back({});
     std::vector<float> pipe_mix{0.0, 1.0};
+    if (config.effectReverb) {
+      pipe_mix[0] = 0.5;
+      pipe_mix[1] = 0.8;
+    }
 
     Piper<float> piper{reverb_pipes, pipe_mix};
     reverb.effectType = Effect<float>::Type::Pipe;

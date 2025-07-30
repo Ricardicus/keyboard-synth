@@ -438,7 +438,6 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         json reverb = body["reverb"];
         if (reverb.contains("wet")) {
           reverbMixConf->get().mix[0] = reverb["wet"];
-          printf("Setting wet to: %f\n", reverb["wet"]);
         }
         if (reverb.contains("dry")) {
           reverbMixConf->get().mix[1] = reverb["dry"];
