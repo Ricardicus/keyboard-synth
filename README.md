@@ -110,7 +110,7 @@ sudo apt-get install libopenal-dev
 sudo apt-get install libncurses5-dev
 ```
 
-## Experiments
+# Streamed audio engine synth
 
 All of the above is true for the OpenAL implementation. I am now, working on a bit of a side quest.
 I want to test audio libraries that properly support streaming (using timed callbacks) and
@@ -126,7 +126,39 @@ associated with each keypress. In my streaming-based keyboard, I instead fill a 
 ```
 # Needs SDL2 installed, additional requirements than the ./build/keyboard
 # and is built conditionally if those requirements are fulfilled.
-./build/keyboardstream
+$ ./build/keyboardstream -h
+Usage: ./build/keyboardstream [flags]
+flags:
+   --form: form of sound [sine (default), triangular, saw, supersaw,
+           square, fattriangle, pulsesquare, sinesawdrone, supersawsub,
+           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
+           synthstab, glassbells, organtone]
+   -e|--echo: Add an echo effect
+   --reverb: Add a synthetic reverb effect
+   --chorus: Add a chorus effect with default settings
+   --chorus_delay [float]: Set the chorus delay factor, default: 0.45
+   --chorus_depth [float]: Set the chorus depth factor, in pitch cents, default: 3
+   --chorus_voices[int]: Set the chorus voices, default: 3
+   --vibrato: Add a vibrato effect with default settings
+   --vibrato_depth [float]: Set the vibrato depth factor, default: 0.3
+   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz  default: 6
+   --tremolo: Add a tremolo effect with default settings
+   --tremolo_depth [float]: Set the tremolo depth factor [0-1], default: 1.0
+   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz  default: 18
+   --notes [file]: Map notes to .wav files as mapped in this .json file
+   --midi [file]: Play this MIDI (.mid) file
+   --volume [float]: Set the volume knob (default 1.0)
+   --duration [float]: Note ADSR quanta duration in seconds (default 0.1)
+   --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
+   --sustain [float]: Set the sustain level [0,1] (default 0.8)
+   --lowpass [float]: Set the lowpass filter cut off frequency in Hz
+                   (default no low pass)
+   --highpass [float]: Set the highpass filter cut off frequency in Hz
+                (default no highpass)
+   --parallelization [int]: Number of threads used in keyboard preparation default: 8
+   --tuning [string]: Set the tuning used (equal | werckmeister3)
+
+./build/keyboardstream compiled Aug 21 2025 19:04:06
 ```
 
 It also features a keyboard configuration program that is hosted on port 8080, that you can visit at http://localhost:8080. As of the day of writing, that configuration panel looks like this:

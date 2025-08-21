@@ -71,8 +71,6 @@ void printHelp(char *argv0) {
          "1.0\n");
   printf("   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz "
          " default: 18\n");
-  printf("   -r|--reverb [file]: Add a reverb effect based on IR response in "
-         "this wav file\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
          "file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
@@ -89,7 +87,7 @@ void printHelp(char *argv0) {
          "Hz\n");
   printf("                (default no highpass)\n");
   printf("   --parallelization [int]: Number of threads used in keyboard "
-         "preparation default: 8");
+         "preparation default: 8\n");
   printf("   --tuning [string]: Set the tuning used (equal | werckmeister3)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
