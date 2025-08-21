@@ -44,13 +44,8 @@ void SDL2AudioCallback(void *userdata, Uint8 *stream, int len) {
 void printHelp(char *argv0) {
   printf("Usage: %s [flags]\n", argv0);
   printf("flags:\n");
-  printf("   --form: form of sound [sine (default), triangular, saw, supersaw, "
-         "\n");
-  printf("           square, fattriangle, pulsesquare, sinesawdrone, "
-         "supersawsub, \n");
-  printf(
-      "           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,\n");
-  printf("           synthstab, glassbells, organtone]\n");
+  printf("   -p|--port [int]: Port to host synth config tool on\n");
+  printf("                    per default 8080, http://localhost:8080\n");
   printf("   -e|--echo: Add an echo effect\n");
   printf("   --reverb: Add a synthetic reverb effect\n");
   printf("   --chorus: Add a chorus effect with default settings\n");
@@ -134,45 +129,9 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
-    if (arg == "--form") {
-      if (i + 1 < argc) {
-        std::string form = argv[i + 1];
-        if (form == "triangular") {
-          config.rankPreset = Sound::Rank<float>::Preset::Triangular;
-        } else if (form == "saw") {
-          config.rankPreset = Sound::Rank<float>::Preset::Saw;
-        } else if (form == "square") {
-          config.rankPreset = Sound::Rank<float>::Preset::Square;
-        } else if (form == "sine") {
-          config.rankPreset = Sound::Rank<float>::Preset::Sine;
-        } else if (form == "supersaw") {
-          config.rankPreset = Sound::Rank<float>::Preset::SuperSaw;
-        } else if (form == "fattriangle") {
-          config.rankPreset = Sound::Rank<float>::Preset::FatTriangle;
-        } else if (form == "pulsesquare") {
-          config.rankPreset = Sound::Rank<float>::Preset::PulseSquare;
-        } else if (form == "sinesawdrone") {
-          config.rankPreset = Sound::Rank<float>::Preset::SineSawDrone;
-        } else if (form == "supersawsub") {
-          config.rankPreset = Sound::Rank<float>::Preset::SuperSawWithSub;
-        } else if (form == "glitchmix") {
-          config.rankPreset = Sound::Rank<float>::Preset::GlitchMix;
-        } else if (form == "lushpad") {
-          config.rankPreset = Sound::Rank<float>::Preset::LushPad;
-        } else if (form == "retrolead") {
-          config.rankPreset = Sound::Rank<float>::Preset::RetroLead;
-        } else if (form == "bassgrowl") {
-          config.rankPreset = Sound::Rank<float>::Preset::BassGrowl;
-        } else if (form == "ambientdrone") {
-          config.rankPreset = Sound::Rank<float>::Preset::AmbientDrone;
-        } else if (form == "synthstab") {
-          config.rankPreset = Sound::Rank<float>::Preset::SynthStab;
-        } else if (form == "glassbells") {
-          config.rankPreset = Sound::Rank<float>::Preset::GlassBells;
-        } else if (form == "organtone") {
-          config.rankPreset = Sound::Rank<float>::Preset::OrganTone;
-        }
-      }
+
+    if (arg == "--port" && i + 1 < argc) {
+      config.port = atoi(argv[i+1]); 
     } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
     } else if (arg == "--adsr" && (i + 1 < argc)) {
@@ -309,15 +268,18 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
   return 0;
 }
 
-void start_http_server(KeyboardStream *kbs) {
-  const char *options[] = {"document_root", "public", "listening_ports", "8080",
+void start_http_server(KeyboardStream *kbs, int port) {
+  char portStr[20];
+  memset(portStr, 0, sizeof(portStr));
+  snprintf(portStr, sizeof(portStr), "%d", port);
+  const char *options[] = {"document_root", "public", "listening_ports", portStr,
                            nullptr};
 
   static struct mg_callbacks callbacks = {};
   static struct mg_context *ctx = mg_start(&callbacks, nullptr, options);
   if (ctx == nullptr) {
     std::fprintf(
-        stderr, "[HTTP] ERROR: Failed to start CivetWeb server on port 8080\n");
+        stderr, "[HTTP] ERROR: Failed to start CivetWeb server on port %d\n", port);
     return;
   }
 
@@ -327,8 +289,8 @@ void start_http_server(KeyboardStream *kbs) {
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/presets", presets_api_handler, kbs);
 
-  printw("\nHttp server for synth configuration running on port 8080, "
-         "http://localhost:8080\n");
+  printw("\nHttp server for synth configuration running on port %d, "
+         "http://localhost:%d\n", port, port);
 
   // Run forever — or you can add shutdown logic
   while (true)
@@ -376,7 +338,7 @@ int main(int argc, char *argv[]) {
 
   KeyboardStream stream(SAMPLERATE, config.tuning);
   bool running = true;
-  int port = 8080;
+  int port = config.port;
   if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
     std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
     return 1;
@@ -454,7 +416,7 @@ int main(int argc, char *argv[]) {
   noecho();             // Don't show the key being pressed
   scrollok(stdscr, TRUE);
 
-  std::thread http_thread([&stream]() { start_http_server(&stream); });
+  std::thread http_thread([&stream, port]() { start_http_server(&stream, port); });
   http_thread.detach(); // runs independently, main thread continues
 
   if (config.midiFile.size() > 0) {

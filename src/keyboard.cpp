@@ -98,6 +98,13 @@ void Keyboard::printInstructions() {
   printw("%.2f\n", this->volume);
   attroff(COLOR_PAIR(5));
 
+  attron(A_BOLD | COLOR_PAIR(4));
+  printw("  Tuning: ");
+  attroff(A_BOLD | COLOR_PAIR(4));
+  attron(COLOR_PAIR(5));
+  printw("%s\n", notes::tuning_to_string(this->tuning).c_str());
+  attroff(COLOR_PAIR(5));
+
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("Press 'p'/'o' to +/- one octave\n");
   printw("Press 'P'/'O' to +/- preset sounds\n");

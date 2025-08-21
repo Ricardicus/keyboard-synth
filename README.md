@@ -32,11 +32,10 @@ In general, for more help use -h:
 ./build/keyboard -h
 Usage: ./build/keyboard [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, supersaw,
-           square, fattriangle, pulsesquare, sinesawdrone, supersawsub,
-           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
-           synthstab, glassbells, organtone]
+   -p|--port [int]: Port to host synth config tool on
+                    per default 8080, http://localhost:8080
    -e|--echo: Add an echo effect
+   --reverb: Add a synthetic reverb effect
    --chorus: Add a chorus effect with default settings
    --chorus_delay [float]: Set the chorus delay factor, default: 0.45
    --chorus_depth [float]: Set the chorus depth factor, in pitch cents, default: 3
@@ -47,7 +46,6 @@ flags:
    --tremolo: Add a tremolo effect with default settings
    --tremolo_depth [float]: Set the tremolo depth factor [0-1], default: 1.0
    --tremolo_frequency [float]: Set the tremolo frequency, in Hertz  default: 18
-   -r|--reverb [file]: Add a reverb effect based on IR response in this wav file
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
    --volume [float]: Set the volume knob (default 1.0)
@@ -59,7 +57,9 @@ flags:
    --highpass [float]: Set the highpass filter cut off frequency in Hz
                 (default no highpass)
    --parallelization [int]: Number of threads used in keyboard preparation default: 8
-./build/keyboard compiled Mar 19 2025 22:35:43
+   --tuning [string]: Set the tuning used (equal | werckmeister3)
+
+./build/keyboardstream compiled Aug 21 2025 21:00:39
 ```
 
 ## Map keys to wave files

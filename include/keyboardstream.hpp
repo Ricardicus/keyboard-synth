@@ -431,6 +431,7 @@ public:
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};
   float volume = 1.0;
   float duration = 0.1f;
+  int port = 8080;
   int parallelization = 8; // Number of threads to use in keyboard preparation
 
   void printConfig() {
