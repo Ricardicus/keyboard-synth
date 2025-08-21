@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace Sound {
-enum WaveForm { Sine, Triangular, Square, Saw, WaveFile };
+enum WaveForm { Sine, Triangular, Square, Saw, WhiteNoise, WaveFile };
 
 float sinus(float f);
 float square(float f);
@@ -26,6 +26,8 @@ std::vector<short> generateSquareWave(Note &note, ADSR &adsr,
                                       std::vector<Effect<short>> &effects);
 std::vector<short> generateSawWave(Note &note, ADSR &adsr,
                                    std::vector<Effect<short>> &effects);
+std::vector<short> generateWhiteNoiseWave(Note &note, ADSR &adsr,
+                                          std::vector<Effect<short>> &effects);
 std::vector<short> generateTriangularWave(Note &note, ADSR &adsr,
                                           std::vector<Effect<short>> &effects);
 
@@ -54,6 +56,7 @@ public:
     BassGrowl,
     AmbientDrone,
     SynthStab,
+    FluteBreathy,
     GlassBells,
     Sine,
     Triangular,
@@ -115,6 +118,9 @@ public:
       break;
     case SynthStab:
       result = "SynthStab";
+      break;
+    case FluteBreathy:
+      result = "FluteBreathy";
       break;
     case GlassBells:
       result = "GlassBells";
@@ -181,6 +187,8 @@ public:
       result = Sound::Rank<T>::Preset::AmbientDrone;
     } else if (str == "synthstab") {
       result = Sound::Rank<T>::Preset::SynthStab;
+    } else if (str == "flutebreath") {
+      result = Sound::Rank<T>::Preset::FluteBreathy;
     } else if (str == "glassbells") {
       result = Sound::Rank<T>::Preset::GlassBells;
     } else if (str == "organtone") {
@@ -231,6 +239,9 @@ public:
       break;
     case Sound::Rank<T>::Preset::OrganTone:
       r = Sound::Rank<T>::organTone(frequency, length, sampleRate);
+      break;
+    case Sound::Rank<T>::Preset::FluteBreathy:
+      r = Sound::Rank<T>::fluteBreathy(frequency, length, sampleRate);
       break;
     case Sound::Rank<T>::Preset::Saw:
       r = Sound::Rank<T>::saw(frequency, length, sampleRate);
@@ -321,7 +332,7 @@ public:
 
     Effect<T> pwmEffect;
     pwmEffect.effectType = Effect<T>::Type::DutyCycle;
-    pwmEffect.config = typename Effect<T>::DutyCycleConfig{3.0f, 0.4f};
+    pwmEffect.config = typename Effect<T>::DutyCycleConfig{3.0f, 0.9f};
     rank.effects.push_back(pwmEffect);
 
     return rank;
@@ -653,6 +664,38 @@ public:
     Note note(frequency, length, sampleRate);
     Pipe pipe(note, Sound::WaveForm::Triangular);
     rank.addPipe(pipe);
+
+    return rank;
+  }
+
+  static Sound::Rank<T> fluteBreathy(float f, int length, int sr) {
+    Rank rank;
+
+    // Core tone: mostly sine, tiny harmonics
+    Note f0(f, length, sr);
+    f0.volume = 0.85f;
+    Pipe p0(f0, Sound::WaveForm::Sine);
+    rank.addPipe(p0);
+    Note h2(2.0f * f, length, sr);
+    h2.volume = 0.10f;
+    Pipe p2(h2, Sound::WaveForm::Sine);
+    rank.addPipe(p2);
+    Note h3(3.0f * f, length, sr);
+    h3.volume = 0.05f;
+    Pipe p3(h3, Sound::WaveForm::Sine);
+    rank.addPipe(p3);
+
+    // Breath noise: short, quiet
+    Note breath(f, length / 6, sr); // duration just for a little "chiff"
+    breath.volume = 0.03f;
+    Pipe p4(breath, Sound::WaveForm::WhiteNoise);
+    rank.addPipe(p4);
+
+    // Gentle vibrato (depth, rateHz)
+    Effect<T> vib;
+    vib.effectType = Effect<T>::Type::Vibrato;
+    vib.config = typename Effect<T>::VibratoConfig{0.02f, 5.5f};
+    rank.effects.push_back(vib);
 
     return rank;
   }

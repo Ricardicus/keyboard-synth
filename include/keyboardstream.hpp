@@ -28,7 +28,8 @@
 
 class KeyboardStream {
 public:
-  KeyboardStream(int sampleRate) : sampleRate(sampleRate) {}
+  KeyboardStream(int sampleRate, notes::TuningSystem tuning)
+      : sampleRate(sampleRate), tuning(tuning) {}
   ~KeyboardStream() { teardown(); }
 
   void setup() {}
@@ -128,9 +129,10 @@ public:
     ADSR adsr;
     Sound::Rank<float>::Preset sound = Sound::Rank<float>::Preset::Sine;
     int sampleRate;
+    notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
-    Oscillator(int sampleRate) {
-      this->sampleRate = sampleRate;
+    Oscillator(int sampleRate, notes::TuningSystem tuning)
+        : sampleRate(sampleRate), tuning(tuning) {
       this->initialize();
     }
 
@@ -140,6 +142,7 @@ public:
               {"volume", this->volume},
               {"octave", this->octave},
               {"detune", this->detune},
+              {"tuning", this->tuning},
               {"adsr", this->adsr.toJson()},
               {"sampleRate", this->sampleRate}};
     };
@@ -149,8 +152,12 @@ public:
       if (!j.contains("sampleRate") || !j["sampleRate"].is_number_integer())
         return std::nullopt;
 
+      if (!j.contains("tuning") || !j["tuning"].is_string())
+        return std::nullopt;
+
       int sampleRate = j["sampleRate"].get<int>();
-      Oscillator osc(sampleRate);
+      notes::TuningSystem tuning = j["tuning"].get<notes::TuningSystem>();
+      Oscillator osc(sampleRate, tuning);
 
       // Parse volume, octave, detune (optional; default to existing values)
       if (j.contains("volume") && j["volume"].is_number())
@@ -366,6 +373,7 @@ private:
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
   int sampleRate;
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
   std::unordered_map<std::string, Note> notes;
   std::unordered_map<std::string, NotePress> notesPressed;
@@ -418,6 +426,7 @@ public:
   std::optional<Effect<float>> effectIIR = std::nullopt;
   std::optional<Effect<float>> effectVibrato = std::nullopt;
   std::optional<Effect<float>> effectTremolo = std::nullopt;
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   bool effectReverb = false;
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};
   float volume = 1.0;
@@ -442,6 +451,13 @@ public:
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
     printw("%.2f\n", volume);
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Tuning: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", notes::tuning_to_string(this->tuning).c_str());
     attroff(COLOR_PAIR(5));
 
     attron(A_BOLD | COLOR_PAIR(4));
@@ -651,6 +667,13 @@ public:
     }
 
     attron(A_BOLD | COLOR_PAIR(4));
+    printw("  Synthetic reverb: ");
+    attroff(A_BOLD | COLOR_PAIR(4));
+    attron(COLOR_PAIR(5));
+    printw("%s\n", effectReverb ? "On" : "Off");
+    attroff(COLOR_PAIR(5));
+
+    attron(A_BOLD | COLOR_PAIR(4));
     printw("  note length: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
@@ -661,7 +684,7 @@ public:
     printw("  A4 frequency: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%.2f Hz\n", notes::getFrequency("A4"));
+    printw("%.2f Hz\n", notes::getFrequency("A4", this->tuning));
     attroff(COLOR_PAIR(5));
 
     refresh(); // Refresh the screen to apply changes

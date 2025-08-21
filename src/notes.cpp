@@ -7,7 +7,7 @@
 namespace notes {
 
 // The map with note frequencies
-std::map<std::string, double> frequencies = {
+std::map<std::string, double> frequenciesEqual = {
     {"C0", 16.35},     {"C#0", 17.32},    {"Db0", 17.32},    {"D0", 18.35},
     {"D#0", 19.45},    {"Eb0", 19.45},    {"E0", 20.60},     {"F0", 21.83},
     {"F#0", 23.12},    {"Gb0", 23.12},    {"G0", 24.50},     {"G#0", 25.96},
@@ -70,11 +70,74 @@ std::map<std::string, double> frequencies = {
 
     {"C10", 16744.04}};
 
-std::string getClosestNote(float frequency) {
+std::map<std::string, double> frequenciesWerckmeisterIII = {
+    {"C0", 16.35},     {"C#0", 17.41},    {"Db0", 17.41},    {"D0", 18.42},
+    {"D#0", 19.35},    {"Eb0", 19.35},    {"E0", 20.51},     {"F0", 21.95},
+    {"F#0", 23.23},    {"Gb0", 23.23},    {"G0", 24.40},     {"G#0", 25.99},
+    {"Ab0", 25.99},    {"A0", 27.62},     {"A#0", 29.02},    {"Bb0", 29.02},
+    {"B0", 30.80},
+
+    {"C1", 32.70},     {"C#1", 34.82},    {"Db1", 34.82},    {"D1", 36.85},
+    {"D#1", 38.70},    {"Eb1", 38.70},    {"E1", 41.01},     {"F1", 43.90},
+    {"F#1", 46.46},    {"Gb1", 46.46},    {"G1", 48.81},     {"G#1", 51.99},
+    {"Ab1", 51.99},    {"A1", 55.25},     {"A#1", 58.04},    {"Bb1", 58.04},
+    {"B1", 61.60},
+
+    {"C2", 65.40},     {"C#2", 69.64},    {"Db2", 69.64},    {"D2", 73.70},
+    {"D#2", 77.40},    {"Eb2", 77.40},    {"E2", 82.02},     {"F2", 87.80},
+    {"F#2", 92.93},    {"Gb2", 92.93},    {"G2", 97.62},     {"G#2", 103.98},
+    {"Ab2", 103.98},   {"A2", 110.50},    {"A#2", 116.09},   {"Bb2", 116.09},
+    {"B2", 123.20},
+
+    {"C3", 130.80},    {"C#3", 139.29},   {"Db3", 139.29},   {"D3", 147.40},
+    {"D#3", 154.80},   {"Eb3", 154.80},   {"E3", 164.00},    {"F3", 175.60},
+    {"F#3", 185.90},   {"Gb3", 185.90},   {"G3", 195.20},    {"G#3", 207.90},
+    {"Ab3", 207.90},   {"A3", 221.00},    {"A#3", 232.18},   {"Bb3", 232.18},
+    {"B3", 246.40},
+
+    {"C4", 261.60},    {"C#4", 278.58},   {"Db4", 278.58},   {"D4", 294.80},
+    {"D#4", 309.60},   {"Eb4", 309.60},   {"E4", 328.00},    {"F4", 351.20},
+    {"F#4", 371.80},   {"Gb4", 371.80},   {"G4", 390.40},    {"G#4", 415.80},
+    {"Ab4", 415.80},   {"A4", 442.00},    {"A#4", 464.36},   {"Bb4", 464.36},
+    {"B4", 492.80},
+
+    {"C5", 523.20},    {"C#5", 557.20},   {"Db5", 557.20},   {"D5", 589.60},
+    {"D#5", 619.20},   {"Eb5", 619.20},   {"E5", 656.00},    {"F5", 702.40},
+    {"F#5", 743.60},   {"Gb5", 743.60},   {"G5", 780.80},    {"G#5", 831.60},
+    {"Ab5", 831.60},   {"A5", 884.00},    {"A#5", 928.72},   {"Bb5", 928.72},
+    {"B5", 985.60},
+
+    {"C6", 1046.40},   {"C#6", 1114.40},  {"Db6", 1114.40},  {"D6", 1179.20},
+    {"D#6", 1238.40},  {"Eb6", 1238.40},  {"E6", 1312.00},   {"F6", 1404.80},
+    {"F#6", 1487.20},  {"Gb6", 1487.20},  {"G6", 1561.60},   {"G#6", 1663.20},
+    {"Ab6", 1663.20},  {"A6", 1768.00},   {"A#6", 1857.40},  {"Bb6", 1857.40},
+    {"B6", 1971.20},
+
+    {"C7", 2092.80},   {"C#7", 2228.80},  {"Db7", 2228.80},  {"D7", 2358.40},
+    {"D#7", 2476.80},  {"Eb7", 2476.80},  {"E7", 2624.00},   {"F7", 2809.60},
+    {"F#7", 2974.40},  {"Gb7", 2974.40},  {"G7", 3123.20},   {"G#7", 3326.40},
+    {"Ab7", 3326.40},  {"A7", 3536.00},   {"A#7", 3714.80},  {"Bb7", 3714.80},
+    {"B7", 3942.40},
+
+    {"C8", 4185.60},   {"C#8", 4457.60},  {"Db8", 4457.60},  {"D8", 4716.80},
+    {"D#8", 4953.60},  {"Eb8", 4953.60},  {"E8", 5248.00},   {"F8", 5619.20},
+    {"F#8", 5948.80},  {"Gb8", 5948.80},  {"G8", 6246.40},   {"G#8", 6652.80},
+    {"Ab8", 6652.80},  {"A8", 7072.00},   {"A#8", 7429.60},  {"Bb8", 7429.60},
+    {"B8", 7884.80},
+
+    {"C9", 8371.20},   {"C#9", 8915.20},  {"Db9", 8915.20},  {"D9", 9433.60},
+    {"D#9", 9907.20},  {"Eb9", 9907.20},  {"E9", 10496.00},  {"F9", 11238.40},
+    {"F#9", 11897.60}, {"Gb9", 11897.60}, {"G9", 12492.80},  {"G#9", 13305.60},
+    {"Ab9", 13305.60}, {"A9", 14144.00},  {"A#9", 14859.20}, {"Bb9", 14859.20},
+    {"B9", 15769.60},
+
+    {"C10", 16742.40}};
+
+std::string getClosestNote(float frequency, TuningSystem ts) {
   float minDiff = std::numeric_limits<float>::max();
   std::string closestNote;
 
-  for (const auto &[note, freq] : frequencies) {
+  for (const auto &[note, freq] : lookupFrequencies(ts)) {
     float diff = std::abs(freq - frequency);
     if (diff < minDiff) {
       minDiff = diff;
@@ -85,8 +148,9 @@ std::string getClosestNote(float frequency) {
   return closestNote;
 }
 
-double getFrequency(const std::string &note) {
+double getFrequency(const std::string &note, TuningSystem ts) {
   // Check if the note is in the frequencies map
+  std::map<std::string, double> &frequencies = lookupFrequencies(ts);
   if (frequencies.find(note) != frequencies.end()) {
     // Return the double value associated with the note
     return frequencies[note];
@@ -96,14 +160,27 @@ double getFrequency(const std::string &note) {
   }
 }
 
-std::vector<std::string> getNotes() {
+std::map<std::string, double> &lookupFrequencies(notes::TuningSystem ts) {
+  switch (ts) {
+  case notes::TuningSystem::EqualTemperament:
+    return frequenciesEqual;
+  case notes::TuningSystem::WerckmeisterIII:
+    return frequenciesWerckmeisterIII;
+  }
+  // Fallback — if you ever add new enum values
+  // You cannot return nullptr here because it's a reference
+  // Instead, throw or handle error
+  throw std::invalid_argument("Unknown tuning system");
+}
+
+std::vector<std::string> getNotes(TuningSystem ts) {
   std::vector<std::string> notes;
-  for (const auto &pair : frequencies) {
+  for (const auto &pair : lookupFrequencies(ts)) {
     notes.push_back(pair.first);
   }
   return notes;
 }
 
-int getNumberOfNotes() { return frequencies.size(); }
+int getNumberOfNotes(TuningSystem ts) { return lookupFrequencies(ts).size(); }
 
 }; // namespace notes

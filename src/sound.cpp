@@ -19,6 +19,8 @@ std::string Sound::typeOfWave(Sound::WaveForm form) {
     return "square";
   case Saw:
     return "saw";
+  case WhiteNoise:
+    return "white_noise";
   case WaveFile:
     return "file";
   }
@@ -41,6 +43,9 @@ std::vector<short> Sound::generateWave(Sound::WaveForm form, Note &note,
     break;
   case Sound::WaveForm::Saw:
     result = Sound::generateSawWave(note, adsr, effects);
+    break;
+  case Sound::WaveForm::WhiteNoise:
+    result = Sound::generateWhiteNoiseWave(note, adsr, effects);
     break;
   case Sound::WaveForm::WaveFile:
     break;
@@ -116,7 +121,7 @@ void applyEffects(float t, float &phase, float &duty, short &envelope,
     }
     if (auto conf = std::get_if<typename Effect<T>::DutyCycleConfig>(
             &effects[e].config)) {
-      duty += conf->depth * (0.5 + 0.5 * sin(2.0f * PI * conf->frequency * t));
+      duty += conf->depth * sin(2.0f * PI * conf->frequency * t);
     }
     if (auto conf = std::get_if<typename Effect<T>::TremoloConfig>(
             &effects[e].config)) {
@@ -191,7 +196,7 @@ Sound::generateSquareWave(Note &note, ADSR &adsr,
   for (int i = 0; i < sampleCount; i++) {
     float t = i * deltaT;
     float phase = 2.0f * PI * note.frequency * t;
-    float duty = 0.0;
+    float duty = 1.0;
     short envelope = adsr.response(i);
     applyEffects(t, phase, duty, envelope, effects);
     short sample = static_cast<short>(
@@ -242,6 +247,25 @@ std::vector<short> Sound::generateSawWave(Note &note, ADSR &adsr,
   return samples;
 }
 
+std::vector<short>
+Sound::generateWhiteNoiseWave(Note &note, ADSR &adsr,
+                              std::vector<Effect<short>> &effects) {
+  int sampleCount = note.length;
+  std::vector<short> samples(sampleCount);
+
+  float deltaT = 1.0f / note.sampleRate;
+  for (int i = 0; i < sampleCount; i++) {
+    float t = i * deltaT;
+    float phase = 2.0f * PI * note.frequency * t;
+    float duty = 0.0;
+    short envelope = adsr.response(i);
+    applyEffects(t, phase, duty, envelope, effects);
+    samples[i] = envelope * generateWaveBit(phase, duty, Sound::white_noise);
+  }
+
+  return samples;
+}
+
 template <> float Sound::Rank<float>::generateRankSample() {
   float val = 0;
   for (const Pipe &pipe : this->pipes) {
@@ -255,9 +279,9 @@ template <> float Sound::Rank<float>::generateRankSample() {
     }
     float t = this->generatorIndex * deltaT;
     float phase = 2.0f * PI * frequency * t;
-    float duty = 0.0;
-    short envelope =
-        adsr.amplitude; // TODO: adsr.response(this->generatorIndex);
+    float duty = 1.0;
+    short envelope = adsr.amplitude *
+                     note.volume; // TODO: adsr.response(this->generatorIndex);
     applyEffects(t, phase, duty, envelope, effects);
 
     switch (form) {
@@ -271,12 +295,15 @@ template <> float Sound::Rank<float>::generateRankSample() {
     }
     case Sound::WaveForm::Square: {
       addition =
-
           generateWaveBit(phase, duty, static_cast<BinaryOp>(&Sound::square));
       break;
     }
     case Sound::WaveForm::Saw: {
       addition = generateWaveBit(phase, duty, Sound::saw);
+      break;
+    }
+    case Sound::WaveForm::WhiteNoise: {
+      addition = generateWaveBit(phase, duty, Sound::white_noise);
       break;
     }
     case Sound::WaveForm::WaveFile:
@@ -312,7 +339,7 @@ std::vector<short> Sound::generateWave(Rank<short> &rank) {
       float deltaT = 1.0f / note.sampleRate;
       float t = i * deltaT;
       float phase = 2.0f * PI * note.frequency * t;
-      float duty = 0.0;
+      float duty = 1.0;
       short envelope = rank.adsr.response(i);
       applyEffects(t, phase, duty, envelope, rank.effects);
       short addition = 0.0f;
@@ -333,6 +360,10 @@ std::vector<short> Sound::generateWave(Rank<short> &rank) {
       }
       case Sound::WaveForm::Saw: {
         addition = envelope * generateWaveBit(phase, duty, Sound::saw);
+        break;
+      }
+      case Sound::WaveForm::WhiteNoise: {
+        addition = envelope * generateWaveBit(phase, duty, Sound::white_noise);
         break;
       }
       case Sound::WaveForm::WaveFile:

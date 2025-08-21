@@ -99,7 +99,7 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
   this->effects.insert(this->effects.end(), effects.begin(), effects.end());
 
   if (!this->soundMap.empty()) {
-    this->synth.emplace_back(SAMPLERATE);
+    this->synth.emplace_back(SAMPLERATE, this->tuning);
     this->synth[0].setVolume(0.5);
     this->synth[0].setSoundMap(this->soundMap);
     this->synth[0].setEffects(this->effects);
@@ -111,7 +111,7 @@ void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
 void KeyboardStream::setupStandardSynthConfig() {
   this->synth.reserve(4);
   for (int i = 0; i < 4; i++) {
-    this->synth.emplace_back(SAMPLERATE);
+    this->synth.emplace_back(SAMPLERATE, this->tuning);
   }
   for (int i = 0; i < 4; i++) {
     this->synth[i].setVolume(i == 0 ? 0.5 : 0);
@@ -138,7 +138,7 @@ void KeyboardStream::registerNote(const std::string &note) {
   np.time = KeyboardStream::currentTimeMillis();
   np.note = note;
   np.adsr = this->adsr;
-  np.frequency = notes::getFrequency(note);
+  np.frequency = notes::getFrequency(note, this->tuning);
   np.index = 0;
   np.release = false;
 
@@ -332,14 +332,14 @@ void KeyboardStream::Oscillator::reset(const std::string &note) {
 }
 
 void KeyboardStream::Oscillator::initialize() {
-  auto notes = notes::getNotes();
+  auto notes = notes::getNotes(this->tuning);
 
   std::vector<Effect<float>> effectsClone(effects);
   for (int i = 0; i < notes.size(); ++i) {
     auto const &key = notes[i];
-    Note n{key, this->adsr.length, this->sampleRate};
+    Note n{key, this->adsr.length, this->sampleRate, this->tuning};
 
-    float freq = notes::getFrequency(key);
+    float freq = notes::getFrequency(key, this->tuning);
     Sound::Rank<float> r = Sound::Rank<float>::fromPreset(
         this->sound, freq, this->adsr.length, this->sampleRate);
     r.adsr = adsr;

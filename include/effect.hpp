@@ -453,4 +453,8 @@ public:
   std::vector<float> mix;
 };
 
+namespace PresetEffects {
+Effect<float> syntheticReverb(float dry, float wet);
+}
+
 #endif

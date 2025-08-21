@@ -220,3 +220,75 @@ std::vector<short> Effect<short>::apply(const std::vector<short> &buffer,
   }
   return buffer;
 }
+
+Effect<float> PresetEffects::syntheticReverb(float dry, float wet) {
+  // Adding Reverb
+  std::vector<Effect<float>> effects_sum;
+  std::vector<std::vector<Effect<float>>> sum_pipes;
+  std::vector<Effect<float>> pipe_effects;
+
+  EchoEffect<float> e1{0.1, 0.5, 1.0, SAMPLERATE};
+  EchoEffect<float> e2{0.12, 0.5, 1.0, SAMPLERATE};
+  EchoEffect<float> e3{0.17, 0.7, 1.0, SAMPLERATE};
+
+  Effect<float> ee1, ee2, ee3, se, ap1e, ap2e, ap3e, ap4e;
+  ee1.effectType = Effect<float>::Type::Echo;
+  ee1.config = e1;
+  ee2.effectType = Effect<float>::Type::Echo;
+  ee2.config = e2;
+  ee3.effectType = Effect<float>::Type::Echo;
+  ee3.config = e3;
+
+  effects_sum.push_back(ee1);
+  effects_sum.push_back(ee2);
+  effects_sum.push_back(ee3);
+
+  Adder<float> sum(effects_sum);
+  se.effectType = Effect<float>::Type::Sum;
+  se.config = sum;
+
+  sum_pipes.push_back({se});
+  sum_pipes.push_back({});
+  std::vector<float> sum_pipe_mix{1.0, 0.1};
+  Piper<float> sum_piper{sum_pipes, sum_pipe_mix};
+  Effect<float> initial_sum;
+  initial_sum.effectType = Effect<float>::Type::Pipe;
+  initial_sum.config = sum_piper;
+
+  // Add two all pass
+  // Short early‑diffusion stage
+  AllPassEffect<float> ap1(347, 0.1f); // ~7 ms @48 kHz
+  AllPassEffect<float> ap2(113, 0.1f);
+
+  // Late tail smoothing
+  AllPassEffect<float> ap3(672, 0.1f); // ~14 ms
+  AllPassEffect<float> ap4(908, 0.1f);
+
+  ap1e.effectType = Effect<float>::Type::AllPass;
+  ap2e.effectType = Effect<float>::Type::AllPass;
+  ap3e.effectType = Effect<float>::Type::AllPass;
+  ap4e.effectType = Effect<float>::Type::AllPass;
+
+  ap1e.config = ap1;
+  ap2e.config = ap2;
+  ap3e.config = ap3;
+  ap4e.config = ap4;
+
+  pipe_effects.push_back(initial_sum);
+  pipe_effects.push_back(ap1e);
+  pipe_effects.push_back(ap2e);
+  pipe_effects.push_back(ap3e);
+  pipe_effects.push_back(ap4e);
+
+  Effect<float> reverb;
+  std::vector<std::vector<Effect<float>>> reverb_pipes;
+  reverb_pipes.push_back(pipe_effects);
+  reverb_pipes.push_back({});
+  std::vector<float> pipe_mix{wet, dry};
+
+  Piper<float> piper{reverb_pipes, pipe_mix};
+  reverb.effectType = Effect<float>::Type::Pipe;
+  reverb.config = piper;
+
+  return reverb;
+}

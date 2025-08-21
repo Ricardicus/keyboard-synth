@@ -6,8 +6,8 @@
 
 class Note {
 public:
-  Note(std::string note, int length, int sampleRate) {
-    this->frequency = notes::getFrequency(note);
+  Note(std::string note, int length, int sampleRate, notes::TuningSystem ts) {
+    this->frequency = notes::getFrequency(note, ts);
     this->length = length;
     this->sampleRate = sampleRate;
   }

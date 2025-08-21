@@ -38,6 +38,7 @@ public:
   std::optional<Effect<short>> effectTremolo = std::nullopt;
   float volume = 1.0;
   float duration = 0.1f;
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   int parallelization = 8; // Number of threads to use in keyboard preparation
 
   void printConfig() {
@@ -276,7 +277,7 @@ public:
     printw("  A4 frequency: ");
     attroff(A_BOLD | COLOR_PAIR(4));
     attron(COLOR_PAIR(5));
-    printw("%.2f Hz\n", notes::getFrequency("A4"));
+    printw("%.2f Hz\n", notes::getFrequency("A4", tuning));
     attroff(COLOR_PAIR(5));
 
     refresh(); // Refresh the screen to apply changes
@@ -543,6 +544,7 @@ int main(int argc, char *argv[]) {
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
   Keyboard keyboard(maxPolyphony);
   int rankIndex = 0;
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   std::vector<Sound::Rank<short>::Preset> presets = {
       Sound::Rank<short>::Preset::Sine,
       Sound::Rank<short>::Preset::Saw,
@@ -638,7 +640,7 @@ int main(int argc, char *argv[]) {
           int note = midiFile[track][event][1];
           float frequency = noteToFreq(note);
 
-          std::string noteKey = notes::getClosestNote(frequency);
+          std::string noteKey = notes::getClosestNote(frequency, tuning);
 
           float duration = midiFile[track][event].getDurationInSeconds();
           float startTime = midiFile[track][event].seconds;

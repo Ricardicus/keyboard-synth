@@ -109,7 +109,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
                             std::vector<Effect<short>> &effects,
                             int nbrThreads) {
   int length = adsr.getLength();
-  std::vector<std::string> notes = notes::getNotes();
+  std::vector<std::string> notes = notes::getNotes(this->tuning);
   assert(notes.size() == this->buffers.size());
   unsigned ticks = notes.size();
   std::atomic<unsigned> tick{1};
@@ -127,11 +127,12 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,
   int remainder = notes.size() % nbrThreads;
 
   // Lambda to process a range of notes
+  notes::TuningSystem tuning = this->tuning;
   auto processNotes = [&](int start, int end, int threadIndex) {
     std::vector<Effect<short>> effectsClone(effects);
     for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
       const auto &key = notes[bufferIndex];
-      Note n = Note(key, length, sampleRate);
+      Note n = Note(key, length, sampleRate, tuning);
 
       if (f == Sound::WaveForm::WaveFile &&
           this->soundMap.find(key) != this->soundMap.end()) {
@@ -254,7 +255,7 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
                             Sound::Rank<short>::Preset preset,
                             std::vector<Effect<short>> &effects,
                             int nbrThreads) {
-  std::vector<std::string> notes = notes::getNotes();
+  std::vector<std::string> notes = notes::getNotes(this->tuning);
   assert(notes.size() == this->buffers.size());
   int bufferIndex = 0;
   unsigned ticks = notes.size();
@@ -273,12 +274,13 @@ void Keyboard::prepareSound(int sampleRate, ADSR &adsr,
   int remainder = notes.size() % nbrThreads;
 
   // Lambda to process a range of notes
+  notes::TuningSystem tuning = this->tuning;
   auto processNotes = [&](int start, int end, int threadIndex) {
     std::vector<Effect<short>> effectsClone(effects);
     for (int bufferIndex = start; bufferIndex < end; ++bufferIndex) {
       const auto &key = notes[bufferIndex];
       // Bottom row (one octave lower than home row)
-      Note n = Note(key, adsr.length, sampleRate);
+      Note n = Note(key, adsr.length, sampleRate, tuning);
 
       Sound::Rank<short> r = Sound::Rank<short>::fromPreset(
           preset, n.frequency, adsr.length, sampleRate);

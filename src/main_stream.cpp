@@ -90,6 +90,7 @@ void printHelp(char *argv0) {
   printf("                (default no highpass)\n");
   printf("   --parallelization [int]: Number of threads used in keyboard "
          "preparation default: 8");
+  printf("   --tuning [string]: Set the tuning used (equal | werckmeister3)\n");
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -241,6 +242,25 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       IIR<float> lowPass = IIRFilters::highPass<float>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
+    }
+
+    else if (arg == "--tuning") { // enable with defaults
+      if (i + 1 < argc) {         // make sure there's a value after --tuning
+        std::string tuningArg = argv[++i];
+        if (tuningArg == "equal") {
+          config.tuning = notes::TuningSystem::EqualTemperament;
+        } else if (tuningArg == "werckmeister3") {
+          config.tuning = notes::TuningSystem::WerckmeisterIII;
+        } else {
+          std::cerr << "Unknown tuning: " << tuningArg
+                    << " (expected equal or werckmeister3)\n";
+          return 1;
+        }
+      } else {
+        std::cerr << "--tuning requires a value (equal | "
+                     "werckmeister3)\n";
+        return 1;
+      }
     } else if (arg == "--chorus") { // enable with defaults
       ensureChorus();
     } else if (arg == "--chorus_delay" && i + 1 < argc) {
@@ -325,31 +345,6 @@ int main(int argc, char *argv[]) {
   int maxPolyphony = 50;
   ADSR adsr =
       ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
-  KeyboardStream stream(SAMPLERATE);
-  bool running = true;
-  int port = 8080;
-  if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
-    std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
-    return 1;
-  }
-
-  SDL_AudioSpec desired, obtained;
-  SDL_zero(desired);
-  desired.freq = SAMPLERATE;
-  desired.format = AUDIO_F32SYS;
-  desired.channels = 1;
-  desired.samples = BUFFER_SIZE;
-  desired.callback = SDL2AudioCallback;
-  desired.userdata = &stream;
-
-  if (SDL_OpenAudio(&desired, &obtained) < 0) {
-    std::cerr << "SDL_OpenAudio failed: " << SDL_GetError() << std::endl;
-    return 1;
-  }
-
-  // stream.startKeypressWatchdog();
-
-  SDL_PauseAudio(0); // Start audio
 
   int rankIndex = 0;
   std::vector<Sound::Rank<float>::Preset> presets = {
@@ -380,6 +375,32 @@ int main(int argc, char *argv[]) {
   } else if (c > 0) {
     return 1;
   }
+
+  KeyboardStream stream(SAMPLERATE, config.tuning);
+  bool running = true;
+  int port = 8080;
+  if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
+    std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
+    return 1;
+  }
+
+  SDL_AudioSpec desired, obtained;
+  SDL_zero(desired);
+  desired.freq = SAMPLERATE;
+  desired.format = AUDIO_F32SYS;
+  desired.channels = 1;
+  desired.samples = BUFFER_SIZE;
+  desired.callback = SDL2AudioCallback;
+  desired.userdata = &stream;
+
+  if (SDL_OpenAudio(&desired, &obtained) < 0) {
+    std::cerr << "SDL_OpenAudio failed: " << SDL_GetError() << std::endl;
+    return 1;
+  }
+
+  // stream.startKeypressWatchdog();
+
+  SDL_PauseAudio(0); // Start audio
 
   printf("Processing buffers... preparing sound..\n");
 
@@ -413,72 +434,13 @@ int main(int argc, char *argv[]) {
     effects.push_back(*config.effectTremolo);
   }
 
-  {
-    // Adding Reverb
-    std::vector<Effect<float>> effects_sum;
-    std::vector<Effect<float>> pipe_effects;
-
-    EchoEffect<float> e1{0.1, 0.5, 1.0, SAMPLERATE};
-    EchoEffect<float> e2{0.12, 0.5, 1.0, SAMPLERATE};
-    EchoEffect<float> e3{0.17, 0.5, 1.0, SAMPLERATE};
-
-    Effect<float> ee1, ee2, ee3, se, ap1e, ap2e, ap3e, ap4e;
-    ee1.effectType = Effect<float>::Type::Echo;
-    ee1.config = e1;
-    ee2.effectType = Effect<float>::Type::Echo;
-    ee2.config = e2;
-    ee3.effectType = Effect<float>::Type::Echo;
-    ee3.config = e3;
-
-    effects_sum.push_back(ee1);
-    effects_sum.push_back(ee2);
-    effects_sum.push_back(ee3);
-
-    Adder<float> sum(effects_sum);
-    se.effectType = Effect<float>::Type::Sum;
-    se.config = sum;
-
-    // Add two all pass
-    // Short early‑diffusion stage
-    AllPassEffect<float> ap1(347, 0.1f); // ~7 ms @48 kHz
-    AllPassEffect<float> ap2(113, 0.1f);
-
-    // Late tail smoothing
-    AllPassEffect<float> ap3(672, 0.1f); // ~14 ms
-    AllPassEffect<float> ap4(908, 0.1f);
-
-    ap1e.effectType = Effect<float>::Type::AllPass;
-    ap2e.effectType = Effect<float>::Type::AllPass;
-    ap3e.effectType = Effect<float>::Type::AllPass;
-    ap4e.effectType = Effect<float>::Type::AllPass;
-
-    ap1e.config = ap1;
-    ap2e.config = ap2;
-    ap3e.config = ap3;
-    ap4e.config = ap4;
-
-    pipe_effects.push_back(se);
-    pipe_effects.push_back(ap1e);
-    pipe_effects.push_back(ap2e);
-    pipe_effects.push_back(ap3e);
-    pipe_effects.push_back(ap4e);
-
-    Effect<float> reverb;
-    std::vector<std::vector<Effect<float>>> reverb_pipes;
-    reverb_pipes.push_back(pipe_effects);
-    reverb_pipes.push_back({});
-    std::vector<float> pipe_mix{0.0, 1.0};
-    if (config.effectReverb) {
-      pipe_mix[0] = 0.5;
-      pipe_mix[1] = 0.8;
-    }
-
-    Piper<float> piper{reverb_pipes, pipe_mix};
-    reverb.effectType = Effect<float>::Type::Pipe;
-    reverb.config = piper;
-
-    effects.push_back(reverb);
+  Effect<float> reverb;
+  if (config.effectReverb) {
+    reverb = PresetEffects::syntheticReverb(1.0, 0.7);
+  } else {
+    reverb = PresetEffects::syntheticReverb(1.0, 0.0);
   }
+  effects.push_back(reverb);
   auto start = std::chrono::high_resolution_clock::now();
   stream.prepareSound(SAMPLERATE, config.adsr, effects);
   auto end = std::chrono::high_resolution_clock::now();
@@ -523,7 +485,7 @@ int main(int argc, char *argv[]) {
           continue;
         int note = ev[1];
         float freq = noteToFreq(note);
-        auto key = notes::getClosestNote(freq);
+        auto key = notes::getClosestNote(freq, config.tuning);
         float dur = ev.getDurationInSeconds();
         int startS = int(ev.seconds * SAMPLERATE);
         notesMap[startS].emplace_back(key, dur);

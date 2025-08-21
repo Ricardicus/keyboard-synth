@@ -54,7 +54,7 @@ public:
     }
     alcMakeContextCurrent(context);
 
-    int noteSpace = notes::getNumberOfNotes();
+    int noteSpace = notes::getNumberOfNotes(this->tuning);
     buffers.resize(noteSpace);
     sources.resize(maxPolyphony);
 
@@ -153,6 +153,7 @@ private:
   std::map<std::string, std::string> soundMap;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
   std::map<std::string, int> keyToBufferIndex;
   std::map<std::string, Note> notes;

@@ -9,6 +9,7 @@ const SOUNDS = [
   "Triangular",
   "Saw",
   "Square",
+  "FluteBreathy",
   "SuperSaw",
   "FatTriangle",
   "PulseSquare",
