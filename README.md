@@ -129,10 +129,8 @@ associated with each keypress. In my streaming-based keyboard, I instead fill a 
 $ ./build/keyboardstream -h
 Usage: ./build/keyboardstream [flags]
 flags:
-   --form: form of sound [sine (default), triangular, saw, supersaw,
-           square, fattriangle, pulsesquare, sinesawdrone, supersawsub,
-           glitchmix, lushpad, retroLead, bassgrowl, ambientdrone,
-           synthstab, glassbells, organtone]
+   -p|--port [int]: Port to host synth config tool on
+                    per default 8080, http://localhost:8080
    -e|--echo: Add an echo effect
    --reverb: Add a synthetic reverb effect
    --chorus: Add a chorus effect with default settings
@@ -158,7 +156,7 @@ flags:
    --parallelization [int]: Number of threads used in keyboard preparation default: 8
    --tuning [string]: Set the tuning used (equal | werckmeister3)
 
-./build/keyboardstream compiled Aug 21 2025 19:04:06
+./build/keyboardstream compiled Aug 21 2025 21:00:39
 ```
 
 It also features a keyboard configuration program that is hosted on port 8080, that you can visit at http://localhost:8080. As of the day of writing, that configuration panel looks like this:
