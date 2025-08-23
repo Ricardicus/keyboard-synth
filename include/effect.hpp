@@ -213,6 +213,19 @@ public:
     }
   };
 
+  struct PhaseDistortionSinConfig {
+    float depth; // duty (0..1)
+    nlohmann::json toJson() const { return {{"depth", depth}}; }
+    static std::optional<PhaseDistortionSinConfig>
+    fromJson(const nlohmann::json &j) {
+      if (!j.contains("depth"))
+        return std::nullopt;
+      if (!j["depth"].is_number())
+        return std::nullopt;
+      return PhaseDistortionSinConfig{j["depth"].get<float>()};
+    }
+  };
+
   // ── enum & variant ───────────────────────────────────────────────────
   enum Type {
     Fir,
@@ -220,6 +233,7 @@ public:
     Chorus,
     Vibrato,
     DutyCycle,
+    PhaseDistortionSin,
     Tremolo,
     Echo,
     AllPass,
@@ -229,7 +243,7 @@ public:
   using ConfigVariant =
       std::variant<std::monostate, ChorusConfig, VibratoConfig, DutyCycleConfig,
                    TremoloConfig, EchoEffect<T>, AllPassEffect<T>, Adder<T>,
-                   Piper<T>>;
+                   Piper<T>, PhaseDistortionSinConfig>;
 
   static std::string typeToStr(Type t) {
     switch (t) {

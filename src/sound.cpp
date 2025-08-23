@@ -128,6 +128,10 @@ void applyEffects(float t, float &phase, float &duty, short &envelope,
       envelope = conf->depth * sin(2.0f * PI * conf->frequency * t) * envelope +
                  (1.0 - conf->depth) * envelope;
     }
+    if (auto conf = std::get_if<typename Effect<T>::PhaseDistortionSinConfig>(
+            &effects[e].config)) {
+      phase = phase + conf->depth * sinf(phase);
+    }
   }
 }
 

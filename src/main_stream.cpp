@@ -126,12 +126,21 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       config.effectTremolo = e;
     }
   };
+  auto ensurePhaseDist = [&](float defDepth = 0.0f) {
+    if (!config.effectPhaseDist) {
+      Effect<float> e;
+      e.effectType = Effect<float>::Type::PhaseDistortionSin;
+      e.config = Effect<float>::PhaseDistortionSinConfig{defDepth};
+      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      config.effectPhaseDist = e;
+    }
+  };
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
 
     if (arg == "--port" && i + 1 < argc) {
-      config.port = atoi(argv[i+1]); 
+      config.port = atoi(argv[i + 1]);
     } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
     } else if (arg == "--adsr" && (i + 1 < argc)) {
@@ -171,7 +180,11 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       auto &v =
           std::get<Effect<float>::VibratoConfig>(config.effectVibrato->config);
       v.frequency = std::stof(argv[i + 1]); // change frequency only
-    } else if (arg == "--tremolo") {        // enable with defaults
+    } else if (arg == "--phaseDist") {      // enable with defaults
+      ensurePhaseDist(0.3);
+    } else if (arg == "--tremolo_depth" && i + 1 < argc) {
+      ensurePhaseDist(std::stof(argv[i + 1]));
+    } else if (arg == "--tremolo") { // enable with defaults
       ensureTremolo();
     } else if (arg == "--tremolo_depth" && i + 1 < argc) {
       ensureTremolo(); // keep existing freq
@@ -265,6 +278,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
   // make sure there is always tremolo and vibrato
   ensureTremolo(6.0, 0.0);
   ensureVibrato(6.0, 0.0);
+  ensurePhaseDist(0.0);
   return 0;
 }
 
@@ -272,14 +286,15 @@ void start_http_server(KeyboardStream *kbs, int port) {
   char portStr[20];
   memset(portStr, 0, sizeof(portStr));
   snprintf(portStr, sizeof(portStr), "%d", port);
-  const char *options[] = {"document_root", "public", "listening_ports", portStr,
-                           nullptr};
+  const char *options[] = {"document_root", "public", "listening_ports",
+                           portStr, nullptr};
 
   static struct mg_callbacks callbacks = {};
   static struct mg_context *ctx = mg_start(&callbacks, nullptr, options);
   if (ctx == nullptr) {
-    std::fprintf(
-        stderr, "[HTTP] ERROR: Failed to start CivetWeb server on port %d\n", port);
+    std::fprintf(stderr,
+                 "[HTTP] ERROR: Failed to start CivetWeb server on port %d\n",
+                 port);
     return;
   }
 
@@ -290,7 +305,8 @@ void start_http_server(KeyboardStream *kbs, int port) {
   mg_set_request_handler(ctx, "/api/presets", presets_api_handler, kbs);
 
   printw("\nHttp server for synth configuration running on port %d, "
-         "http://localhost:%d\n", port, port);
+         "http://localhost:%d\n",
+         port, port);
 
   // Run forever — or you can add shutdown logic
   while (true)
@@ -393,6 +409,9 @@ int main(int argc, char *argv[]) {
   if (config.effectTremolo) {
     effects.push_back(*config.effectTremolo);
   }
+  if (config.effectPhaseDist) {
+    effects.push_back(*config.effectPhaseDist);
+  }
 
   Effect<float> reverb;
   if (config.effectReverb) {
@@ -416,7 +435,8 @@ int main(int argc, char *argv[]) {
   noecho();             // Don't show the key being pressed
   scrollok(stdscr, TRUE);
 
-  std::thread http_thread([&stream, port]() { start_http_server(&stream, port); });
+  std::thread http_thread(
+      [&stream, port]() { start_http_server(&stream, port); });
   http_thread.detach(); // runs independently, main thread continues
 
   if (config.midiFile.size() > 0) {

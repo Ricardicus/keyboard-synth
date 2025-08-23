@@ -5,7 +5,7 @@ import Knob from "./Knob";
 interface Echo {
   rate: number;
   feedback: number; // 0..100 UI, normalized on POST
-  mix: number;      // 0..100 UI, normalized on POST
+  mix: number; // 0..100 UI, normalized on POST
 }
 
 interface ADSR {
@@ -23,6 +23,10 @@ interface Modulator {
 interface Reverb {
   wet: number;
   dry: number;
+}
+
+interface PhaseDist {
+  depth: number;
 }
 
 const minGain = 0.000001;
@@ -57,6 +61,8 @@ const ConfigPanel: React.FC = () => {
   });
   const [highpass, setHighpass] = useState<number>(0);
   const [lowpass, setLowpass] = useState<number>(21000);
+  const [phasedist, setPhaseDist] = useState<PhaseDist>({ depth: 0 });
+  const [tuning, setTuning] = useState<string>("EqualTemperament");
 
   const [vibrato, setVibrato] = useState<Modulator>({
     depth: 0,
@@ -77,12 +83,15 @@ const ConfigPanel: React.FC = () => {
     fetch("/api/config")
       .then((res) => res.json())
       .then((data) => {
+        console.log(data);
         setGainKnob(toLogScale(data.gain));
         setEcho({
           rate: data.echo.rate,
           feedback: Math.round(data.echo.feedback * 100),
           mix: Math.round(data.echo.mix * 100),
         });
+        setPhaseDist({ depth: data.phaseDist.depth });
+        setTuning(data.tuning);
         setAdsr({
           attack: data.adsr.attack,
           decay: data.adsr.decay,
@@ -127,6 +136,9 @@ const ConfigPanel: React.FC = () => {
           sustain: adsr.sustain,
           release: adsr.release,
         },
+        phaseDist: {
+          depth: phasedist.depth,
+        },
         highpass,
         lowpass,
         vibrato,
@@ -139,7 +151,17 @@ const ConfigPanel: React.FC = () => {
         },
       }),
     });
-  }, [gainKnob, echo, adsr, highpass, lowpass, vibrato, tremolo, reverb]);
+  }, [
+    gainKnob,
+    echo,
+    adsr,
+    highpass,
+    lowpass,
+    vibrato,
+    tremolo,
+    reverb,
+    phasedist,
+  ]);
 
   useEffect(() => {
     if (isFirstUpdate.current) return;
@@ -163,6 +185,7 @@ const ConfigPanel: React.FC = () => {
     tremolo,
     reverb,
     postConfig,
+    phasedist,
   ]);
 
   /* ----------------------- Helpers ----------------------- */
@@ -176,15 +199,16 @@ const ConfigPanel: React.FC = () => {
     setTremolo((prev) => ({ ...prev, [key]: value }));
   const updateReverb = (key: keyof Reverb, value: number) =>
     setReverb((prev) => ({ ...prev, [key]: value }));
+  const updatePhaseDist = (key: keyof PhaseDist, value: number) =>
+    setPhaseDist((prev) => ({ ...prev, [key]: value }));
 
   /* ----------------------- Render ----------------------- */
   return (
     <div className="config-panel p-6 bg-gray-50 rounded-lg shadow-md flex justify-center">
       <div className="flex flex-col space-y-12 lg:flex-row lg:space-y-0 lg:space-x-12 justify-center">
-
         {/* ----------------------- Filter Cutoffs ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 text-center">Global Config</h2>
+          <p>Tuning: {tuning}</p>
           <div className="overflow-x-auto">
             <center>
               <table className="mx-auto w-max">
@@ -201,9 +225,6 @@ const ConfigPanel: React.FC = () => {
                           onChange={setGainKnob}
                           label="Gain"
                         />
-                        <span className="text-lg font-medium">
-                          {fromLogScale(gainKnob).toPrecision(4)}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4">
@@ -217,7 +238,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={setHighpass}
                           label="Highpass"
                         />
-                        <span>{formatFrequency(highpass)}</span>
+                        <center>
+                          <span>{formatFrequency(highpass)}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -231,7 +254,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={setLowpass}
                           label="Lowpass"
                         />
-                        <span>{formatFrequency(lowpass)}</span>
+                        <center>
+                          <span>{formatFrequency(lowpass)}</span>
+                        </center>
                       </div>
                     </td>
                   </tr>
@@ -243,7 +268,11 @@ const ConfigPanel: React.FC = () => {
 
         {/* ----------------------- ADSR Envelope ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 text-center">ADSR Envelope</h2>
+          <center>
+            <h2 className="text-xl font-bold mb-4 text-center">
+              ADSR Envelope
+            </h2>
+          </center>
           <div className="overflow-x-auto">
             <center>
               <table className="mx-auto w-max">
@@ -260,7 +289,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateAdsr("attack", v)}
                           label="Attack"
                         />
-                        <span>{adsr.attack}</span>
+                        <center>
+                          <span>{adsr.attack}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -274,7 +305,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateAdsr("decay", v)}
                           label="Decay"
                         />
-                        <span>{adsr.decay}</span>
+                        <center>
+                          <span>{adsr.decay}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -288,7 +321,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateAdsr("sustain", v)}
                           label="Sustain"
                         />
-                        <span>{adsr.sustain}</span>
+                        <center>
+                          <span>{adsr.sustain}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -302,7 +337,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateAdsr("release", v)}
                           label="Release"
                         />
-                        <span>{adsr.release}</span>
+                        <center>
+                          <span>{adsr.release}</span>
+                        </center>
                       </div>
                     </td>
                   </tr>
@@ -314,7 +351,11 @@ const ConfigPanel: React.FC = () => {
 
         {/* ----------------------- Echo Settings ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 text-center">Echo Settings</h2>
+          <center>
+            <h2 className="text-xl font-bold mb-4 text-center">
+              Echo Settings
+            </h2>
+          </center>
           <div className="overflow-x-auto">
             <center>
               <table className="mx-auto w-max">
@@ -331,7 +372,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateEcho("rate", v / 100)}
                           label="Rate (s)"
                         />
-                        <span>{echo.rate.toFixed(2)}</span>
+                        <center>
+                          <span>{echo.rate.toFixed(2)}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -345,7 +388,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateEcho("feedback", v)}
                           label="Feedback"
                         />
-                        <span>{(echo.feedback / 100).toFixed(2)}</span>
+                        <center>
+                          <span>{(echo.feedback / 100).toFixed(2)}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -359,7 +404,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateEcho("mix", v)}
                           label="Mix"
                         />
-                        <span>{(echo.mix / 100).toFixed(2)}</span>
+                        <center>
+                          <span>{(echo.mix / 100).toFixed(2)}</span>
+                        </center>
                       </div>
                     </td>
                   </tr>
@@ -375,14 +422,18 @@ const ConfigPanel: React.FC = () => {
             <tbody>
               <tr>
                 <td>
-                  <h2 className="text-xl font-bold mb-4 text-center">
-                    Vibrato
-                  </h2>
+                  <center>
+                    <h2 className="text-xl font-bold mb-4 text-center">
+                      Vibrato
+                    </h2>
+                  </center>
                 </td>
                 <td>
-                  <h2 className="text-xl font-bold mb-4 text-center">
-                    Tremolo
-                  </h2>
+                  <center>
+                    <h2 className="text-xl font-bold mb-4 text-center">
+                      Tremolo
+                    </h2>
+                  </center>
                 </td>
               </tr>
               <tr>
@@ -403,12 +454,14 @@ const ConfigPanel: React.FC = () => {
                                   onChange={(v) =>
                                     updateVibrato(
                                       "depth",
-                                      parseFloat(v.toFixed(1))
+                                      parseFloat(v.toFixed(1)),
                                     )
                                   }
                                   label="Depth"
                                 />
-                                <span>{vibrato.depth.toFixed(1)}</span>
+                                <center>
+                                  <span>{vibrato.depth.toFixed(1)}</span>
+                                </center>
                               </div>
                             </td>
                             <td className="px-4">
@@ -424,9 +477,11 @@ const ConfigPanel: React.FC = () => {
                                   }
                                   label="Freq (Hz)"
                                 />
-                                <span>
-                                  {formatFrequency(vibrato.frequency)}
-                                </span>
+                                <center>
+                                  <span>
+                                    {formatFrequency(vibrato.frequency)}
+                                  </span>
+                                </center>
                               </div>
                             </td>
                           </tr>
@@ -452,12 +507,14 @@ const ConfigPanel: React.FC = () => {
                                   onChange={(v) =>
                                     updateTremolo(
                                       "depth",
-                                      parseFloat(v.toFixed(2))
+                                      parseFloat(v.toFixed(2)),
                                     )
                                   }
                                   label="Depth"
                                 />
-                                <span>{tremolo.depth.toFixed(2)}</span>
+                                <center>
+                                  <span>{tremolo.depth.toFixed(2)}</span>
+                                </center>
                               </div>
                             </td>
                             <td className="px-4">
@@ -473,9 +530,11 @@ const ConfigPanel: React.FC = () => {
                                   }
                                   label="Freq (Hz)"
                                 />
-                                <span>
-                                  {formatFrequency(tremolo.frequency)}
-                                </span>
+                                <center>
+                                  <span>
+                                    {formatFrequency(tremolo.frequency)}
+                                  </span>
+                                </center>
                               </div>
                             </td>
                           </tr>
@@ -491,7 +550,9 @@ const ConfigPanel: React.FC = () => {
 
         {/* ----------------------- Reverb Mix ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
-          <h2 className="text-xl font-bold mb-4 text-center">Reverb Mix</h2>
+          <center>
+            <h2 className="text-xl font-bold mb-4 text-center">Reverb Mix</h2>
+          </center>
           <div className="overflow-x-auto">
             <center>
               <table className="mx-auto w-max">
@@ -508,7 +569,9 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateReverb("wet", v)}
                           label="Wet"
                         />
-                        <span>{(reverb.wet / 100).toFixed(2)}</span>
+                        <center>
+                          <span>{(reverb.wet / 100).toFixed(2)}</span>
+                        </center>
                       </div>
                     </td>
                     <td className="px-4">
@@ -522,7 +585,44 @@ const ConfigPanel: React.FC = () => {
                           onChange={(v) => updateReverb("dry", v)}
                           label="Dry"
                         />
-                        <span>{(reverb.dry / 100).toFixed(2)}</span>
+                        <center>
+                          <span>{(reverb.dry / 100).toFixed(2)}</span>
+                        </center>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </center>
+          </div>
+        </section>
+
+        {/* ----------------------- Phase Dist Mix ----------------------- */}
+        <section className="flex-1 flex flex-col items-center">
+          <center>
+            <h2 className="text-xl font-bold mb-4 text-center">
+              Phase Distortion
+            </h2>
+          </center>
+          <div className="overflow-x-auto">
+            <center>
+              <table className="mx-auto w-max">
+                <tbody>
+                  <tr className="align-top">
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={0}
+                          max={1.0}
+                          step={0.001}
+                          value={phasedist.depth}
+                          onChange={(v) => updatePhaseDist("depth", v)}
+                          label="Depth"
+                        />
+                        <center>
+                          <span>{phasedist.depth.toFixed(4)}</span>
+                        </center>
                       </div>
                     </td>
                   </tr>

@@ -107,6 +107,12 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
 
     return (
       <div className="flex flex-col items-center select-none">
+        {label && (
+          <center>
+            <div className="mt-2 text-sm font-medium text-black">{label}</div>
+            <br />
+          </center>
+        )}
         <svg
           ref={this.svgRef}
           width={size}
@@ -146,10 +152,6 @@ export default class Knob extends React.Component<KnobProps, KnobState> {
             </text>
           )}
         </svg>
-
-        {label && (
-          <div className="mt-2 text-sm font-medium text-black">{label}</div>
-        )}
       </div>
     );
   }

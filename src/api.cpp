@@ -285,6 +285,9 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
         tremConf = std::nullopt;
     std::optional<std::reference_wrapper<Piper<float>>> reverbMixConf =
         std::nullopt;
+    std::optional<
+        std::reference_wrapper<Effect<float>::PhaseDistortionSinConfig>>
+        phaseDistSinConf = std::nullopt;
     for (int e = 0; e < kbs->effects.size(); e++) {
       if (auto echo = std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
         echoConf = std::ref(*echo);
@@ -300,20 +303,26 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
       if (auto reverbMix = std::get_if<Piper<float>>(&kbs->effects[e].config)) {
         reverbMixConf = std::ref(*reverbMix);
       }
+      if (auto phaseDist = std::get_if<Effect<float>::PhaseDistortionSinConfig>(
+              &kbs->effects[e].config)) {
+        phaseDistSinConf = std::ref(*phaseDist);
+      }
     }
     json response;
-    if (echoConf && vibConf && tremConf && reverbMixConf) {
+    if (echoConf && vibConf && tremConf && reverbMixConf && phaseDistSinConf) {
       response = {{"gain", kbs->gain},
                   {"adsr",
                    {{"attack", kbs->adsr.qadsr[0]},
                     {"decay", kbs->adsr.qadsr[1]},
                     {"sustain", kbs->adsr.qadsr[2]},
                     {"release", kbs->adsr.qadsr[3]}}},
+                  {"tuning", notes::tuning_to_string(kbs->tuning)},
                   {"echo",
                    {{"rate", echoConf->get().getRate()},
                     {"feedback", echoConf->get().getFeedback()},
                     {"mix", echoConf->get().getMix()},
                     {"sampleRate", echoConf->get().getSampleRate()}}},
+                  {"phaseDist", {{"depth", phaseDistSinConf->get().depth}}},
                   {"tremolo",
                    {{"depth", tremConf->get().depth},
                     {"frequency", tremConf->get().frequency}}},
@@ -342,6 +351,7 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
 
     try {
       json body = json::parse(buffer);
+      std::cout << body;
 
       if (body.contains("gain") && body["gain"].is_number()) {
         kbs->gain = body["gain"];
@@ -355,6 +365,9 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
           tremConf = std::nullopt;
       std::optional<std::reference_wrapper<Piper<float>>> reverbMixConf =
           std::nullopt;
+      std::optional<
+          std::reference_wrapper<Effect<float>::PhaseDistortionSinConfig>>
+          phaseDistConf = std::nullopt;
       for (int e = 0; e < kbs->effects.size(); e++) {
         if (auto echo =
                 std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
@@ -372,6 +385,11 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                 std::get_if<Piper<float>>(&kbs->effects[e].config)) {
           reverbMixConf = std::ref(*reverbMix);
         }
+        if (auto phaseDist =
+                std::get_if<Effect<float>::PhaseDistortionSinConfig>(
+                    &kbs->effects[e].config)) {
+          phaseDistConf = std::ref(*phaseDist);
+        }
       }
 
       if (echoConf) {
@@ -385,6 +403,14 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
             echoConf->get().setMix(echo["mix"]);
           if (echo.contains("sampleRate"))
             echoConf->get().setSampleRate(echo["sampleRate"]);
+        }
+      }
+
+      if (phaseDistConf) {
+        if (body.contains("phaseDist") && body["phaseDist"].is_object()) {
+          json phaseDist = body["phaseDist"];
+          if (phaseDist.contains("depth"))
+            phaseDistConf->get().depth = phaseDist["depth"];
         }
       }
 

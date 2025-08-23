@@ -367,13 +367,14 @@ public:
   void lock() { mtx.lock(); }
   void unlock() { mtx.unlock(); }
 
+  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
+
 private:
   std::map<std::string, std::string> soundMap;
   std::mutex mtx;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
   int sampleRate;
-  notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
   std::unordered_map<std::string, Note> notes;
   std::unordered_map<std::string, NotePress> notesPressed;
@@ -426,6 +427,7 @@ public:
   std::optional<Effect<float>> effectIIR = std::nullopt;
   std::optional<Effect<float>> effectVibrato = std::nullopt;
   std::optional<Effect<float>> effectTremolo = std::nullopt;
+  std::optional<Effect<float>> effectPhaseDist = std::nullopt;
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   bool effectReverb = false;
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};
