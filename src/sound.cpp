@@ -92,6 +92,16 @@ float Sound::white_noise(float f) {
          1000.0; // Random value between -1.0 and 1.0
 }
 
+float hardClip(float x, float threshold = 0.8f) {
+  if (x > threshold) {
+    return threshold;
+  }
+  if (x < -threshold) {
+    return -threshold;
+  }
+  return x;
+}
+
 using UnaryOp = float (*)(float);
 using BinaryOp = float (*)(float, float);
 using Operation = std::variant<UnaryOp, BinaryOp>;
@@ -118,18 +128,16 @@ void applyEffects(float t, float &phase, float &duty, short &envelope,
     if (auto conf = std::get_if<typename Effect<T>::VibratoConfig>(
             &effects[e].config)) {
       phase += conf->depth * sin(2.0f * PI * conf->frequency * t);
-    }
-    if (auto conf = std::get_if<typename Effect<T>::DutyCycleConfig>(
-            &effects[e].config)) {
+    } else if (auto conf = std::get_if<typename Effect<T>::DutyCycleConfig>(
+                   &effects[e].config)) {
       duty += conf->depth * sin(2.0f * PI * conf->frequency * t);
-    }
-    if (auto conf = std::get_if<typename Effect<T>::TremoloConfig>(
-            &effects[e].config)) {
+    } else if (auto conf = std::get_if<typename Effect<T>::TremoloConfig>(
+                   &effects[e].config)) {
       envelope = conf->depth * sin(2.0f * PI * conf->frequency * t) * envelope +
                  (1.0 - conf->depth) * envelope;
-    }
-    if (auto conf = std::get_if<typename Effect<T>::PhaseDistortionSinConfig>(
-            &effects[e].config)) {
+    } else if (auto conf =
+                   std::get_if<typename Effect<T>::PhaseDistortionSinConfig>(
+                       &effects[e].config)) {
       phase = phase + conf->depth * sinf(phase);
     }
   }
@@ -149,6 +157,10 @@ float Sound::applyPostEffects(float sample,
       result = sum->process(result);
     } else if (auto pipe = std::get_if<Piper<float>>(&effects[e].config)) {
       result = pipe->process(result);
+    } else if (auto conf =
+                   std::get_if<typename Effect<float>::GainDistHardClipConfig>(
+                       &effects[e].config)) {
+      result = hardClip(result * conf->gain, 1.0);
     }
   }
   return result;

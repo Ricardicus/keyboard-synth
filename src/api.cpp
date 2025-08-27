@@ -288,6 +288,8 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
     std::optional<
         std::reference_wrapper<Effect<float>::PhaseDistortionSinConfig>>
         phaseDistSinConf = std::nullopt;
+    std::optional<std::reference_wrapper<Effect<float>::GainDistHardClipConfig>>
+        gainDistConf = std::nullopt;
     for (int e = 0; e < kbs->effects.size(); e++) {
       if (auto echo = std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
         echoConf = std::ref(*echo);
@@ -307,9 +309,14 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
               &kbs->effects[e].config)) {
         phaseDistSinConf = std::ref(*phaseDist);
       }
+      if (auto gainDist = std::get_if<Effect<float>::GainDistHardClipConfig>(
+              &kbs->effects[e].config)) {
+        gainDistConf = std::ref(*gainDist);
+      }
     }
     json response;
-    if (echoConf && vibConf && tremConf && reverbMixConf && phaseDistSinConf) {
+    if (echoConf && vibConf && tremConf && reverbMixConf && phaseDistSinConf &&
+        gainDistConf) {
       response = {{"gain", kbs->gain},
                   {"adsr",
                    {{"attack", kbs->adsr.qadsr[0]},
@@ -323,6 +330,7 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                     {"mix", echoConf->get().getMix()},
                     {"sampleRate", echoConf->get().getSampleRate()}}},
                   {"phaseDist", {{"depth", phaseDistSinConf->get().depth}}},
+                  {"gainDist", {{"gain", gainDistConf->get().gain}}},
                   {"tremolo",
                    {{"depth", tremConf->get().depth},
                     {"frequency", tremConf->get().frequency}}},
@@ -351,7 +359,6 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
 
     try {
       json body = json::parse(buffer);
-      std::cout << body;
 
       if (body.contains("gain") && body["gain"].is_number()) {
         kbs->gain = body["gain"];
@@ -368,6 +375,9 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
       std::optional<
           std::reference_wrapper<Effect<float>::PhaseDistortionSinConfig>>
           phaseDistConf = std::nullopt;
+      std::optional<
+          std::reference_wrapper<Effect<float>::GainDistHardClipConfig>>
+          gainDistConf = std::nullopt;
       for (int e = 0; e < kbs->effects.size(); e++) {
         if (auto echo =
                 std::get_if<EchoEffect<float>>(&kbs->effects[e].config)) {
@@ -390,6 +400,11 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                     &kbs->effects[e].config)) {
           phaseDistConf = std::ref(*phaseDist);
         }
+        if (auto gainDist =
+                std::get_if<Effect<float>::GainDistHardClipConfig>(
+                    &kbs->effects[e].config)) {
+          gainDistConf = std::ref(*gainDist);
+        }
       }
 
       if (echoConf) {
@@ -411,6 +426,14 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
           json phaseDist = body["phaseDist"];
           if (phaseDist.contains("depth"))
             phaseDistConf->get().depth = phaseDist["depth"];
+        }
+      }
+
+      if (gainDistConf) {
+        if (body.contains("gainDist") && body["gainDist"].is_object()) {
+          json gainDist = body["gainDist"];
+          if (gainDist.contains("gain"))
+            gainDistConf->get().gain = gainDist["gain"];
         }
       }
 

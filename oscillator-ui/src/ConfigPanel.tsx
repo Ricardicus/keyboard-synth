@@ -29,6 +29,10 @@ interface PhaseDist {
   depth: number;
 }
 
+interface GainDist {
+  gain: number;
+}
+
 const minGain = 0.000001;
 const maxGain = 0.001;
 
@@ -62,6 +66,7 @@ const ConfigPanel: React.FC = () => {
   const [highpass, setHighpass] = useState<number>(0);
   const [lowpass, setLowpass] = useState<number>(21000);
   const [phasedist, setPhaseDist] = useState<PhaseDist>({ depth: 0 });
+  const [gaindist, setGainDist] = useState<GainDist>({ gain: 1.0 });
   const [tuning, setTuning] = useState<string>("EqualTemperament");
 
   const [vibrato, setVibrato] = useState<Modulator>({
@@ -91,6 +96,7 @@ const ConfigPanel: React.FC = () => {
           mix: Math.round(data.echo.mix * 100),
         });
         setPhaseDist({ depth: data.phaseDist.depth });
+        setGainDist({ gain: data.gainDist.gain });
         setTuning(data.tuning);
         setAdsr({
           attack: data.adsr.attack,
@@ -139,6 +145,9 @@ const ConfigPanel: React.FC = () => {
         phaseDist: {
           depth: phasedist.depth,
         },
+        gainDist: {
+          gain: gaindist.gain,
+        },
         highpass,
         lowpass,
         vibrato,
@@ -161,6 +170,7 @@ const ConfigPanel: React.FC = () => {
     tremolo,
     reverb,
     phasedist,
+    gaindist,
   ]);
 
   useEffect(() => {
@@ -186,6 +196,7 @@ const ConfigPanel: React.FC = () => {
     reverb,
     postConfig,
     phasedist,
+    gaindist
   ]);
 
   /* ----------------------- Helpers ----------------------- */
@@ -201,6 +212,8 @@ const ConfigPanel: React.FC = () => {
     setReverb((prev) => ({ ...prev, [key]: value }));
   const updatePhaseDist = (key: keyof PhaseDist, value: number) =>
     setPhaseDist((prev) => ({ ...prev, [key]: value }));
+  const updateGainDist = (key: keyof GainDist, value: number) =>
+    setGainDist((prev) => ({ ...prev, [key]: value }));
 
   /* ----------------------- Render ----------------------- */
   return (
@@ -597,12 +610,10 @@ const ConfigPanel: React.FC = () => {
           </div>
         </section>
 
-        {/* ----------------------- Phase Dist Mix ----------------------- */}
+        {/* ----------------------- Dist Mix ----------------------- */}
         <section className="flex-1 flex flex-col items-center">
           <center>
-            <h2 className="text-xl font-bold mb-4 text-center">
-              Phase Distortion
-            </h2>
+            <h2 className="text-xl font-bold mb-4 text-center">Distortion</h2>
           </center>
           <div className="overflow-x-auto">
             <center>
@@ -618,10 +629,26 @@ const ConfigPanel: React.FC = () => {
                           step={0.001}
                           value={phasedist.depth}
                           onChange={(v) => updatePhaseDist("depth", v)}
-                          label="Depth"
+                          label="Phase"
                         />
                         <center>
                           <span>{phasedist.depth.toFixed(4)}</span>
+                        </center>
+                      </div>
+                    </td>
+                    <td className="px-4">
+                      <div className={knobWrapper}>
+                        <Knob
+                          size={80}
+                          min={1.0}
+                          max={20.0}
+                          step={0.01}
+                          value={gaindist.gain}
+                          onChange={(v) => updateGainDist("gain", v)}
+                          label="Gain"
+                        />
+                        <center>
+                          <span>{gaindist.gain.toFixed(4)}</span>
                         </center>
                       </div>
                     </td>

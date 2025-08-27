@@ -226,6 +226,19 @@ public:
     }
   };
 
+  struct GainDistHardClipConfig {
+    float gain; // duty (0..1)
+    nlohmann::json toJson() const { return {{"gain", gain}}; }
+    static std::optional<PhaseDistortionSinConfig>
+    fromJson(const nlohmann::json &j) {
+      if (!j.contains("gain"))
+        return std::nullopt;
+      if (!j["gain"].is_number())
+        return std::nullopt;
+      return PhaseDistortionSinConfig{j["gain"].get<float>()};
+    }
+  };
+
   // ── enum & variant ───────────────────────────────────────────────────
   enum Type {
     Fir,
@@ -234,6 +247,7 @@ public:
     Vibrato,
     DutyCycle,
     PhaseDistortionSin,
+    GainDistHardClip,
     Tremolo,
     Echo,
     AllPass,
@@ -243,7 +257,7 @@ public:
   using ConfigVariant =
       std::variant<std::monostate, ChorusConfig, VibratoConfig, DutyCycleConfig,
                    TremoloConfig, EchoEffect<T>, AllPassEffect<T>, Adder<T>,
-                   Piper<T>, PhaseDistortionSinConfig>;
+                   Piper<T>, PhaseDistortionSinConfig, GainDistHardClipConfig>;
 
   static std::string typeToStr(Type t) {
     switch (t) {
@@ -267,9 +281,12 @@ public:
       return "Adder";
     case Pipe:
       return "Piper";
-    default:
-      return "Unknown";
+    case PhaseDistortionSin:
+      return "PhaseDistitionSinus";
+    case GainDistHardClip:
+      return "GainDistHardClip";
     }
+    return "";
   }
 
   static nlohmann::json typeToJson(Type t) {
@@ -322,8 +339,12 @@ public:
     case Echo:
       add("echo", getIf<EchoEffect<T>>(config));
       break;
-    default:
-      break; // Fir / Iir have no extra JSON fields
+    case GainDistHardClip:
+      add("distclip", getIf<GainDistHardClipConfig>(config));
+      break;
+    case PhaseDistortionSin:
+      add("distphase", getIf<PhaseDistortionSinConfig>(config));
+      break;
     }
 
     if (!firs.empty())
@@ -381,8 +402,14 @@ public:
       if (!trySetConfig("echo", EchoEffect<T>::fromJson))
         return std::nullopt;
       break;
-    default:
-      break; // Fir / Iir
+    case GainDistHardClip:
+      if (!trySetConfig("distclip", EchoEffect<T>::fromJson))
+        return std::nullopt;
+      break;
+    case PhaseDistortionSin:
+      if (!trySetConfig("distphase", EchoEffect<T>::fromJson))
+        return std::nullopt;
+      break;
     }
 
     // FIR / IIR arrays

@@ -60,6 +60,8 @@ void printHelp(char *argv0) {
          "0.3\n");
   printf("   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz "
          " default: 6\n");
+  printf("   --phaseDist: Add a phase dist (sinus) with default setting\n");
+  printf("   --gainDist: Add a gain dist (hard clip) with default settings\n");
   printf("   --tremolo: Add a tremolo effect with default settings\n");
   printf("   --tremolo_depth [float]: Set the tremolo depth factor [0-1], "
          "default: "
@@ -135,6 +137,15 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       config.effectPhaseDist = e;
     }
   };
+  auto ensureGainDist = [&](float defGain = 1.0f) {
+    if (!config.effectGainDist) {
+      Effect<float> e;
+      e.effectType = Effect<float>::Type::GainDistHardClip;
+      e.config = Effect<float>::GainDistHardClipConfig{defGain};
+      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      config.effectGainDist = e;
+    }
+  };
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
@@ -182,6 +193,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       v.frequency = std::stof(argv[i + 1]); // change frequency only
     } else if (arg == "--phaseDist") {      // enable with defaults
       ensurePhaseDist(0.3);
+    } else if (arg == "--gainDist") { // enable with defaults
+      ensureGainDist(2.0);
     } else if (arg == "--tremolo_depth" && i + 1 < argc) {
       ensurePhaseDist(std::stof(argv[i + 1]));
     } else if (arg == "--tremolo") { // enable with defaults
@@ -279,6 +292,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
   ensureTremolo(6.0, 0.0);
   ensureVibrato(6.0, 0.0);
   ensurePhaseDist(0.0);
+  ensureGainDist();
   return 0;
 }
 
@@ -411,6 +425,9 @@ int main(int argc, char *argv[]) {
   }
   if (config.effectPhaseDist) {
     effects.push_back(*config.effectPhaseDist);
+  }
+  if (config.effectGainDist) {
+    effects.push_back(*config.effectGainDist);
   }
 
   Effect<float> reverb;

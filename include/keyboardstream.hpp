@@ -428,6 +428,7 @@ public:
   std::optional<Effect<float>> effectVibrato = std::nullopt;
   std::optional<Effect<float>> effectTremolo = std::nullopt;
   std::optional<Effect<float>> effectPhaseDist = std::nullopt;
+  std::optional<Effect<float>> effectGainDist = std::nullopt;
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   bool effectReverb = false;
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};
@@ -665,6 +666,30 @@ public:
         attroff(A_BOLD | COLOR_PAIR(4));
         attron(COLOR_PAIR(5));
         printw("%f\n", t->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    if (effectPhaseDist) {
+      if (const auto *t = std::get_if<Effect<float>::PhaseDistortionSinConfig>(
+              &effectPhaseDist->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Phase distortion: depth=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", t->depth);
+        attroff(COLOR_PAIR(5));
+      }
+    }
+
+    if (effectGainDist) {
+      if (const auto *t = std::get_if<Effect<float>::GainDistHardClipConfig>(
+              &effectGainDist->config)) {
+        attron(A_BOLD | COLOR_PAIR(4));
+        printw("  Gain hard clip distortion: gain=");
+        attroff(A_BOLD | COLOR_PAIR(4));
+        attron(COLOR_PAIR(5));
+        printw("%f\n", t->gain);
         attroff(COLOR_PAIR(5));
       }
     }

@@ -6,13 +6,14 @@
 #include <stdio.h>
 #include <string>
 
+constexpr short ADSRAmplitude = 32767;
+
 class ADSR {
 public:
   ADSR() {
     float duration = 0.8f;
     int samplerate = 44100;
-    short amplitude = 32767;
-    this->amplitude = amplitude;
+    this->amplitude = ADSRAmplitude;
     this->qadsr[0] = 1;
     this->qadsr[1] = 1;
     this->qadsr[2] = 3;
