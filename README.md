@@ -116,7 +116,10 @@ sudo apt-get install libncurses5-dev
 
 # Streamed audio engine synth
 
-All of the above is true for the OpenAL implementation. I am now, working on a bit of a side quest.
+All of the above is true for the OpenAL implementation. I am now, working on the streaming based implementation.
+To me, this has become the most intreseting aspect yet- and the streaming based keyboard now has more features
+than the pre allocated buffer (OpenAL) implementation. It does rely on SDL2 and will only be built if that library
+has been installed on ones system.
 I want to test audio libraries that properly support streaming (using timed callbacks) and
 have ventured into the SDL2 waters with that. I am also building a front end, where one can set
 the sound of the keyboard with the browser. All of this is buildable only if one has SDL2 installed.
