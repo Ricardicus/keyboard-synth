@@ -19,7 +19,11 @@ cmake --build build
 # Run 
 
 ```
+# For openAL based keyboard
 ./build/keyboard
+# For streaming based keyboard (more features)
+# requires SDL2 installed
+./build/keyboardstream
 ```
 
 Now you can press the keys on the a -> l and z -> , keys. Sharp notes: w, e, t, y, u. 
