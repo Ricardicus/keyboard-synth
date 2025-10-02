@@ -227,9 +227,12 @@ Effect<float> PresetEffects::syntheticReverb(float dry, float wet) {
   std::vector<std::vector<Effect<float>>> sum_pipes;
   std::vector<Effect<float>> pipe_effects;
 
-  EchoEffect<float> e1{0.1, 0.5, 1.0, SAMPLERATE};
-  EchoEffect<float> e2{0.12, 0.5, 1.0, SAMPLERATE};
-  EchoEffect<float> e3{0.17, 0.7, 1.0, SAMPLERATE};
+  EchoEffect<float> e1{0.1, 0.5, 1.0,
+                       static_cast<float>(Config::instance().getSampleRate())};
+  EchoEffect<float> e2{0.12, 0.5, 1.0,
+                       static_cast<float>(Config::instance().getSampleRate())};
+  EchoEffect<float> e3{0.17, 0.7, 1.0,
+                       static_cast<float>(Config::instance().getSampleRate())};
 
   Effect<float> ee1, ee2, ee3, se, ap1e, ap2e, ap3e, ap4e;
   ee1.effectType = Effect<float>::Type::Echo;

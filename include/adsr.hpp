@@ -164,6 +164,10 @@ public:
     this->length = this->quantas_length * this->quantas;
   }
 
+  int get_decay_start_index() {
+    int attack_end = this->quantas_length * this->qadsr[0];
+    return attack_end;
+  }
   int get_sustain_start_index() {
     int attack_end = this->quantas_length * this->qadsr[0];
     int decay_end = attack_end + this->quantas_length * this->qadsr[1];

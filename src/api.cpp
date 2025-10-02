@@ -400,9 +400,8 @@ int config_api_handler(struct mg_connection *conn, void *cbdata) {
                     &kbs->effects[e].config)) {
           phaseDistConf = std::ref(*phaseDist);
         }
-        if (auto gainDist =
-                std::get_if<Effect<float>::GainDistHardClipConfig>(
-                    &kbs->effects[e].config)) {
+        if (auto gainDist = std::get_if<Effect<float>::GainDistHardClipConfig>(
+                &kbs->effects[e].config)) {
           gainDistConf = std::ref(*gainDist);
         }
       }

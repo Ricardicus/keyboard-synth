@@ -20,10 +20,9 @@ using json = nlohmann::json;
 
 #include "adsr.hpp"
 #include "api.hpp"
+#include "config.hpp"
 #include "effect.hpp"
 #include "keyboardstream.hpp"
-
-constexpr int BUFFER_SIZE = 512;
 
 // MIDI note number to frequency
 float noteToFreq(int note) { return 440.0f * pow(2, (note - 69) / 12.0f); }
@@ -72,6 +71,8 @@ void printHelp(char *argv0) {
          "file\n");
   printf("   --midi [file]: Play this MIDI (.mid) file\n");
   printf("   --volume [float]: Set the volume knob (default 1.0)\n");
+  printf("   --legato [float]: Set legato, and legato speed in milliseconds "
+         "(default 500)\n");
   printf("   --duration [float]: Note ADSR quanta duration in seconds (default "
          "0.1)\n");
   printf("   --adsr [int,int,int,int]: Set the ADSR quant intervals "
@@ -104,7 +105,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> e;
       e.effectType = Effect<float>::Type::Vibrato;
       e.config = Effect<float>::VibratoConfig{defFreq, defDepth};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectVibrato = e;
     }
   };
@@ -115,7 +117,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> e;
       e.effectType = Effect<float>::Type::Chorus;
       e.config = Effect<float>::ChorusConfig{defDelay, defDepth, defVoices};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectChorus = e;
     }
   };
@@ -124,7 +127,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> e;
       e.effectType = Effect<float>::Type::Tremolo;
       e.config = Effect<float>::TremoloConfig{defFreq, defDepth};
-      e.sampleRate = SAMPLERATE; // set once
+      e.sampleRate = Config::instance().getSampleRate(); // set once
       config.effectTremolo = e;
     }
   };
@@ -133,7 +136,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> e;
       e.effectType = Effect<float>::Type::PhaseDistortionSin;
       e.config = Effect<float>::PhaseDistortionSinConfig{defDepth};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectPhaseDist = e;
     }
   };
@@ -142,7 +146,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> e;
       e.effectType = Effect<float>::Type::GainDistHardClip;
       e.config = Effect<float>::GainDistHardClipConfig{defGain};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectGainDist = e;
     }
   };
@@ -179,7 +184,9 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       config.effectReverb = true;
     } else if (arg == "--vibrato") { // enable with defaults
       ensureVibrato();               // only creates if missing
-
+    } else if (arg == "--legato" && i + 1 < argc) {
+      config.legatoSpeed = std::stof(argv[i + 1]); // change depth only
+      printf("config.legatoSpeed: %f\n", *config.legatoSpeed);
     } else if (arg == "--vibrato_depth" && i + 1 < argc) {
       ensureVibrato(); // keep existing freq
       auto &v =
@@ -213,7 +220,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> effect;
       effect.effectType = Effect<float>::Type::Iir;
       config.effectIIR = effect;
-      config.effectIIR->sampleRate = SAMPLERATE;
+      config.effectIIR->sampleRate = Config::instance().getSampleRate();
       IIR<float> lowPass = IIRFilters::lowPass<float>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
@@ -221,7 +228,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       Effect<float> effect;
       effect.effectType = Effect<float>::Type::Iir;
       config.effectIIR = effect;
-      config.effectIIR->sampleRate = SAMPLERATE;
+      config.effectIIR->sampleRate = Config::instance().getSampleRate();
       IIR<float> lowPass = IIRFilters::highPass<float>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
@@ -266,11 +273,11 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
     } else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
-      FIR fir(SAMPLERATE);
+      FIR fir(Config::instance().getSampleRate());
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
       Effect<float> effect;
-      effect.sampleRate = SAMPLERATE;
+      effect.sampleRate = Config::instance().getSampleRate();
       effect.effectType = Effect<float>::Type::Fir;
       config.effectFIR = effect;
       config.effectFIR->addFIR(fir);
@@ -282,7 +289,8 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
     } else if (arg == "--duration" && i + 1 < argc) {
       config.duration = std::stof(argv[i + 1]);
       config.adsr.setLength(
-          static_cast<int>(SAMPLERATE * config.duration * config.adsr.quantas));
+          static_cast<int>(Config::instance().getSampleRate() *
+                           config.duration * config.adsr.quantas));
     } else if (arg == "-h" || arg == "--help") {
       printHelp(argv[0]);
       return -1;
@@ -334,7 +342,8 @@ int main(int argc, char *argv[]) {
   short amplitude = 32767;
   int maxPolyphony = 50;
   ADSR adsr =
-      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
+      ADSR(amplitude, 1, 1, 3, 3, 0.8,
+           static_cast<int>(Config::instance().getSampleRate() * duration));
 
   int rankIndex = 0;
   std::vector<Sound::Rank<float>::Preset> presets = {
@@ -366,7 +375,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  KeyboardStream stream(SAMPLERATE, config.tuning);
+  KeyboardStream stream(Config::instance().getSampleRate(), config.tuning);
   bool running = true;
   int port = config.port;
   if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) < 0) {
@@ -376,10 +385,10 @@ int main(int argc, char *argv[]) {
 
   SDL_AudioSpec desired, obtained;
   SDL_zero(desired);
-  desired.freq = SAMPLERATE;
+  desired.freq = Config::instance().getSampleRate();
   desired.format = AUDIO_F32SYS;
   desired.channels = 1;
-  desired.samples = BUFFER_SIZE;
+  desired.samples = Config::instance().getBufferSize();
   desired.callback = SDL2AudioCallback;
   desired.userdata = &stream;
 
@@ -438,7 +447,10 @@ int main(int argc, char *argv[]) {
   }
   effects.push_back(reverb);
   auto start = std::chrono::high_resolution_clock::now();
-  stream.prepareSound(SAMPLERATE, config.adsr, effects);
+  stream.prepareSound(Config::instance().getSampleRate(), config.adsr, effects);
+  if (config.legatoSpeed) {
+    stream.setLegato(true, *config.legatoSpeed);
+  }
   auto end = std::chrono::high_resolution_clock::now();
   auto prepTime =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
@@ -484,13 +496,13 @@ int main(int argc, char *argv[]) {
         float freq = noteToFreq(note);
         auto key = notes::getClosestNote(freq, config.tuning);
         float dur = ev.getDurationInSeconds();
-        int startS = int(ev.seconds * SAMPLERATE);
+        int startS = int(ev.seconds * Config::instance().getSampleRate());
         notesMap[startS].emplace_back(key, dur);
       }
     }
 
     // 4) Timing constants
-    const double usPerSample = 1'000'000.0 / SAMPLERATE;
+    const double usPerSample = 1'000'000.0 / Config::instance().getSampleRate();
 
     auto startTimePoint =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
@@ -579,7 +591,8 @@ int main(int argc, char *argv[]) {
                   rankIndex = (rankIndex + presets.size() - 1) % presets.size();
                 }
 
-                stream.prepareSound(SAMPLERATE, config.adsr, effects);
+                stream.prepareSound(Config::instance().getSampleRate(),
+                                    config.adsr, effects);
 
                 config.rankPreset = presets[rankIndex];
                 config.printConfig();

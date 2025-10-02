@@ -116,23 +116,11 @@ void KeyboardStream::setupStandardSynthConfig() {
   for (int i = 0; i < 4; i++) {
     this->synth[i].setVolume(i == 0 ? 0.5 : 0);
     this->synth[i].setEffects(this->effects);
+    this->synth[i].setLegato(this->legatoMode, this->legatoSpeed);
   }
 }
 
 void KeyboardStream::registerNote(const std::string &note) {
-  auto it = this->notesPressed.find(note);
-
-  if (it != this->notesPressed.end()) {
-    // Note already exists – create a new entry with release = true
-    NotePress releasedNote;
-    releasedNote = it->second;
-    releasedNote.release = true;
-    releasedNote.phase = 0;
-    releasedNote.time = KeyboardStream::currentTimeMillis();
-    std::string newKey = note + "--" + std::to_string(releasedNote.time);
-    this->notesPressed[newKey] = releasedNote;
-  }
-
   // Always create a fresh note entry
   NotePress np;
   np.time = KeyboardStream::currentTimeMillis();
@@ -142,13 +130,48 @@ void KeyboardStream::registerNote(const std::string &note) {
   np.index = 0;
   np.release = false;
 
-  this->notesPressed[note] = np;
+  if (this->legatoMode) {
+    std::string legatoNote = "C4";
+    auto it = this->notesPressed.find(legatoNote);
+
+    if (it == this->notesPressed.end()) {
+      this->resetLegato();
+      this->notesPressed[legatoNote] = np;
+    } else {
+      it->second.frequency = np.frequency;
+      if (it->second.note == note) {
+        it->second.index = 0; // this->adsr.get_decay_start_index();
+      }
+      it->second.note = note;
+    }
+  } else {
+    auto it = this->notesPressed.find(note);
+
+    if (it != this->notesPressed.end()) {
+      // Note already exists – create a new entry with release = true
+      NotePress releasedNote;
+      releasedNote = it->second;
+      releasedNote.release = true;
+      releasedNote.phase = 0;
+      releasedNote.time = KeyboardStream::currentTimeMillis();
+      std::string newKey = note + "--" + std::to_string(releasedNote.time);
+      this->notesPressed[newKey] = releasedNote;
+    }
+
+    this->notesPressed[note] = np;
+  }
 }
 
 void KeyboardStream::registerNoteRelease(const std::string &note) {
-  auto it = this->notesPressed.find(note);
-  if (it != this->notesPressed.end()) {
-    it->second.release = true;
+  if (this->legatoMode) {
+    for (auto it = notesPressed.begin(); it != notesPressed.end(); it++) {
+      it->second.release = true;
+    }
+  } else {
+    auto it = this->notesPressed.find(note);
+    if (it != this->notesPressed.end()) {
+      it->second.release = true;
+    }
   }
 }
 
@@ -177,6 +200,9 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
   // if (notesPressed.size() == 0)
   //   return;
 
+  // Add samples to YIN calc
+  // this->yin.addSamples(buffer, len);
+
   for (int i = 0; i < len; i++) {
     float sample = 0.0f;
 
@@ -194,8 +220,16 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
         note.index++;
       }
 
-      sample += adsr * generateSample(note.note, note.phase, note.rankIndex);
-      note.rankIndex++;
+      if (this->legatoMode) {
+        if (it->first.find("--") == std::string::npos) {
+          sample += adsr * generateSample(note.note, note.phase,
+                                          this->legatoRankIndex);
+          this->legatoRankIndex++;
+        }
+      } else {
+        sample += adsr * generateSample(note.note, note.phase, note.rankIndex);
+        note.rankIndex++;
+      }
 
       // Advance phase
       note.phase += 2.0f * M_PI * freq * deltaT;
@@ -223,12 +257,19 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
     // Write to buffer
     buffer[i] = entry;
   }
+
+  /*float yinF = this->yin.getYinFrequency();
+  if (yinF > 0) {
+    printw("\rHearing: %s   ",
+           notes::getClosestNote(yinF, notes::TuningSystem::EqualTemperament)
+               .c_str());
+  }*/
   // auto end = std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double, std::milli> duration = end - start;
 
   // Optionally keep this if debugging:
   // printw(" %f (%zu) -", duration.count(), notesPressed.size());
-  // refresh();
+  refresh();
 }
 
 float KeyboardStream::generateSample(std::string note, float phase, int index) {
@@ -237,6 +278,8 @@ float KeyboardStream::generateSample(std::string note, float phase, int index) {
   float max = static_cast<float>(std::numeric_limits<short>::max());
 
   for (Oscillator &oscillator : this->synth) {
+    if (oscillator.volume == 0.0)
+      continue;
     result += oscillator.volume * oscillator.getSample(note, index);
   }
 
@@ -247,29 +290,54 @@ float KeyboardStream::generateSample(std::string note, float phase, int index) {
   return result;
 }
 
+static void normalizeBuffer(std::vector<short> &buffer) {
+  short maxVal = 0;
+  for (short s : buffer) {
+    if (std::abs(static_cast<int>(s)) > maxVal) {
+      maxVal = std::abs(static_cast<int>(s));
+    }
+  }
+
+  if (maxVal == 0)
+    return; // avoid divide by zero
+
+  double scale =
+      static_cast<double>(std::numeric_limits<short>::max()) / maxVal;
+  for (auto &s : buffer) {
+    s = static_cast<short>(std::round(s * scale));
+  }
+}
+
 void KeyboardStream::Oscillator::setSoundMap(
-    std::map<std::string, std::string> &soundMap) {
+    std::map<std::string, std::string> &soundMap, bool normalize) {
   for (const auto &[key, value] : soundMap) {
     std::cout << "Key: " << key << ", Value: " << value << std::endl;
     int channels, wavSampleRate, bps, size;
     char *data;
-    if ((data = loadWAV(value, channels, wavSampleRate, bps, size)) != NULL) {
+
+    if ((data = loadWAV(value, channels, wavSampleRate, bps, size)) !=
+        nullptr) {
       if (channels == 2) {
         std::vector<short> buffer_left_in, buffer_right_in;
         splitChannels(data, size, buffer_left_in, buffer_right_in);
 
-        std::vector<short> buffer_left_effect_out = buffer_left_in;
-        std::vector<short> buffer_right_effect_out = buffer_right_in;
+        if (normalize) {
+          normalizeBuffer(buffer_left_in);
+          normalizeBuffer(buffer_right_in);
+        }
 
         std::vector<short> interleaved;
-        interleaved.reserve(buffer_left_effect_out.size() * 2);
-        for (size_t i = 0; i < buffer_left_effect_out.size(); ++i) {
-          interleaved.push_back(buffer_left_effect_out[i]);
-          interleaved.push_back(buffer_right_effect_out[i]);
+        interleaved.reserve(buffer_left_in.size() * 2);
+        for (size_t i = 0; i < buffer_left_in.size(); ++i) {
+          interleaved.push_back(buffer_left_in[i]);
+          interleaved.push_back(buffer_right_in[i]);
         }
         this->samples[key] = interleaved;
       } else {
         std::vector<short> buffer = convertToVector(data, size);
+        if (normalize) {
+          normalizeBuffer(buffer);
+        }
         this->samples[key] = buffer;
       }
     }
@@ -318,7 +386,25 @@ float KeyboardStream::Oscillator::getSample(const std::string &note,
   }
   float result = 0;
   std::lock_guard<std::mutex> lk(this->ranksMtx.mutex);
-  if (this->ranks.find(note) != this->ranks.end()) {
+  if (this->legatoMode && !this->legatoRank.has_value()) {
+    std::vector<Effect<float>> effectsClone(effects);
+    Note n{note, this->adsr.length, this->sampleRate, this->tuning};
+
+    float freq = notes::getFrequency(note, this->tuning);
+    Sound::Rank<float> r = Sound::Rank<float>::fromPreset(
+        this->sound, freq, this->adsr.length, this->sampleRate);
+    r.adsr = adsr;
+    for (int e = 0; e < effectsClone.size(); e++) {
+      r.addEffect(effectsClone[e]);
+    }
+
+    this->legatoRank = std::move(r);
+  }
+  if (this->legatoRank.has_value()) {
+    float frequency = notes::getFrequency(note, this->tuning);
+    this->applyLegatoFrequency(frequency);
+    result = this->legatoRank->generateRankSampleIndex(index);
+  } else if (this->ranks.find(note) != this->ranks.end()) {
     result = this->ranks[note].generateRankSampleIndex(index);
   }
   return result;
@@ -350,6 +436,7 @@ void KeyboardStream::Oscillator::initialize() {
     { this->ranks[key] = std::move(r); }
   }
 
+  this->legatoRank = std::nullopt;
   this->initialized = true;
 }
 

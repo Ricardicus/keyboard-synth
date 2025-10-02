@@ -1,4 +1,5 @@
 #include "sound.hpp"
+#include "config.hpp"
 #include "note.hpp"
 #include <cmath>
 #include <functional>
@@ -282,22 +283,53 @@ Sound::generateWhiteNoiseWave(Note &note, ADSR &adsr,
   return samples;
 }
 
+template <typename T> int sign(T val) { return (T(0) < val) - (val < T(0)); }
+
 template <> float Sound::Rank<float>::generateRankSample() {
   float val = 0;
-  for (const Pipe &pipe : this->pipes) {
-    Note note = pipe.first;
+  for (int i = 0; i < this->pipes.size(); i++) {
+    Pipe &pipe = this->pipes[i];
+    Note &note = pipe.first;
     Sound::WaveForm form = pipe.second;
-    float deltaT = 1.0f / note.sampleRate;
+    float deltaT = 1.0f / Config::instance().getSampleRate();
     float addition;
     float frequency = note.frequency;
     if (note.frequencyAltered > 0) {
       frequency = note.frequencyAltered;
     }
-    float t = this->generatorIndex * deltaT;
+
+    float t = this->generatorIndex_ * deltaT;
     float phase = 2.0f * PI * frequency * t;
+    if (legato_.has_value()) {
+      printf("LEGATO\n");
+      if (legato_->targetFrequencies[i] > legato_->currentFrequencies[i]) {
+        if (legato_->deltas[i] < 0) {
+          legato_->deltas[i] = 0;
+          legato_->currentFrequencies[i] = legato_->targetFrequencies[i];
+        }
+      } else if (legato_->targetFrequencies[i] <
+                 legato_->currentFrequencies[i]) {
+        if (legato_->deltas[i] > 0) {
+          legato_->deltas[i] = 0;
+          legato_->currentFrequencies[i] = legato_->targetFrequencies[i];
+        }
+      }
+
+      legato_->currentFrequencies[i] += legato_->deltas[i];
+
+      frequency = legato_->currentFrequencies[i];
+
+      note.frequencyAltered = frequency;
+      note.frequency = frequency;
+      phases[i] += 2.0f * PI * frequency * deltaT;
+      if (phases[i] > 2.0f * PI)
+        phases[i] -= 2.0f * PI;
+      phase = phases[i];
+    }
+
     float duty = 1.0;
     short envelope = adsr.amplitude *
-                     note.volume; // TODO: adsr.response(this->generatorIndex);
+                     note.volume; // TODO: adsr.response(this->generatorIndex_);
     applyEffects(t, phase, duty, envelope, effects);
 
     switch (form) {
@@ -329,12 +361,12 @@ template <> float Sound::Rank<float>::generateRankSample() {
     val += (static_cast<float>(envelope) / adsr.amplitude) * addition;
   }
 
-  this->generatorIndex++;
+  this->generatorIndex_++;
   return val;
 }
 
 template <> float Sound::Rank<float>::generateRankSampleIndex(int index) {
-  this->generatorIndex = index;
+  this->generatorIndex_ = index;
   return this->generateRankSample();
 }
 

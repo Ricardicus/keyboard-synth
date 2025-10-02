@@ -187,7 +187,7 @@ void usage(const std::string &program_name) {
       << std::endl;
 }
 
-struct Config {
+struct AudiolizerConfig {
   std::string file;
   int top_components = TOP_COMPONENTS;
   int buffer_size = BUFFER_SIZE;
@@ -195,8 +195,8 @@ struct Config {
   int clip_stop = 100;
 };
 
-Config parseArgs(int argc, char *argv[]) {
-  Config config;
+AudiolizerConfig parseArgs(int argc, char *argv[]) {
+  AudiolizerConfig config;
 
   if (argc <= 1) {
     usage(argv[0]);
@@ -245,7 +245,7 @@ Config parseArgs(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-  Config config;
+  AudiolizerConfig config;
 
   if (argc < 2) {
     fprintf(stderr, "error: no input file\n");

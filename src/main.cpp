@@ -12,10 +12,9 @@
 #include <stdio.h>
 
 #include "adsr.hpp"
+#include "config.hpp"
 #include "effect.hpp"
 #include "keyboard.hpp"
-
-#define SAMPLE_RATE 44100
 
 // MIDI note number to frequency
 float noteToFreq(int note) { return 440.0f * pow(2, (note - 69) / 12.0f); }
@@ -350,7 +349,8 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect<short> e;
       e.effectType = Effect<short>::Type::Vibrato;
       e.config = Effect<short>::VibratoConfig{defFreq, defDepth};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectVibrato = e;
     }
   };
@@ -361,7 +361,8 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect<short> e;
       e.effectType = Effect<short>::Type::Chorus;
       e.config = Effect<short>::ChorusConfig{defDelay, defDepth, defVoices};
-      e.sampleRate = SAMPLERATE; // make sure SR is set once
+      e.sampleRate =
+          Config::instance().getSampleRate(); // make sure SR is set once
       config.effectChorus = e;
     }
   };
@@ -370,7 +371,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect<short> e;
       e.effectType = Effect<short>::Type::Tremolo;
       e.config = Effect<short>::TremoloConfig{defFreq, defDepth};
-      e.sampleRate = SAMPLERATE; // set once
+      e.sampleRate = Config::instance().getSampleRate(); // set once
       config.effectTremolo = e;
     }
   };
@@ -438,10 +439,10 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       config.adsr.update_len();
       ++i; // skip the next argument as it's already processed
     } else if (arg == "-e" || arg == "--echo") {
-      FIR fir(SAMPLERATE);
+      FIR fir(Config::instance().getSampleRate());
       fir.setResonance({1.0, 0.5, 0.25, 0.125, 0.0515, 0.02575}, 1.0);
       Effect<short> effect;
-      effect.sampleRate = SAMPLERATE;
+      effect.sampleRate = Config::instance().getSampleRate();
       effect.effectType = Effect<short>::Type::Fir;
       config.effectFIR = effect;
       config.effectFIR->addFIR(fir);
@@ -477,7 +478,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect<short> effect;
       effect.effectType = Effect<short>::Type::Iir;
       config.effectIIR = effect;
-      config.effectIIR->sampleRate = SAMPLERATE;
+      config.effectIIR->sampleRate = Config::instance().getSampleRate();
       IIR<short> lowPass = IIRFilters::lowPass<short>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
@@ -485,7 +486,7 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
       Effect<short> effect;
       effect.effectType = Effect<short>::Type::Iir;
       config.effectIIR = effect;
-      config.effectIIR->sampleRate = SAMPLERATE;
+      config.effectIIR->sampleRate = Config::instance().getSampleRate();
       IIR<short> lowPass = IIRFilters::highPass<short>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
@@ -511,11 +512,11 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     } else if (arg == "--midi" && i + 1 < argc) {
       config.midiFile = argv[i + 1];
     } else if (arg == "-r" || arg == "--reverb" && i + 1 < argc) {
-      FIR fir(SAMPLERATE);
+      FIR fir(Config::instance().getSampleRate());
       fir.loadFromFile(argv[i + 1]);
       fir.setNormalization(true);
       Effect<short> effect;
-      effect.sampleRate = SAMPLERATE;
+      effect.sampleRate = Config::instance().getSampleRate();
       effect.effectType = Effect<short>::Type::Fir;
       config.effectFIR = effect;
       config.effectFIR->addFIR(fir);
@@ -527,7 +528,8 @@ int parseArguments(int argc, char *argv[], PlayConfig &config) {
     } else if (arg == "--duration" && i + 1 < argc) {
       config.duration = std::stof(argv[i + 1]);
       config.adsr.setLength(
-          static_cast<int>(SAMPLERATE * config.duration * config.adsr.quantas));
+          static_cast<int>(Config::instance().getSampleRate() *
+                           config.duration * config.adsr.quantas));
     } else if (arg == "-h" || arg == "--help") {
       printHelp(argv[0]);
       return -1;
@@ -541,7 +543,8 @@ int main(int argc, char *argv[]) {
   short amplitude = 32767;
   int maxPolyphony = 50;
   ADSR adsr =
-      ADSR(amplitude, 1, 1, 3, 3, 0.8, static_cast<int>(SAMPLERATE * duration));
+      ADSR(amplitude, 1, 1, 3, 3, 0.8,
+           static_cast<int>(Config::instance().getSampleRate() * duration));
   Keyboard keyboard(maxPolyphony);
   int rankIndex = 0;
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
@@ -599,8 +602,8 @@ int main(int argc, char *argv[]) {
     effects.push_back(*config.effectTremolo);
   }
   auto start = std::chrono::high_resolution_clock::now();
-  keyboard.prepareSound(SAMPLERATE, config.adsr, config.rankPreset, effects,
-                        config.parallelization);
+  keyboard.prepareSound(Config::instance().getSampleRate(), config.adsr,
+                        config.rankPreset, effects, config.parallelization);
   auto end = std::chrono::high_resolution_clock::now();
   auto prepTime =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
@@ -631,7 +634,7 @@ int main(int argc, char *argv[]) {
     midiFile.linkNotePairs();
 
     double totalDuration = midiFile.getFileDurationInSeconds();
-    int totalSamples = SAMPLE_RATE * totalDuration;
+    int totalSamples = Config::instance().getSampleRate() * totalDuration;
     std::map<int, std::vector<std::string>> notesMap;
 
     for (int track = 0; track < midiFile.getTrackCount(); track++) {
@@ -645,7 +648,7 @@ int main(int argc, char *argv[]) {
           float duration = midiFile[track][event].getDurationInSeconds();
           float startTime = midiFile[track][event].seconds;
 
-          int startSample = SAMPLE_RATE * startTime;
+          int startSample = Config::instance().getSampleRate() * startTime;
 
           notesMap[startSample].push_back(noteKey);
         }
@@ -687,8 +690,9 @@ int main(int argc, char *argv[]) {
         } else {
           rankIndex = (rankIndex + presets.size() - 1) % presets.size();
         }
-        keyboard.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
-                              effects, config.parallelization);
+        keyboard.prepareSound(Config::instance().getSampleRate(), config.adsr,
+                              presets[rankIndex], effects,
+                              config.parallelization);
         clear();
         config.rankPreset = presets[rankIndex];
         config.printConfig();
@@ -699,8 +703,9 @@ int main(int argc, char *argv[]) {
         keyboard.setVolume(keyboard.getVolume() - (ch == 'E' ? -0.1 : 0.1));
         keyboard.teardown();
         keyboard.setup(maxPolyphony);
-        keyboard.prepareSound(SAMPLERATE, config.adsr, presets[rankIndex],
-                              effects, config.parallelization);
+        keyboard.prepareSound(Config::instance().getSampleRate(), config.adsr,
+                              presets[rankIndex], effects,
+                              config.parallelization);
         clear();
         config.printConfig();
         keyboard.printInstructions();

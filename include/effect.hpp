@@ -8,12 +8,9 @@
 #include <variant>
 #include <vector>
 
+#include "config.hpp"
 #include "fir.hpp"
 #include "iir.hpp"
-
-#ifndef SAMPLERATE
-#define SAMPLERATE 44100
-#endif
 
 template <typename T> class Adder;
 template <typename T> class Piper;
@@ -55,8 +52,9 @@ public:
 
 template <typename T> class EchoEffect {
 public:
-  EchoEffect(float rateSeconds = 1.0f, float feedback = 0.3f, float mix = 1.0f,
-             float sampleRate = static_cast<float>(SAMPLERATE))
+  EchoEffect(
+      float rateSeconds = 1.0f, float feedback = 0.3f, float mix = 1.0f,
+      float sampleRate = static_cast<float>(Config::instance().getSampleRate()))
       : writeIndex(0), delaySamples(0), feedback(feedback), mix(mix),
         sampleRate(sampleRate) {
     setRate(rateSeconds);
@@ -307,7 +305,7 @@ public:
 
   std::vector<FIR> firs;
   std::vector<IIR<T>> iirs;
-  int sampleRate = SAMPLERATE;
+  int sampleRate = Config::instance().getSampleRate();
 
   // ── ctor helpers ─────────────────────────────────────────────────────
   Effect() = default;
@@ -345,6 +343,8 @@ public:
     case PhaseDistortionSin:
       add("distphase", getIf<PhaseDistortionSinConfig>(config));
       break;
+    default:
+      break;
     }
 
     if (!firs.empty())
@@ -353,7 +353,7 @@ public:
     if (!iirs.empty())
       for (const auto &f : iirs)
         j["iirs"].push_back(f.toJson());
-    if (sampleRate != SAMPLERATE)
+    if (sampleRate != Config::instance().getSampleRate())
       j["sampleRate"] = sampleRate;
     return j;
   }

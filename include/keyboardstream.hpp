@@ -19,6 +19,7 @@
 #include "notes.hpp"
 #include "sound.hpp"
 #include "waveread.hpp"
+#include "yin.hpp"
 
 #include "json.hpp"
 
@@ -79,6 +80,20 @@ public:
   void registerButtonPress(int note);
   void registerButtonRelease(int note);
   void printInstructions();
+
+  void setLegato(bool mode, float speedMs = 500) {
+    this->legatoMode = mode;
+    this->legatoSpeed = speedMs;
+    for (Oscillator &oscillator : this->synth) {
+      oscillator.setLegato(mode, speedMs);
+    }
+  }
+
+  void resetLegato() {
+    for (Oscillator &oscillator : this->synth) {
+      oscillator.resetLegato();
+    }
+  }
 
   void copyEffectsToSynths() {
     for (int i = 0; i < this->synth.size(); i++) {
@@ -214,11 +229,25 @@ public:
         }
       }
     }
-    void setSoundMap(std::map<std::string, std::string> &soundMap);
+
+    void applyLegatoFrequency(float frequency) {
+      if (frequency != this->legatoFreq) {
+        this->legatoFreq = frequency;
+        this->legatoRank->setLegato(frequency, this->legatoSpeed,
+                                    this->sampleRate);
+      }
+    }
+    void setSoundMap(std::map<std::string, std::string> &soundMap,
+                     bool normalize = true);
     void setEffects(std::vector<Effect<float>> &effects) {
       this->effects = effects;
       initialize();
     }
+    void setLegato(bool mode, float speedMs = 500) {
+      this->legatoMode = mode;
+      this->legatoSpeed = speedMs;
+    }
+    void resetLegato() { this->legatoRank = std::nullopt; }
 
     std::vector<Effect<float>> effects;
 
@@ -228,6 +257,10 @@ public:
     std::map<std::string, Sound::Rank<float>> ranks;
     bool initialized = false;
     std::map<std::string, std::vector<short>> samples;
+    std::optional<Sound::Rank<float>> legatoRank;
+    float legatoFreq = 0;
+    bool legatoMode = false;
+    float legatoSpeed = 500;
   };
 
   struct NotePress {
@@ -376,12 +409,17 @@ private:
   std::string soundMapFile;
   int sampleRate;
 
+  bool legatoMode = false;
+  int legatoRankIndex = 0;
+  float legatoSpeed = 500;
+
   std::unordered_map<std::string, Note> notes;
   std::unordered_map<std::string, NotePress> notesPressed;
 
   Sound::WaveForm waveForm = Sound::WaveForm::Sine;
   Sound::Rank<float>::Preset rankPreset = Sound::Rank<float>::Preset::None;
   std::unordered_map<std::string, Sound::Rank<float>> ranks;
+  YIN yin;
 
   float volume = 1.0;
 
@@ -429,6 +467,7 @@ public:
   std::optional<Effect<float>> effectTremolo = std::nullopt;
   std::optional<Effect<float>> effectPhaseDist = std::nullopt;
   std::optional<Effect<float>> effectGainDist = std::nullopt;
+  std::optional<float> legatoSpeed = std::nullopt;
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   bool effectReverb = false;
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};

@@ -10,6 +10,14 @@
 namespace Sound {
 enum WaveForm { Sine, Triangular, Square, Saw, WhiteNoise, WaveFile };
 
+typedef struct LegatoConfig {
+  std::vector<float> targetFrequencies;
+  std::vector<float> currentFrequencies;
+  std::vector<float> deltas;
+  float targetFrequency;
+  float speedMs = 500;
+} LegatoConfig;
+
 float sinus(float f);
 float square(float f);
 float square(float f, float factor);
@@ -37,12 +45,16 @@ template <typename T> class Rank {
 public:
   Rank() {}
   Rank(ADSR &adsr) { this->adsr = adsr; }
-  void addPipe(Pipe &pipe) { this->pipes.push_back(pipe); }
+  void addPipe(Pipe &pipe) {
+    this->pipes.push_back(pipe);
+    this->phases.resize(this->pipes.size(), 0);
+  }
   void addEffect(Effect<T> &effect) { this->effects.push_back(effect); }
 
   ADSR adsr;
   std::vector<Pipe> pipes;
   std::vector<Effect<T>> effects;
+  std::vector<float> phases;
   enum Preset {
     SuperSaw,
     FatTriangle,
@@ -199,7 +211,7 @@ public:
 
   static Rank<T> fromPreset(Sound::Rank<T>::Preset preset, float frequency,
                             int length, int sampleRate) {
-    static Sound::Rank<T> r;
+    Sound::Rank<T> r;
     switch (preset) {
     case Sound::Rank<T>::Preset::SuperSaw:
       r = Sound::Rank<T>::superSaw(frequency, length, sampleRate);
@@ -258,10 +270,12 @@ public:
     case Sound::Rank<T>::Preset::None:
       break;
     }
+
+    r.preset = preset;
     return r;
   }
 
-  void reset() { this->generatorIndex = 0; }
+  void reset() { this->generatorIndex_ = 0; }
 
   static Sound::Rank<T> superSaw(float frequency, int length, int sampleRate) {
     Rank rank;
@@ -700,8 +714,58 @@ public:
     return rank;
   }
 
+  template <typename Q> int sign(Q val) { return (Q(0) < val) - (val < Q(0)); }
+
+  bool setLegato(float frequency, float speedMs, int sampleRate) {
+    if (!preset.has_value()) {
+      return false;
+    }
+
+    Rank<T> r = fromPreset(*preset, frequency, 0, sampleRate);
+    std::vector<float> frequencies;
+    LegatoConfig lega;
+    lega.targetFrequency = frequency;
+    lega.speedMs = speedMs;
+
+    for (auto &p : r.pipes) {
+      Note n = p.first;
+      frequencies.push_back(n.frequency);
+    }
+
+    lega.targetFrequencies = frequencies;
+    lega.deltas.resize(lega.targetFrequencies.size(), 0);
+
+    if (legato_.has_value()) {
+      legato_->targetFrequencies = frequencies;
+      legato_->speedMs = speedMs;
+
+      if (legato_->currentFrequencies.size() == 0) {
+        legato_->currentFrequencies = frequencies;
+      }
+
+      legato_->deltas.resize(legato_->currentFrequencies.size(), 0);
+
+      for (int q = 0; q < legato_->currentFrequencies.size(); q++) {
+        float diff =
+            legato_->targetFrequencies[q] - legato_->currentFrequencies[q];
+        int sampleRate = Config::instance().getSampleRate();
+        float samplesToTarget = sampleRate * (legato_->speedMs * 0.001);
+        legato_->deltas[q] = diff / samplesToTarget;
+      }
+    } else {
+      lega.currentFrequencies = lega.targetFrequencies;
+      legato_ = lega;
+    }
+    return true;
+  }
+
+  void deactivateLegato() { legato_ = std::nullopt; }
+
+  std::optional<Preset> preset;
+
 private:
-  unsigned int generatorIndex = 0;
+  std::optional<LegatoConfig> legato_;
+  unsigned int generatorIndex_ = 0;
 };
 
 std::vector<short> generateWave(Rank<short> &rank);
