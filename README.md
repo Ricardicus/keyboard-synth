@@ -145,14 +145,17 @@ flags:
    --chorus_depth [float]: Set the chorus depth factor, in pitch cents, default: 3
    --chorus_voices[int]: Set the chorus voices, default: 3
    --vibrato: Add a vibrato effect with default settings
-   --vibrato_depth [float]: Set the vibrato depth factor, default: 0.3
-   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz  default: 6
+   --vibrato-depth [float]: Set the vibrato depth factor, default: 0.3
+   --vibrato-frequency [float]: Set the vibrato frequency, in Hertz  default: 6
+   --phaseDist: Add a phase dist (sinus) with default setting
+   --gainDist: Add a gain dist (hard clip) with default settings
    --tremolo: Add a tremolo effect with default settings
-   --tremolo_depth [float]: Set the tremolo depth factor [0-1], default: 1.0
-   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz  default: 18
+   --tremolo-depth [float]: Set the tremolo depth factor [0-1], default: 1.0
+   --tremolo-frequency [float]: Set the tremolo frequency, in Hertz  default: 18
    --notes [file]: Map notes to .wav files as mapped in this .json file
    --midi [file]: Play this MIDI (.mid) file
    --volume [float]: Set the volume knob (default 1.0)
+   --legato [float]: Set legato, and legato speed in milliseconds (default 500)
    --duration [float]: Note ADSR quanta duration in seconds (default 0.1)
    --adsr [int,int,int,int]: Set the ADSR quant intervals comma-separated (default 1,1,3,3)
    --sustain [float]: Set the sustain level [0,1] (default 0.8)
@@ -162,8 +165,15 @@ flags:
                 (default no highpass)
    --parallelization [int]: Number of threads used in keyboard preparation default: 8
    --tuning [string]: Set the tuning used (equal | werckmeister3)
+   --looper: Activate a looper, will work based on metronome-bpm
+   --looper-bars: Set how many bars the looper will operate over (default 8)
+   --metronome: Activate the metronome
+   --metronome-bpm [int]: Set the metronome bpm (default: 100)
+   --metronome-volume [float]: Set the metronome volume (default: 0.250000)
+   --metronome-low [string]: Set the metronome low sound to this wave file (needs to be of 44100 sample rate)
+   --metronome-high [string]: Set the metronome high sound to this wave file (needs to be of 44100 sample rate)
 
-./build/keyboardstream compiled Aug 21 2025 21:00:39
+./build/keyboardstream compiled Oct  9 2025 21:40:55
 ```
 
 It also features a keyboard configuration program that is hosted on port 8080, that you can visit at http://localhost:8080. As of the day of writing, that configuration panel looks like this:

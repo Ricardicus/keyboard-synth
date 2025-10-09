@@ -22,13 +22,22 @@ public:
   void setBufferSize(std::size_t size) { bufferSize_ = size; }
   std::size_t getBufferSize() const { return bufferSize_; }
 
+  // ---- MetronomeBPM ----
+  void setMetronomeBPM(int bpm) { metronomeBpm_ = bpm; }
+  int getMetronomeBPM() const { return metronomeBpm_; }
+  // ---- MetronomeFloat ----
+  void setMetronomeVolume(float vol) { metronomeVolume_ = vol; }
+  float getMetronomeVolume() const { return metronomeVolume_; }
+
 private:
   // Private constructor initializes defaults
   Config()
       : sampleRate_(44100), // default = 44100 Hz
-        bufferSize_(512)    // default = 512 frames
-  {}
+        bufferSize_(512),   // default = 512 frames
+        metronomeBpm_(100), metronomeVolume_(0.25f) {}
 
   int sampleRate_;
   std::size_t bufferSize_;
+  int metronomeBpm_;
+  float metronomeVolume_;
 };

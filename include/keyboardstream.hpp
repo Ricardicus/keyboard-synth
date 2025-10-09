@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "effect.hpp"
+#include "looper.hpp"
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
@@ -400,6 +401,11 @@ public:
   void lock() { mtx.lock(); }
   void unlock() { mtx.unlock(); }
 
+  void toggleRecording() { this->looper.toggleRecording(); this->looper.enableMetronome(true); }
+  void toggleMetronome() { this->looper.enableMetronome(!this->looper.isMetronomeEnabled()); }
+
+  Looper &getLooper() { return this->looper; }
+
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
 private:
@@ -420,6 +426,7 @@ private:
   Sound::Rank<float>::Preset rankPreset = Sound::Rank<float>::Preset::None;
   std::unordered_map<std::string, Sound::Rank<float>> ranks;
   YIN yin;
+  Looper looper;
 
   float volume = 1.0;
 
@@ -449,6 +456,8 @@ private:
       {static_cast<int>('m'), "B2"}};
 
   std::map<int, std::function<void()>> keyPressToAction = {
+      {static_cast<int>(' '), [this]() { this->toggleRecording(); }},
+      {static_cast<int>('.'), [this]() { this->toggleMetronome(); }},
       {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},
       {static_cast<int>('p'), [this]() { this->changeOctave(1); }}};
 };
@@ -468,6 +477,14 @@ public:
   std::optional<Effect<float>> effectPhaseDist = std::nullopt;
   std::optional<Effect<float>> effectGainDist = std::nullopt;
   std::optional<float> legatoSpeed = std::nullopt;
+
+  bool metronomeActive = false;
+  std::string metronomeHigh = "media/metronome/Perc_MetronomeQuartz_hi.wav";
+  std::string metronomeLow = "media/metronome/Perc_MetronomeQuartz_lo.wav";
+
+  bool looperActive = false;
+  int looperBars = 8;
+
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
   bool effectReverb = false;
   EchoEffect<float> effectEcho{1.0, 0.3, 0.0, SAMPLERATE};

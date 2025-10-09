@@ -10,10 +10,14 @@ public:
   /// Constructor
   /// @param sampleRate - audio sample rate (Hz)
   /// @param minFreq    - lowest detectable frequency (Hz)
-  /// @param threshold  - threshold for CMND (typical ~0.1)
-  YIN(int sampleRate = 44100, float minFreq = 80.0f, float threshold = 0.2f)
-      : sampleRate(sampleRate), minFreq(minFreq), threshold(threshold) {
-    // Minimum buffer length required (two periods of lowest freq)
+  /// @param maxFreq    - highest detectable frequency (Hz)
+  /// @param threshold  - threshold for CMND (typical ~0.1–0.2)
+  YIN(int sampleRate = 44100, float minFreq = 80.0f, float maxFreq = 8000.0f,
+      float threshold = 0.1f)
+      : sampleRate(sampleRate), minFreq(minFreq), maxFreq(maxFreq),
+        threshold(threshold) {
+
+    // Buffer length: at least 2 periods of lowest freq
     bufferSize = static_cast<int>(2.0f * sampleRate / minFreq);
     audioBuffer.reserve(bufferSize);
   }
@@ -21,7 +25,7 @@ public:
   /// Add samples into the analysis buffer
   void addSamples(const float *buffer, const int len) {
     for (int i = 0; i < len; i++) {
-      if (audioBuffer.size() >= bufferSize) {
+      if ((int)audioBuffer.size() >= bufferSize) {
         audioBuffer.erase(audioBuffer.begin()); // sliding window
       }
       audioBuffer.push_back(buffer[i]);
@@ -34,12 +38,17 @@ public:
     if ((int)audioBuffer.size() < bufferSize)
       return -1.0f;
 
-    int tauMax = bufferSize / 2;
-    std::vector<float> diff(tauMax, 0.0f);
-    std::vector<float> cmnd(tauMax, 0.0f);
+    int tauMin = static_cast<int>(sampleRate / maxFreq);
+    int tauMax = static_cast<int>(sampleRate / minFreq);
+
+    if (tauMax > bufferSize / 2)
+      tauMax = bufferSize / 2;
+
+    std::vector<float> diff(tauMax + 1, 0.0f);
+    std::vector<float> cmnd(tauMax + 1, 0.0f);
 
     // Step 1: Difference function
-    for (int tau = 1; tau < tauMax; tau++) {
+    for (int tau = tauMin; tau <= tauMax; tau++) {
       for (int i = 0; i < tauMax; i++) {
         float delta = audioBuffer[i] - audioBuffer[i + tau];
         diff[tau] += delta * delta;
@@ -49,17 +58,17 @@ public:
     // Step 2: Cumulative mean normalized difference
     cmnd[0] = 1.0f;
     float runningSum = 0.0f;
-    for (int tau = 1; tau < tauMax; tau++) {
+    for (int tau = tauMin; tau <= tauMax; tau++) {
       runningSum += diff[tau];
       cmnd[tau] = (diff[tau] * tau) / (runningSum + 1e-9f);
     }
 
     // Step 3: Absolute threshold
     int tauEstimate = -1;
-    for (int tau = 2; tau < tauMax; tau++) {
+    for (int tau = tauMin; tau <= tauMax; tau++) {
       if (cmnd[tau] < threshold) {
         tauEstimate = tau;
-        while (tau + 1 < tauMax && cmnd[tau + 1] < cmnd[tau]) {
+        while (tau + 1 <= tauMax && cmnd[tau + 1] < cmnd[tau]) {
           tau++;
           tauEstimate = tau;
         }
@@ -73,7 +82,7 @@ public:
 
     // Step 4: Parabolic interpolation
     int tau = tauEstimate;
-    if (tau > 1 && tau < tauMax - 1) {
+    if (tau > tauMin && tau < tauMax) {
       float s0 = cmnd[tau - 1];
       float s1 = cmnd[tau];
       float s2 = cmnd[tau + 1];
@@ -87,6 +96,7 @@ public:
 private:
   int sampleRate;
   float minFreq;
+  float maxFreq;
   float threshold;
   int bufferSize;
   std::vector<float> audioBuffer;

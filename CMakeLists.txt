@@ -58,6 +58,7 @@ add_library(keylib STATIC
     src/adsr.cpp
     src/iir.cpp
     src/keyboardstream.cpp
+    src/looper.cpp
 )
 
 # Link dependencies to the keylib library

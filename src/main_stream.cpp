@@ -55,17 +55,17 @@ void printHelp(char *argv0) {
          "3\n");
   printf("   --chorus_voices[int]: Set the chorus voices, default: 3\n");
   printf("   --vibrato: Add a vibrato effect with default settings\n");
-  printf("   --vibrato_depth [float]: Set the vibrato depth factor, default: "
+  printf("   --vibrato-depth [float]: Set the vibrato depth factor, default: "
          "0.3\n");
-  printf("   --vibrato_frequency [float]: Set the vibrato frequency, in Hertz "
+  printf("   --vibrato-frequency [float]: Set the vibrato frequency, in Hertz "
          " default: 6\n");
   printf("   --phaseDist: Add a phase dist (sinus) with default setting\n");
   printf("   --gainDist: Add a gain dist (hard clip) with default settings\n");
   printf("   --tremolo: Add a tremolo effect with default settings\n");
-  printf("   --tremolo_depth [float]: Set the tremolo depth factor [0-1], "
+  printf("   --tremolo-depth [float]: Set the tremolo depth factor [0-1], "
          "default: "
          "1.0\n");
-  printf("   --tremolo_frequency [float]: Set the tremolo frequency, in Hertz "
+  printf("   --tremolo-frequency [float]: Set the tremolo frequency, in Hertz "
          " default: 18\n");
   printf("   --notes [file]: Map notes to .wav files as mapped in this .json "
          "file\n");
@@ -87,6 +87,23 @@ void printHelp(char *argv0) {
   printf("   --parallelization [int]: Number of threads used in keyboard "
          "preparation default: 8\n");
   printf("   --tuning [string]: Set the tuning used (equal | werckmeister3)\n");
+  printf("   --looper: Activate a looper, will work based on metronome-bpm\n");
+  printf("   --looper-bars: Set how many bars the looper will operate over "
+         "(default 8)\n");
+  printf("   --metronome: Activate the metronome\n");
+  printf("   --metronome-bpm [int]: Set the metronome bpm (default: %d)\n",
+         Config::instance().getMetronomeBPM());
+  printf(
+      "   --metronome-volume [float]: Set the metronome volume (default: %f)\n",
+      Config::instance().getMetronomeVolume());
+  printf(
+      "   --metronome-low [string]: Set the metronome low sound to this wave "
+      "file (needs to be of %d sample rate)\n",
+      Config::instance().getSampleRate());
+  printf("   --metronome-high [string]: Set the metronome high sound to this "
+         "wave file (needs to be of %d sample rate)\n",
+         Config::instance().getSampleRate());
+
   printf("\n");
   printf("%s compiled %s %s\n", argv0, __DATE__, __TIME__);
 }
@@ -187,13 +204,13 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
     } else if (arg == "--legato" && i + 1 < argc) {
       config.legatoSpeed = std::stof(argv[i + 1]); // change depth only
       printf("config.legatoSpeed: %f\n", *config.legatoSpeed);
-    } else if (arg == "--vibrato_depth" && i + 1 < argc) {
+    } else if (arg == "--vibrato-depth" && i + 1 < argc) {
       ensureVibrato(); // keep existing freq
       auto &v =
           std::get<Effect<float>::VibratoConfig>(config.effectVibrato->config);
       v.depth = std::stof(argv[i + 1]); // change depth only
 
-    } else if (arg == "--vibrato_frequency" && i + 1 < argc) {
+    } else if (arg == "--vibrato-frequency" && i + 1 < argc) {
       ensureVibrato(); // keep existing depth
       auto &v =
           std::get<Effect<float>::VibratoConfig>(config.effectVibrato->config);
@@ -202,16 +219,16 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       ensurePhaseDist(0.3);
     } else if (arg == "--gainDist") { // enable with defaults
       ensureGainDist(2.0);
-    } else if (arg == "--tremolo_depth" && i + 1 < argc) {
+    } else if (arg == "--tremolo-depth" && i + 1 < argc) {
       ensurePhaseDist(std::stof(argv[i + 1]));
     } else if (arg == "--tremolo") { // enable with defaults
       ensureTremolo();
-    } else if (arg == "--tremolo_depth" && i + 1 < argc) {
+    } else if (arg == "--tremolo-depth" && i + 1 < argc) {
       ensureTremolo(); // keep existing freq
       auto &v =
           std::get<Effect<float>::TremoloConfig>(config.effectTremolo->config);
       v.depth = std::stof(argv[i + 1]);
-    } else if (arg == "--tremolo_frequency" && i + 1 < argc) {
+    } else if (arg == "--tremolo-frequency" && i + 1 < argc) {
       ensureTremolo(); // keep existing depth
       auto &v =
           std::get<Effect<float>::TremoloConfig>(config.effectTremolo->config);
@@ -232,10 +249,24 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       IIR<float> lowPass = IIRFilters::highPass<float>(
           config.effectIIR->sampleRate, std::stof(argv[i + 1]));
       config.effectIIR->iirs.push_back(lowPass);
-    }
 
-    else if (arg == "--tuning") { // enable with defaults
-      if (i + 1 < argc) {         // make sure there's a value after --tuning
+    } else if (arg == "--looper") {
+      config.metronomeActive = true;
+      config.looperActive = true;
+    } else if (arg == "--looper-bars" && i + 1 < argc) {
+      config.looperBars = std::stoi(argv[i + 1]);
+    } else if (arg == "--metronome") {
+      config.metronomeActive = true;
+    } else if (arg == "--metronome-volume" && i + 1 < argc) {
+      Config::instance().setMetronomeVolume(std::stof(argv[i + 1]));
+    } else if (arg == "--metronome-bpm" && i + 1 < argc) {
+      Config::instance().setMetronomeBPM(std::stoi(argv[i + 1]));
+    } else if (arg == "--metronome-low" && i + 1 < argc) {
+      config.metronomeLow = std::string(argv[i + 1]);
+    } else if (arg == "--metronome-high" && i + 1 < argc) {
+      config.metronomeHigh = std::string(argv[i + 1]);
+    } else if (arg == "--tuning") { // enable with defaults
+      if (i + 1 < argc) {           // make sure there's a value after --tuning
         std::string tuningArg = argv[++i];
         if (tuningArg == "equal") {
           config.tuning = notes::TuningSystem::EqualTemperament;
@@ -451,6 +482,29 @@ int main(int argc, char *argv[]) {
   if (config.legatoSpeed) {
     stream.setLegato(true, *config.legatoSpeed);
   }
+
+  // Setup metronome in the keyboardstream looper
+  Looper &looper = stream.getLooper();
+  if (!looper.setMetronomeSampler(config.metronomeHigh, config.metronomeLow)) {
+    printf("Failed to load metronome sounds:\n");
+    printf("  metronome-low:  %s\n", config.metronomeLow.c_str());
+    printf("  metronome-high: %s\n", config.metronomeHigh.c_str());
+    printf("Are they are wave-files with sample rate: %d?\n",
+           Config::instance().getSampleRate());
+  }
+  looper.setBPM(static_cast<float>(Config::instance().getMetronomeBPM()));
+  looper.setMetronomeVolume(Config::instance().getMetronomeVolume());
+  if (config.metronomeActive) {
+    looper.enableMetronome(true);
+  } else {
+    looper.enableMetronome(false);
+  }
+
+  if (config.looperActive) {
+    looper.setRecording(true);
+    looper.setNumBars(config.looperBars);
+  }
+
   auto end = std::chrono::high_resolution_clock::now();
   auto prepTime =
       std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
@@ -469,7 +523,7 @@ int main(int argc, char *argv[]) {
   http_thread.detach(); // runs independently, main thread continues
 
   if (config.midiFile.size() > 0) {
-
+    clear();
     config.printConfig();
 
     if (!fileExists(config.midiFile)) {
@@ -537,7 +591,7 @@ int main(int argc, char *argv[]) {
     releaseThread.join();
 
   } else {
-
+    clear();
     config.printConfig();
     stream.printInstructions();
     refresh();
@@ -595,6 +649,7 @@ int main(int argc, char *argv[]) {
                                     config.adsr, effects);
 
                 config.rankPreset = presets[rankIndex];
+                clear();
                 config.printConfig();
                 stream.printInstructions();
                 printf(
@@ -602,9 +657,15 @@ int main(int argc, char *argv[]) {
                     Sound::Rank<float>::presetStr(presets[rankIndex]).c_str());
               } else {
                 // plain 'o' or 'p' (lowercase)
+                clear();
                 config.printConfig();
                 stream.printInstructions();
               }
+            }
+            if (ch == SDLK_SPACE || ch == '.') {
+              clear();
+              config.printConfig();
+              stream.printInstructions();
             }
           }
           break;

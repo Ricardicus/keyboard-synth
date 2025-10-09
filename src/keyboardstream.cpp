@@ -75,6 +75,8 @@ void KeyboardStream::printInstructions() {
   attron(COLOR_PAIR(4) | A_BOLD);
   printw("Press 'p'/'o' to +/- one octave\n");
   printw("Press 'P'/'O' to +/- keyboard preset sounds\n");
+  printw("Press SPACE to toggle recording. Recording active: %s\n", (this->looper.isRecording() ? "Yes" : "No"));
+  printw("Press '.' to toggle metronome. Metronome active: %s\n", (this->looper.isMetronomeEnabled() ? "Yes" : "No"));
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 
@@ -201,10 +203,11 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
   //   return;
 
   // Add samples to YIN calc
-  // this->yin.addSamples(buffer, len);
+  //this->yin.addSamples(buffer, len);
 
   for (int i = 0; i < len; i++) {
     float sample = 0.0f;
+    buffer[i] = 0;
 
     for (auto it = notesPressed.begin(); it != notesPressed.end();) {
       NotePress &note = it->second;
@@ -255,15 +258,17 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
       }
     }
     // Write to buffer
-    buffer[i] = entry;
+    buffer[i] += this->looper.update(entry);
   }
 
-  /*float yinF = this->yin.getYinFrequency();
+  /*
+  float yinF = this->yin.getYinFrequency();
   if (yinF > 0) {
     printw("\rHearing: %s   ",
            notes::getClosestNote(yinF, notes::TuningSystem::EqualTemperament)
                .c_str());
   }*/
+
   // auto end = std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double, std::milli> duration = end - start;
 
