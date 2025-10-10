@@ -401,8 +401,19 @@ public:
   void lock() { mtx.lock(); }
   void unlock() { mtx.unlock(); }
 
-  void toggleRecording() { this->looper.toggleRecording(); this->looper.enableMetronome(true); }
-  void toggleMetronome() { this->looper.enableMetronome(!this->looper.isMetronomeEnabled()); }
+  void toggleRecording() {
+    this->looper.toggleRecording();
+    this->looper.enableMetronome(true);
+  }
+  void toggleMetronome() {
+    this->looper.enableMetronome(!this->looper.isMetronomeEnabled());
+  }
+  void switchLooperTrack() {
+    int currentActiveTrack = this->looper.getActiveTrack();
+    currentActiveTrack =
+        (currentActiveTrack + 1) % Config::instance().getNumTracks();
+    this->looper.setActiveTrack(currentActiveTrack);
+  }
 
   Looper &getLooper() { return this->looper; }
 
@@ -437,6 +448,7 @@ private:
       {static_cast<int>('3'), "E5"}, {static_cast<int>('4'), "F5"},
       {static_cast<int>('5'), "G5"}, {static_cast<int>('6'), "A5"},
       {static_cast<int>('7'), "B5"}, {static_cast<int>('8'), "C6"},
+
       {static_cast<int>('9'), "D6"}, {static_cast<int>('0'), "E6"},
 
       {static_cast<int>('q'), "C4"}, {static_cast<int>('w'), "D4"},
@@ -458,6 +470,7 @@ private:
   std::map<int, std::function<void()>> keyPressToAction = {
       {static_cast<int>(' '), [this]() { this->toggleRecording(); }},
       {static_cast<int>('.'), [this]() { this->toggleMetronome(); }},
+      {static_cast<int>(','), [this]() { this->switchLooperTrack(); }},
       {static_cast<int>('o'), [this]() { this->changeOctave(-1); }},
       {static_cast<int>('p'), [this]() { this->changeOctave(1); }}};
 };

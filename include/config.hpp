@@ -29,15 +29,23 @@ public:
   void setMetronomeVolume(float vol) { metronomeVolume_ = vol; }
   float getMetronomeVolume() const { return metronomeVolume_; }
 
+  // Tracker
+  void setNumTracks(int tracks) { numTracks_ = tracks; }
+  int getNumTracks() { return numTracks_; }
+  void setNumBars(int bars) { numBars_ = bars; }
+  int getNumBars() { return numBars_; }
+
 private:
   // Private constructor initializes defaults
   Config()
       : sampleRate_(44100), // default = 44100 Hz
         bufferSize_(512),   // default = 512 frames
-        metronomeBpm_(100), metronomeVolume_(0.25f) {}
+        metronomeBpm_(100), metronomeVolume_(0.25f), numTracks_(4) {}
 
   int sampleRate_;
   std::size_t bufferSize_;
   int metronomeBpm_;
   float metronomeVolume_;
+  int numTracks_ = 4;
+  int numBars_ = 8;
 };

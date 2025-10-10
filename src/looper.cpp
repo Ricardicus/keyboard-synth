@@ -1,4 +1,5 @@
 #include "looper.hpp"
+#include "config.hpp"
 #include "sound.hpp"
 #include "waveread.hpp"
 #include <algorithm>
@@ -24,9 +25,9 @@ inline float fastExpDecay(float x) {
 // --------------------------- Looper ------------------------------
 
 Looper::Looper()
-    : tracks_(NUM_TRACKS), activeTrack_(0), recording_(false), numBars_(8),
-      bpm_(120.0f), metronomeEnabled_(false), metronomePhase_(0.0),
-      metronomeIncrement_(0.0), metronomeVolume_(0.25f) {
+    : tracks_(Config::instance().getNumTracks()), activeTrack_(0),
+      recording_(false), numBars_(8), bpm_(120.0f), metronomeEnabled_(false),
+      metronomePhase_(0.0), metronomeIncrement_(0.0), metronomeVolume_(0.25f) {
   updateLoopLength();
   updateMetronomeIncrement();
 
@@ -47,15 +48,15 @@ void Looper::setActiveTrack(int index) {
   std::scoped_lock lock(mtx_);
   if (index < 0)
     index = 0;
-  if (index >= NUM_TRACKS)
-    index = NUM_TRACKS - 1;
+  if (index >= Config::instance().getNumTracks())
+    index = Config::instance().getNumTracks() - 1;
   activeTrack_ = index;
 }
 
 int Looper::getActiveTrack() const { return activeTrack_; }
 
 void Looper::clearTrack(int index) {
-  if (index < 0 || index >= NUM_TRACKS)
+  if (index < 0 || index >= Config::instance().getNumTracks())
     return;
   std::scoped_lock lock(mtx_);
   auto &t = tracks_[index];

@@ -11,8 +11,6 @@
 // -----------------------------------------------------------------------------
 class Looper {
 public:
-  static constexpr int NUM_TRACKS = 4;
-
   Looper();
 
   // --- Recording control ---

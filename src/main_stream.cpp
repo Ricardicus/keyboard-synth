@@ -255,6 +255,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
       config.looperActive = true;
     } else if (arg == "--looper-bars" && i + 1 < argc) {
       config.looperBars = std::stoi(argv[i + 1]);
+      Config::instance().setNumBars(config.looperBars);
     } else if (arg == "--metronome") {
       config.metronomeActive = true;
     } else if (arg == "--metronome-volume" && i + 1 < argc) {
@@ -662,7 +663,7 @@ int main(int argc, char *argv[]) {
                 stream.printInstructions();
               }
             }
-            if (ch == SDLK_SPACE || ch == '.') {
+            if (ch == SDLK_SPACE || ch == '.' || ch == ',') {
               clear();
               config.printConfig();
               stream.printInstructions();

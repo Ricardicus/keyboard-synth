@@ -73,10 +73,17 @@ void KeyboardStream::printInstructions() {
   attroff(COLOR_PAIR(5));
 
   attron(COLOR_PAIR(4) | A_BOLD);
+
+  printw("Recorder number of bars: %d\n", Config::instance().getNumBars());
   printw("Press 'p'/'o' to +/- one octave\n");
   printw("Press 'P'/'O' to +/- keyboard preset sounds\n");
-  printw("Press SPACE to toggle recording. Recording active: %s\n", (this->looper.isRecording() ? "Yes" : "No"));
-  printw("Press '.' to toggle metronome. Metronome active: %s\n", (this->looper.isMetronomeEnabled() ? "Yes" : "No"));
+  printw(
+      "Press ',' to switch recording track (there are %d). Current track: %d\n",
+      Config::instance().getNumTracks(), this->looper.getActiveTrack() + 1);
+  printw("Press SPACE to toggle recording. Recording active: %s\n",
+         (this->looper.isRecording() ? "Yes" : "No"));
+  printw("Press '.' to toggle metronome. Metronome active: %s\n",
+         (this->looper.isMetronomeEnabled() ? "Yes" : "No"));
   attroff(COLOR_PAIR(4) | A_BOLD);
 }
 
@@ -203,7 +210,7 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
   //   return;
 
   // Add samples to YIN calc
-  //this->yin.addSamples(buffer, len);
+  // this->yin.addSamples(buffer, len);
 
   for (int i = 0; i < len; i++) {
     float sample = 0.0f;
@@ -267,7 +274,8 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
     printw("\rHearing: %s   ",
            notes::getClosestNote(yinF, notes::TuningSystem::EqualTemperament)
                .c_str());
-  }*/
+  }
+  */
 
   // auto end = std::chrono::high_resolution_clock::now();
   // std::chrono::duration<double, std::milli> duration = end - start;
