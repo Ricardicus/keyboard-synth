@@ -97,73 +97,6 @@ void Looper::enableMetronome(bool enable) { metronomeEnabled_ = enable; }
 
 bool Looper::isMetronomeEnabled() const { return metronomeEnabled_; }
 
-// --- Audio processing (add-only, no copies) ---
-void Looper::fillBuffer(float *buffer, const int len) {
-  /*
-  if (!buffer || len <= 0)
-    return;
-
-  // Snapshot small control state quickly (no heavy work under lock)
-  bool metroEnabledLocal;
-  std::size_t loopLenLocal;
-  int activeTrackLocal;
-
-  {
-    std::scoped_lock lock(mtx_);
-    metroEnabledLocal = metronomeEnabled_;
-    loopLenLocal = loopLengthSamples_;
-    activeTrackLocal = activeTrack_;
-  }
-
-  if (loopLenLocal == 0)
-    return;
-
-  // Use track 0 as the shared transport position (single modulo per sample)
-  std::size_t pos = tracks_[0].writePos;
-  const bool doRecord = recording_.load(std::memory_order_relaxed);
-
-  // Hot loop
-  for (int i = 0; i < len; ++i) {
-    buffer[i] = 0;
-    // 1) Read current synth sample BEFORE we add anything
-    const float in = buffer[i];
-
-    // 2) Optionally record this input into the active track at current pos
-    if (doRecord) {
-      auto &trk = tracks_[activeTrackLocal];
-      // Replace mode (use += for overdub)
-      trk.data[pos] = in;
-    }
-
-    // 3) Mix playback from all tracks at current pos (ADD-ONLY)
-    float acc = 0.0f;
-    // Unroll small loop for 4 tracks (tiny speed win)
-    acc += tracks_[0].data[pos];
-    acc += tracks_[1].data[pos];
-    acc += tracks_[2].data[pos];
-    acc += tracks_[3].data[pos];
-
-    // 4) Add metronome tick (if enabled)
-    float acc = 0;
-    if (metroEnabledLocal) {
-      acc += generateMetronomeSample() * metronomeVolume_;
-    }
-
-    // 5) Write back (ADD ONLY)
-    buffer[i] += acc;
-
-    // 6) Advance shared position
-    pos = wrap_advance(pos, loopLenLocal);
-  }
-
-  // Keep all track cursors in sync with the shared transport
-  // (tiny cost, outside hot loop)
-  for (auto &t : tracks_) {
-    t.writePos = pos;
-  }
-  */
-}
-
 // --- Helpers ---
 void Looper::updateMetronomeIncrement() {
   const int sr = Config::instance().getSampleRate();
@@ -285,7 +218,7 @@ float Looper::update(float input) {
         //                       slackInterval) {
         //  Let this be, so that we don't overwrite here.
         //} else {
-        track.data[idx_] = input;
+        track.data[idx_] += input;
         tracks_[activeTrack_].noInputYet = false;
         //}
         // TODO: Fix this smooth transition thing

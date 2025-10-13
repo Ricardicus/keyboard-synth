@@ -37,7 +37,6 @@ public:
 
   // --- Audio processing ---
   // Called from the audio callback to fill the output buffer
-  void fillBuffer(float *buffer, const int len);
   float update(float input);
 
   void toggleRecording() { this->recording_ = !this->recording_; }
