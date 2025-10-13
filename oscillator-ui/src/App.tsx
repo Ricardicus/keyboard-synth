@@ -3,8 +3,10 @@ import OscillatorControl from "./OscillatorControl";
 import ConfigPanel from "./ConfigPanel";
 import Keyboard from "./Keyboard";
 import Presets from "./Presets";
+import Recorder from "./Recorder";
 import type { Oscillator } from "./types";
 import "./App.css";
+import "./Recorder.css";
 
 const API_URL = "/api/oscillators";
 
@@ -73,6 +75,21 @@ function App() {
     });
   };
 
+  const updateRecorder = (payload: {
+    action: "record" | "stop" | "set" | "clear";
+    track?: number;
+    bpm?: number;
+    metronome?: "on" | "off";
+  }) => {
+    return fetch("/api/recorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).then((res) => {
+      if (!res.ok) throw new Error("Recorder API error");
+    });
+  };
+
   return (
     <div className="app">
       <h1>Keyboard Settings</h1>
@@ -95,6 +112,10 @@ function App() {
                       onUpdate={updateOscillator}
                     />
                   ))}
+                </div>
+                <h1>Recorder</h1>
+                <div className="recorder-grid">
+                  <Recorder onUpdate={updateRecorder} />
                 </div>
               </td>
             </tr>

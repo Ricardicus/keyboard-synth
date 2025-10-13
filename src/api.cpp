@@ -19,6 +19,17 @@ static std::string utc_iso8601() {
   return buf;
 }
 
+static void send_json(struct mg_connection *conn, const json &data,
+                      int status = 200) {
+  std::string body = data.dump();
+  mg_printf(conn,
+            "HTTP/1.1 %d OK\r\n"
+            "Content-Type: application/json\r\n"
+            "Content-Length: %zu\r\n"
+            "\r\n%s",
+            status, body.size(), body.c_str());
+}
+
 int presets_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
@@ -583,4 +594,118 @@ int oscillator_api_handler(struct mg_connection *conn, void *cbdata) {
   mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
   kbs->unlock();
   return 405;
+}
+
+// --- Recorder API Handler ---
+// Supports:
+//   GET  -> return current looper state
+//   POST -> modify recorder (record, stop, set, clear)
+int recorder_handler(struct mg_connection *conn, void *cbdata) {
+  KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
+  if (!kbs) {
+    mg_printf(
+        conn,
+        "HTTP/1.1 500 Internal Server Error\r\n\r\nMissing KeyboardStream");
+    return 500;
+  }
+
+  Looper &looper = kbs->getLooper();
+
+  const struct mg_request_info *req_info = mg_get_request_info(conn);
+
+  // -----------------------------------------
+  // HANDLE GET
+  // -----------------------------------------
+  if (strcmp(req_info->request_method, "GET") == 0) {
+    json resp;
+    resp["track"] = looper.getActiveTrack();
+    resp["bpm"] = looper.getBPM();
+    resp["metronome"] = looper.isMetronomeEnabled() ? "on" : "off";
+    resp["recording"] = looper.isRecording();
+    send_json(conn, resp);
+    return 200;
+  }
+
+  // -----------------------------------------
+  // HANDLE POST
+  // -----------------------------------------
+  char buffer[256];
+  int len = mg_read(conn, buffer, sizeof(buffer) - 1);
+  if (len <= 0) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nEmpty body");
+    return 400;
+  }
+  buffer[len] = '\0';
+
+  try {
+    json body = json::parse(buffer);
+
+    if (!body.contains("action") || !body["action"].is_string()) {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nMissing 'action'");
+      return 400;
+    }
+
+    std::string action = body["action"];
+
+    if (action == "record") {
+      looper.setRecording(true);
+      send_json(conn, {{"status", "ok"}, {"message", "Recording started"}});
+      return 200;
+
+    } else if (action == "stop") {
+      looper.setRecording(false);
+      send_json(conn, {{"status", "ok"}, {"message", "Recording stopped"}});
+      return 200;
+
+    } else if (action == "set") {
+      if (!body.contains("track") || !body["track"].is_number_integer()) {
+        mg_printf(conn,
+                  "HTTP/1.1 400 Bad Request\r\n\r\nMissing or invalid 'track'");
+        return 400;
+      }
+      if (!body.contains("bpm") || !body["bpm"].is_number()) {
+        mg_printf(conn,
+                  "HTTP/1.1 400 Bad Request\r\n\r\nMissing or invalid 'bpm'");
+        return 400;
+      }
+
+      int track = body["track"];
+      float bpm = body["bpm"];
+
+      looper.setActiveTrack(track);
+      looper.setBPM(bpm);
+
+      if (body.contains("metronome") && body["metronome"].is_string()) {
+        std::string metro = body["metronome"];
+        bool enable = (metro == "on" || metro == "ON" || metro == "true");
+        looper.enableMetronome(enable);
+      }
+
+      send_json(conn, {{"status", "ok"}, {"message", "Track and BPM updated"}});
+      return 200;
+
+    } else if (action == "clear") {
+      if (!body.contains("track") || !body["track"].is_number_integer()) {
+        mg_printf(conn,
+                  "HTTP/1.1 400 Bad Request\r\n\r\nMissing or invalid 'track'");
+        return 400;
+      }
+      int track = body["track"];
+      looper.clearTrack(track);
+      send_json(conn, {{"status", "ok"}, {"message", "Track cleared"}});
+      return 200;
+
+    } else {
+      mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nUnknown action");
+      return 400;
+    }
+
+  } catch (const std::exception &e) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON: %s",
+              e.what());
+    return 400;
+  } catch (...) {
+    mg_printf(conn, "HTTP/1.1 400 Bad Request\r\n\r\nUnknown error");
+    return 400;
+  }
 }

@@ -196,7 +196,7 @@ const ConfigPanel: React.FC = () => {
     reverb,
     postConfig,
     phasedist,
-    gaindist
+    gaindist,
   ]);
 
   /* ----------------------- Helpers ----------------------- */

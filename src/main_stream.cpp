@@ -357,6 +357,7 @@ void start_http_server(KeyboardStream *kbs, int port) {
   mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/presets", presets_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/recorder", recorder_handler, kbs);
 
   printw("\nHttp server for synth configuration running on port %d, "
          "http://localhost:%d\n",
@@ -495,6 +496,7 @@ int main(int argc, char *argv[]) {
   }
   looper.setBPM(static_cast<float>(Config::instance().getMetronomeBPM()));
   looper.setMetronomeVolume(Config::instance().getMetronomeVolume());
+  looper.setNumBars(config.looperBars);
   if (config.metronomeActive) {
     looper.enableMetronome(true);
   } else {
@@ -503,7 +505,6 @@ int main(int argc, char *argv[]) {
 
   if (config.looperActive) {
     looper.setRecording(true);
-    looper.setNumBars(config.looperBars);
   }
 
   auto end = std::chrono::high_resolution_clock::now();

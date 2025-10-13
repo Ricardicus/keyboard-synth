@@ -45,8 +45,8 @@ public:
 private:
   struct Track {
     std::vector<float> data;
-    std::size_t writePos = 0;
-    bool armed = false;
+    int recordingStartIdx = 0;
+    bool noInputYet = true;
   };
 
   std::vector<Track> tracks_;
@@ -69,7 +69,7 @@ private:
   bool metronomeUseSampler_ = false;
 
   std::mutex mtx_; // protect track modifications
-
+  int idx_ = 0;
   // --- Helpers ---
   void updateMetronomeIncrement();
   void updateLoopLength();

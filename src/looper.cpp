@@ -34,18 +34,21 @@ Looper::Looper()
   // Allocate per-track buffers to loop length
   for (auto &t : tracks_) {
     t.data.assign(loopLengthSamples_, 0.0f);
-    t.writePos = 0;
-    t.armed = false;
   }
 }
 
 // --- Recording control ---
-void Looper::setRecording(bool enabled) { recording_ = enabled; }
+void Looper::setRecording(bool enabled) {
+  recording_ = enabled;
+  if (tracks_.size() > this->activeTrack_) {
+    tracks_[this->activeTrack_].recordingStartIdx = idx_;
+    tracks_[this->activeTrack_].noInputYet = true;
+  }
+}
 
 bool Looper::isRecording() const { return recording_; }
 
 void Looper::setActiveTrack(int index) {
-  std::scoped_lock lock(mtx_);
   if (index < 0)
     index = 0;
   if (index >= Config::instance().getNumTracks())
@@ -58,17 +61,14 @@ int Looper::getActiveTrack() const { return activeTrack_; }
 void Looper::clearTrack(int index) {
   if (index < 0 || index >= Config::instance().getNumTracks())
     return;
-  std::scoped_lock lock(mtx_);
   auto &t = tracks_[index];
   t.data.assign(loopLengthSamples_, 0.0f);
-  t.writePos = 0;
 }
 
 // --- Loop length control ---
 void Looper::setNumBars(int bars) {
   if (bars < 1)
     bars = 1;
-  std::scoped_lock lock(mtx_);
   if (numBars_ == bars)
     return;
   numBars_ = bars;
@@ -77,7 +77,6 @@ void Looper::setNumBars(int bars) {
   // Reallocate tracks to the new loop length (clear for simplicity)
   for (auto &t : tracks_) {
     t.data.assign(loopLengthSamples_, 0.0f);
-    t.writePos = 0;
   }
 }
 
@@ -87,24 +86,14 @@ int Looper::getNumBars() const { return numBars_; }
 void Looper::setBPM(float bpm) {
   if (bpm < 0.0f)
     bpm = 0.0f;
-  std::scoped_lock lock(mtx_);
   if (bpm_ == bpm)
     return;
   bpm_ = bpm;
-  updateMetronomeIncrement();
-  updateLoopLength();
-
-  for (auto &t : tracks_) {
-    t.writePos = t.writePos % std::max<std::size_t>(1, loopLengthSamples_);
-  }
 }
 
 float Looper::getBPM() const { return bpm_; }
 
-void Looper::enableMetronome(bool enable) {
-  std::scoped_lock lock(mtx_);
-  metronomeEnabled_ = enable;
-}
+void Looper::enableMetronome(bool enable) { metronomeEnabled_ = enable; }
 
 bool Looper::isMetronomeEnabled() const { return metronomeEnabled_; }
 
@@ -190,9 +179,7 @@ void Looper::updateLoopLength() {
     return;
   }
   const double secondsPerBeat = 60.0 / static_cast<double>(bpm_);
-  const double totalSeconds = static_cast<double>(numBars_) *
-                              static_cast<double>(BEATS_PER_BAR) *
-                              secondsPerBeat;
+  const double totalSeconds = 30;
   loopLengthSamples_ = static_cast<std::size_t>(
       std::max(1.0, std::round(totalSeconds * static_cast<double>(sr))));
 }
@@ -276,31 +263,38 @@ float Looper::generateMetronomeSample() {
 }
 
 float Looper::update(float input) {
-  struct LooperEnv {
-    int idx = 0;
-  };
-  static LooperEnv s;
-
   float result = input;
   bool useStart = false;
 
   const int sr = Config::instance().getSampleRate();
+  int slackInterval = static_cast<int>(static_cast<float>(sr) * 0.5f);
 
   int indexSoundStart = sr * 60 / static_cast<int>(bpm_);
-  int indexBar = indexSoundStart * numBars_;
+  int indexBar = indexSoundStart * (numBars_ * 4);
 
   for (size_t t = 0; t < tracks_.size(); t++) {
     Track &track = tracks_[t];
-    if (s.idx < static_cast<int>(track.data.size())) {
-      result += track.data[s.idx];
+    if (idx_ < static_cast<int>(track.data.size())) {
+      result += track.data[idx_];
       if (static_cast<int>(t) == activeTrack_ && recording_) {
-        track.data[s.idx] = input;
+        if (input == 0 && tracks_[activeTrack_].noInputYet) {
+          tracks_[activeTrack_].recordingStartIdx = idx_;
+        }
+        // if (input == 0 && abs(idx_ - tracks_[activeTrack_].recordingStartIdx)
+        // <
+        //                       slackInterval) {
+        //  Let this be, so that we don't overwrite here.
+        //} else {
+        track.data[idx_] = input;
+        tracks_[activeTrack_].noInputYet = false;
+        //}
+        // TODO: Fix this smooth transition thing
       }
     }
   }
 
-  s.idx++;
-  s.idx = s.idx % indexBar;
+  idx_++;
+  idx_ = idx_ % indexBar;
 
   if (metronomeEnabled_) {
     result += generateMetronomeSample() * metronomeVolume_;

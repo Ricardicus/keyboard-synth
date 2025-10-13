@@ -8,5 +8,6 @@ int input_release_handler(struct mg_connection *conn, void *cbdata);
 int config_api_handler(struct mg_connection *conn, void *cbdata);
 int oscillator_api_handler(struct mg_connection *conn, void *cbdata);
 int input_push_handler(struct mg_connection *conn, void *cbdata);
+int recorder_handler(struct mg_connection *conn, void *cbdata);
 
 #endif

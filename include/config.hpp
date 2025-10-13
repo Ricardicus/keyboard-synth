@@ -39,7 +39,7 @@ private:
   // Private constructor initializes defaults
   Config()
       : sampleRate_(44100), // default = 44100 Hz
-        bufferSize_(512),   // default = 512 frames
+        bufferSize_(206),   // default = 512 frames
         metronomeBpm_(100), metronomeVolume_(0.25f), numTracks_(4) {}
 
   int sampleRate_;
