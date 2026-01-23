@@ -353,6 +353,8 @@ void start_http_server(KeyboardStream *kbs, int port) {
   }
 
   mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/waveform", waveform_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/waveform/combined", waveform_combined_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);

@@ -1,6 +1,7 @@
 import "./OscillatorControl.css";
 import type { Oscillator } from "./types";
 import Knob from "./Knob";
+import WaveformDisplay from "./WaveformDisplay";
 import { useEffect, useRef, useState } from "react";
 
 // Presets reordered: basic waveforms first
@@ -79,6 +80,8 @@ function OscillatorControl({ id, data, onUpdate }: Props) {
   return (
     <div className="oscillator-card">
       <h3>Oscillator {id + 1}</h3>
+
+      <WaveformDisplay oscillatorId={id} width={230} height={100} />
 
       <label>
         Sound:

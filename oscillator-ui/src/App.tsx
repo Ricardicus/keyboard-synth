@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import OscillatorControl from "./OscillatorControl";
+import CombinedWaveformDisplay from "./CombinedWaveformDisplay";
 import ConfigPanel from "./ConfigPanel";
 import Keyboard from "./Keyboard";
 import Presets from "./Presets";
@@ -103,6 +104,7 @@ function App() {
               </td>
               <td>
                 <h1>Oscillators</h1>
+                <CombinedWaveformDisplay width={640} height={200} />
                 <div className="oscillator-grid">
                   {oscillators.map((osc, i) => (
                     <OscillatorControl
