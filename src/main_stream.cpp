@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
-#include <ncurses.h>
 #include <optional>
 #include <stdio.h>
 #include <thread>
@@ -23,6 +22,7 @@ using json = nlohmann::json;
 #include "config.hpp"
 #include "effect.hpp"
 #include "keyboardstream.hpp"
+#include "term.hpp"
 
 // MIDI note number to frequency
 float noteToFreq(int note) { return 440.0f * pow(2, (note - 69) / 12.0f); }
@@ -172,7 +172,7 @@ int parseArguments(int argc, char *argv[], KeyboardStreamPlayConfig &config) {
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
 
-    if (arg == "--port" && i + 1 < argc) {
+    if ((arg == "--port" && i + 1 < argc) || (arg == "-p" && i + 1 < argc)) {
       config.port = atoi(argv[i + 1]);
     } else if (arg == "--notes" && i + 1 < argc) {
       config.waveFile = argv[i + 1];
@@ -354,16 +354,17 @@ void start_http_server(KeyboardStream *kbs, int port) {
 
   mg_set_request_handler(ctx, "/api/oscillators", oscillator_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/waveform", waveform_api_handler, kbs);
-  mg_set_request_handler(ctx, "/api/waveform/combined", waveform_combined_api_handler, kbs);
+  mg_set_request_handler(ctx, "/api/waveform/combined",
+                         waveform_combined_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/push", input_push_handler, kbs);
   mg_set_request_handler(ctx, "/api/input/release", input_release_handler, kbs);
   mg_set_request_handler(ctx, "/api/config", config_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/presets", presets_api_handler, kbs);
   mg_set_request_handler(ctx, "/api/recorder", recorder_handler, kbs);
 
-  printw("\nHttp server for synth configuration running on port %d, "
-         "http://localhost:%d\n",
-         port, port);
+  term::print("\nHttp server for synth configuration running on port %d, "
+              "http://localhost:%d\n",
+              port, port);
 
   // Run forever — or you can add shutdown logic
   while (true)
@@ -516,18 +517,15 @@ int main(int argc, char *argv[]) {
   printf("Keyboard preparation time: %0.4f seconds",
          static_cast<double>(prepTime) / 1000.0);
   printf("\nSound OK!\n");
-  initscr();            // Initialize the library
-  cbreak();             // Line buffering disabled
-  keypad(stdscr, TRUE); // Enable special keys
-  noecho();             // Don't show the key being pressed
-  scrollok(stdscr, TRUE);
+
+  term::setup_screen();
 
   std::thread http_thread(
       [&stream, port]() { start_http_server(&stream, port); });
   http_thread.detach(); // runs independently, main thread continues
 
   if (config.midiFile.size() > 0) {
-    clear();
+    term::clear_screen();
     config.printConfig();
 
     if (!fileExists(config.midiFile)) {
@@ -595,10 +593,10 @@ int main(int argc, char *argv[]) {
     releaseThread.join();
 
   } else {
-    clear();
+    term::clear_screen();
     config.printConfig();
     stream.printInstructions();
-    refresh();
+    term::refresh_if_needed();
 
     SDL_Window *window =
         SDL_CreateWindow("Keyboard Synth", SDL_WINDOWPOS_CENTERED,
@@ -607,10 +605,10 @@ int main(int argc, char *argv[]) {
       std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
       SDL_CloseAudio();
       SDL_Quit();
-      endwin();
+      term::teardown_screen();
       return 1;
     }
-    refresh();
+    term::refresh_if_needed();
 
     SDL_Event event;
     bool running = true;
@@ -653,7 +651,7 @@ int main(int argc, char *argv[]) {
                                     config.adsr, effects);
 
                 config.rankPreset = presets[rankIndex];
-                clear();
+                term::clear_screen();
                 config.printConfig();
                 stream.printInstructions();
                 printf(
@@ -661,13 +659,13 @@ int main(int argc, char *argv[]) {
                     Sound::Rank<float>::presetStr(presets[rankIndex]).c_str());
               } else {
                 // plain 'o' or 'p' (lowercase)
-                clear();
+                term::clear_screen();
                 config.printConfig();
                 stream.printInstructions();
               }
             }
             if (ch == SDLK_SPACE || ch == '.' || ch == ',') {
-              clear();
+              term::clear_screen();
               config.printConfig();
               stream.printInstructions();
             }
@@ -687,7 +685,7 @@ int main(int argc, char *argv[]) {
     SDL_DestroyWindow(window);
   }
 
-  endwin(); // End curses mode
+  term::teardown_screen(); // End curses mode
   SDL_CloseAudio();
   SDL_Quit();
 

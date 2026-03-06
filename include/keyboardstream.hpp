@@ -19,6 +19,7 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
+#include "term.hpp"
 #include "waveread.hpp"
 #include "yin.hpp"
 
@@ -275,8 +276,9 @@ public:
     int rankIndex = 0;
 
     void debugPrint() const {
-      printw("Note: %s | Time: %ld | Freq: %.2f | Release: %s | Index: %d\n",
-             note.c_str(), time, frequency, release ? "true" : "false", index);
+      term::print(
+          "Note: %s | Time: %ld | Freq: %.2f | Release: %s | Index: %d\n",
+          note.c_str(), time, frequency, release ? "true" : "false", index);
     }
   };
 
@@ -285,14 +287,17 @@ public:
 
   void printSynthConfig() const;
   void printNotesPressed() const {
-    printw("=== Notes Pressed (%zu entries) ===\n", notesPressed.size());
+
+    term::print("=== Notes Pressed (%zu entries) ===\n", notesPressed.size());
     for (const auto &pair : notesPressed) {
       const std::string &key = pair.first;
       const NotePress &np = pair.second;
-      printw("Key: %s\n", key.c_str());
+      term::print("Key: %s\n", key.c_str());
+
       np.debugPrint(); // Make sure NotePress::debugPrint() is implemented
     }
-    printw("===================================\n");
+
+    term::print("===================================\n");
   }
 
   std::string serialize() { return this->toJson().dump(); };
@@ -417,6 +422,7 @@ public:
 
   Looper &getLooper() { return this->looper; }
 
+  int sampleRate = SAMPLERATE;
   notes::TuningSystem tuning = notes::TuningSystem::EqualTemperament;
 
 private:
@@ -424,7 +430,6 @@ private:
   std::mutex mtx;
   void (*loaderFunc)(unsigned, unsigned) = nullptr;
   std::string soundMapFile;
-  int sampleRate;
 
   bool legatoMode = false;
   int legatoRankIndex = 0;
@@ -507,284 +512,158 @@ public:
   int parallelization = 8; // Number of threads to use in keyboard preparation
 
   void printConfig() {
-    start_color(); // Enable color functionality
+    term::print(term::Style::WhiteBold, "Keyboard sound configuration:\n");
 
-    // Define color pairs
-    init_pair(2, COLOR_GREEN, COLOR_BLACK);  // Green for visualization
-    init_pair(4, COLOR_WHITE, COLOR_BLACK);  // White Bold (Section Titles)
-    init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Orange/Yellow (Values)
+    term::print(term::Style::WhiteBold, "  Volume: ");
+    term::print(term::Style::Yellow, "%.2f\n", volume);
 
-    // Print configuration details
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("Keyboard sound configuration:\n");
-    attroff(A_BOLD | COLOR_PAIR(4));
+    term::print(term::Style::WhiteBold, "  Tuning: ");
+    term::print(term::Style::Yellow, "%s\n",
+                notes::tuning_to_string(this->tuning).c_str());
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Volume: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%.2f\n", volume);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  Sample rate: ");
+    term::print(term::Style::Yellow, "%d\n", SAMPLERATE);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Tuning: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%s\n", notes::tuning_to_string(this->tuning).c_str());
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  Notes-wave-map: ");
+    term::print(term::Style::Yellow, "%s\n",
+                waveFile.size() > 0 ? waveFile.c_str() : "none");
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Sample rate: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", SAMPLERATE);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  Waveform: ");
+    term::print(term::Style::Yellow, "%s\n",
+                rankPreset != Sound::Rank<float>::Preset::None
+                    ? Sound::Rank<float>::presetStr(rankPreset).c_str()
+                    : Sound::typeOfWave(waveForm).c_str());
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Notes-wave-map: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%s\n", waveFile.size() > 0 ? waveFile.c_str() : "none");
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  ADSR:\n");
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Waveform: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%s\n", rankPreset != Sound::Rank<float>::Preset::None
-                       ? Sound::Rank<float>::presetStr(rankPreset).c_str()
-                       : Sound::typeOfWave(waveForm).c_str());
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "    Amplitude: ");
+    term::print(term::Style::Yellow, "%d\n", adsr.amplitude);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  ADSR:\n");
-    attroff(A_BOLD | COLOR_PAIR(4));
+    term::print(term::Style::WhiteBold, "    Quantas: ");
+    term::print(term::Style::Yellow, "%d\n", adsr.quantas);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Amplitude: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", adsr.amplitude);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "    QADSR: ");
+    term::print(term::Style::Yellow, "%d %d %d %d\n", adsr.qadsr[0],
+                adsr.qadsr[1], adsr.qadsr[2], adsr.qadsr[3]);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Quantas: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", adsr.quantas);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "    Length: ");
+    term::print(term::Style::Yellow, "%d\n", adsr.length);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    QADSR: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d %d %d %d\n", adsr.qadsr[0], adsr.qadsr[1], adsr.qadsr[2],
-           adsr.qadsr[3]);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "    Quantas_length: ");
+    term::print(term::Style::Yellow, "%d\n", adsr.quantas_length);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Length: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", adsr.length);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "    Sustain_level: ");
+    term::print(term::Style::Yellow, "%d\n", adsr.sustain_level);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Quantas_length: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", adsr.quantas_length);
-    attroff(COLOR_PAIR(5));
-
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Sustain_level: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%d\n", adsr.sustain_level);
-    attroff(COLOR_PAIR(5));
-
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("    Visualization: [see below]\n");
-    attroff(A_BOLD | COLOR_PAIR(4));
-
-    // Print the cool ASCII visualization in **green**
-    attron(COLOR_PAIR(2) | A_BOLD);
-    printw("%s", adsr.getCoolASCIVisualization("    ").c_str());
-    attroff(COLOR_PAIR(2) | A_BOLD);
+    term::print(term::Style::WhiteBold, "    Visualization: [see below]\n");
+    term::print(term::Style::GreenBold, "%s",
+                adsr.getCoolASCIVisualization("    ").c_str());
 
     if (effectFIR) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("  FIRs: ");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%lu\n", effectFIR->firs.size());
-      attroff(COLOR_PAIR(5));
-      for (size_t i = 0; i < effectFIR->firs.size(); i++) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("    [%lu] IR length: ", i + 1);
-        attroff(A_BOLD | COLOR_PAIR(4));
+      term::print(term::Style::WhiteBold, "  FIRs: ");
+      term::print(term::Style::Yellow, "%lu\n",
+                  static_cast<unsigned long>(effectFIR->firs.size()));
 
-        attron(COLOR_PAIR(5));
-        printw("%zu, Normalized: %s\n", effectFIR->firs[i].getIRLen(),
-               effectFIR->firs[i].getNormalization() ? "true" : "false");
-        attroff(COLOR_PAIR(5));
+      for (size_t i = 0; i < effectFIR->firs.size(); i++) {
+        term::print(term::Style::WhiteBold,
+                    "    [%lu] IR length: ", static_cast<unsigned long>(i + 1));
+        term::print(term::Style::Yellow, "%zu, Normalized: %s\n",
+                    effectFIR->firs[i].getIRLen(),
+                    effectFIR->firs[i].getNormalization() ? "true" : "false");
       }
     }
 
     if (effectIIR) {
-      attron(A_BOLD | COLOR_PAIR(4));
-      printw("  IIRs: ");
-      attroff(A_BOLD | COLOR_PAIR(4));
-      attron(COLOR_PAIR(5));
-      printw("%lu\n", effectIIR->iirs.size());
-      attroff(COLOR_PAIR(5));
+      term::print(term::Style::WhiteBold, "  IIRs: ");
+      term::print(term::Style::Yellow, "%lu\n",
+                  static_cast<unsigned long>(effectIIR->iirs.size()));
+
       for (size_t i = 0; i < effectIIR->iirs.size(); i++) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("    [%lu] Memory: ", i + 1);
-        attroff(A_BOLD | COLOR_PAIR(4));
+        term::print(term::Style::WhiteBold,
+                    "    [%lu] Memory: ", static_cast<unsigned long>(i + 1));
+        term::print(term::Style::Yellow, "%u\n", effectIIR->iirs[i].memory);
 
-        attron(COLOR_PAIR(5));
-        printw("%u\n", effectIIR->iirs[i].memory);
-        attroff(COLOR_PAIR(5));
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("    [%lu] poles:", i + 1);
-        attroff(A_BOLD | COLOR_PAIR(4));
-
-        attron(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold,
+                    "    [%lu] poles:", static_cast<unsigned long>(i + 1));
+        term::begin(term::Style::Yellow);
         for (int a = 0; a < effectIIR->iirs[i].as.size(); a++) {
-          printw(" %f", effectIIR->iirs[i].as[a]);
+          term::print(term::Style::Plain, " %f",
+                      effectIIR->iirs[i].as[a]); // already in yellow
         }
-        printw("\n");
-        attroff(COLOR_PAIR(5));
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("    [%lu] zeroes:", i + 1);
-        attroff(A_BOLD | COLOR_PAIR(4));
+        term::print(term::Style::Plain, "\n");
+        term::end(term::Style::Yellow);
 
-        attron(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold,
+                    "    [%lu] zeroes:", static_cast<unsigned long>(i + 1));
+        term::begin(term::Style::Yellow);
         for (int b = 0; b < effectIIR->iirs[i].bs.size(); b++) {
-          printw(" %f", effectIIR->iirs[i].bs[b]);
+          term::print(term::Style::Plain, " %f", effectIIR->iirs[i].bs[b]);
         }
-        printw("\n");
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::Plain, "\n");
+        term::end(term::Style::Yellow);
       }
     }
 
-    /* ------- Chorus
-     * -----------------------------------------------------------*/
     if (effectChorus) {
       if (const auto *c =
               std::get_if<Effect<float>::ChorusConfig>(&effectChorus->config)) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("  Chorus: delay=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f ", c->delay);
-        attroff(COLOR_PAIR(5));
-
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("depth=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f ", c->depth);
-        attroff(COLOR_PAIR(5));
-
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("voices=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%d\n", c->numVoices);
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold, "  Chorus: delay=");
+        term::print(term::Style::Yellow, "%f ", c->delay);
+        term::print(term::Style::WhiteBold, "depth=");
+        term::print(term::Style::Yellow, "%f ", c->depth);
+        term::print(term::Style::WhiteBold, "voices=");
+        term::print(term::Style::Yellow, "%d\n", c->numVoices);
       }
     }
 
-    /* ------- Vibrato
-     * ----------------------------------------------------------*/
     if (effectVibrato) {
       if (const auto *v = std::get_if<Effect<float>::VibratoConfig>(
               &effectVibrato->config)) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("  Vibrato: frequency=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f ", v->frequency);
-        attroff(COLOR_PAIR(5));
-
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("depth=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f\n", v->depth);
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold, "  Vibrato: frequency=");
+        term::print(term::Style::Yellow, "%f ", v->frequency);
+        term::print(term::Style::WhiteBold, "depth=");
+        term::print(term::Style::Yellow, "%f\n", v->depth);
       }
     }
 
-    /* ------- Tremolo
-     * ----------------------------------------------------------*/
     if (effectTremolo) {
       if (const auto *t = std::get_if<Effect<float>::TremoloConfig>(
               &effectTremolo->config)) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("  Tremolo: frequency=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f ", t->frequency);
-        attroff(COLOR_PAIR(5));
-
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("depth=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f\n", t->depth);
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold, "  Tremolo: frequency=");
+        term::print(term::Style::Yellow, "%f ", t->frequency);
+        term::print(term::Style::WhiteBold, "depth=");
+        term::print(term::Style::Yellow, "%f\n", t->depth);
       }
     }
 
     if (effectPhaseDist) {
       if (const auto *t = std::get_if<Effect<float>::PhaseDistortionSinConfig>(
               &effectPhaseDist->config)) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("  Phase distortion: depth=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f\n", t->depth);
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold, "  Phase distortion: depth=");
+        term::print(term::Style::Yellow, "%f\n", t->depth);
       }
     }
 
     if (effectGainDist) {
       if (const auto *t = std::get_if<Effect<float>::GainDistHardClipConfig>(
               &effectGainDist->config)) {
-        attron(A_BOLD | COLOR_PAIR(4));
-        printw("  Gain hard clip distortion: gain=");
-        attroff(A_BOLD | COLOR_PAIR(4));
-        attron(COLOR_PAIR(5));
-        printw("%f\n", t->gain);
-        attroff(COLOR_PAIR(5));
+        term::print(term::Style::WhiteBold,
+                    "  Gain hard clip distortion: gain=");
+        term::print(term::Style::Yellow, "%f\n", t->gain);
       }
     }
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  Synthetic reverb: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%s\n", effectReverb ? "On" : "Off");
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  Synthetic reverb: ");
+    term::print(term::Style::Yellow, "%s\n", effectReverb ? "On" : "Off");
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  note length: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%.2f s\n", duration * adsr.quantas);
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  note length: ");
+    term::print(term::Style::Yellow, "%.2f s\n", duration * adsr.quantas);
 
-    attron(A_BOLD | COLOR_PAIR(4));
-    printw("  A4 frequency: ");
-    attroff(A_BOLD | COLOR_PAIR(4));
-    attron(COLOR_PAIR(5));
-    printw("%.2f Hz\n", notes::getFrequency("A4", this->tuning));
-    attroff(COLOR_PAIR(5));
+    term::print(term::Style::WhiteBold, "  A4 frequency: ");
+    term::print(term::Style::Yellow, "%.2f Hz\n",
+                notes::getFrequency("A4", this->tuning));
 
-    refresh(); // Refresh the screen to apply changes
+    term::refresh_if_needed();
   }
 };
 

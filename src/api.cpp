@@ -1,5 +1,6 @@
 #include "api.hpp"
 #include "keyboardstream.hpp"
+#include "term.hpp"
 #include <json.hpp>
 
 using json = nlohmann::json;
@@ -228,7 +229,7 @@ int presets_api_handler(struct mg_connection *conn, void *cbdata) {
 }
 
 int input_push_handler(struct mg_connection *conn, void *cbdata) {
-  refresh();
+  term::refresh_if_needed();
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
 
   char buffer[128];
@@ -255,7 +256,7 @@ int input_push_handler(struct mg_connection *conn, void *cbdata) {
 }
 
 int input_release_handler(struct mg_connection *conn, void *cbdata) {
-  refresh();
+  term::refresh_if_needed();
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
 
   char buffer[128];
@@ -716,7 +717,7 @@ int recorder_handler(struct mg_connection *conn, void *cbdata) {
 int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
-  
+
   if (std::string(req_info->request_method) != "GET") {
     mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
     return 405;
@@ -741,7 +742,7 @@ int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
 
   int id = std::atoi(id_str);
   int num_samples = samples_str[0] ? std::atoi(samples_str) : 512;
-  
+
   if (num_samples <= 0 || num_samples > 4096) {
     num_samples = 512;
   }
@@ -755,22 +756,23 @@ int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
   }
 
   auto &osc = kbs->synth[id];
-  
-  // Calculate the actual frequency for this oscillator considering octave and detune
+
+  // Calculate the actual frequency for this oscillator considering octave and
+  // detune
   const float base_freq = 440.0f;
   const float octave_multiplier = pow(2.0f, osc.octave);
   const float detune_multiplier = pow(2.0f, osc.detune / 1200.0f);
   const float actual_freq = base_freq * octave_multiplier * detune_multiplier;
-  
+
   const int sample_rate = osc.sampleRate;
   const float samples_per_cycle = sample_rate / actual_freq;
-  
+
   json waveform_data = json::array();
-  
+
   // Create a temporary rank for visualization (no ADSR envelope)
   Sound::Rank<float> temp_rank = Sound::Rank<float>::fromPreset(
       osc.sound, actual_freq, (int)samples_per_cycle, sample_rate);
-  
+
   // Generate samples for one complete cycle
   for (int i = 0; i < num_samples; i++) {
     float t = (float)i / num_samples * samples_per_cycle;
@@ -778,14 +780,12 @@ int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
     waveform_data.push_back(sample);
   }
 
-  json response = {
-    {"id", id},
-    {"samples", num_samples},
-    {"waveform", waveform_data},
-    {"octave", osc.octave},
-    {"detune", osc.detune},
-    {"frequency", actual_freq}
-  };
+  json response = {{"id", id},
+                   {"samples", num_samples},
+                   {"waveform", waveform_data},
+                   {"octave", osc.octave},
+                   {"detune", osc.detune},
+                   {"frequency", actual_freq}};
 
   kbs->unlock();
 
@@ -794,7 +794,7 @@ int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
             "Content-Length: %zu\r\n\r\n%s",
             body.size(), body.c_str());
-  
+
   return 200;
 }
 
@@ -804,7 +804,7 @@ int waveform_api_handler(struct mg_connection *conn, void *cbdata) {
 int waveform_combined_api_handler(struct mg_connection *conn, void *cbdata) {
   const struct mg_request_info *req_info = mg_get_request_info(conn);
   KeyboardStream *kbs = static_cast<KeyboardStream *>(cbdata);
-  
+
   if (std::string(req_info->request_method) != "GET") {
     mg_printf(conn, "HTTP/1.1 405 Method Not Allowed\r\n\r\n");
     return 405;
@@ -814,11 +814,12 @@ int waveform_combined_api_handler(struct mg_connection *conn, void *cbdata) {
   const char *query = req_info->query_string;
   char samples_str[32] = {0};
   if (query) {
-    mg_get_var(query, strlen(query), "samples", samples_str, sizeof(samples_str));
+    mg_get_var(query, strlen(query), "samples", samples_str,
+               sizeof(samples_str));
   }
 
   int num_samples = samples_str[0] ? std::atoi(samples_str) : 512;
-  
+
   if (num_samples <= 0 || num_samples > 4096) {
     num_samples = 512;
   }
@@ -842,85 +843,83 @@ int waveform_combined_api_handler(struct mg_connection *conn, void *cbdata) {
   // Base frequency is 440 Hz (A4), each octave doubles/halves the frequency
   const float base_freq = 440.0f;
   const float reference_freq = base_freq * pow(2.0f, min_octave);
-  
+
   json waveform_data = json::array();
   json oscillator_info = json::array();
-  
+
   // Initialize combined waveform array
   std::vector<float> combined_waveform(num_samples, 0.0f);
-  
+
   // Generate waveform for each oscillator and sum them
   for (size_t osc_idx = 0; osc_idx < kbs->synth.size(); osc_idx++) {
     auto &osc = kbs->synth[osc_idx];
-    
+
     // Skip oscillators with zero volume
     if (osc.volume == 0.0f) {
-      oscillator_info.push_back({
-        {"id", osc_idx},
-        {"volume", 0.0f},
-        {"octave", osc.octave},
-        {"detune", osc.detune},
-        {"active", false}
-      });
+      oscillator_info.push_back({{"id", osc_idx},
+                                 {"volume", 0.0f},
+                                 {"octave", osc.octave},
+                                 {"detune", osc.detune},
+                                 {"active", false}});
       continue;
     }
-    
+
     const int sample_rate = osc.sampleRate;
-    
-    // Calculate the actual frequency for this oscillator considering octave and detune
-    // Octave: each octave up doubles the frequency
-    // Detune: cents, where 100 cents = 1 semitone, 1200 cents = 1 octave
+
+    // Calculate the actual frequency for this oscillator considering octave and
+    // detune Octave: each octave up doubles the frequency Detune: cents, where
+    // 100 cents = 1 semitone, 1200 cents = 1 octave
     const float octave_multiplier = pow(2.0f, osc.octave);
     const float detune_multiplier = pow(2.0f, osc.detune / 1200.0f);
     const float osc_freq = base_freq * octave_multiplier * detune_multiplier;
-    
-    // Calculate how many cycles this oscillator will complete in one cycle of the reference
+
+    // Calculate how many cycles this oscillator will complete in one cycle of
+    // the reference
     const float freq_ratio = osc_freq / reference_freq;
-    
+
     // Create a temporary rank for visualization at this oscillator's frequency
     Sound::Rank<float> temp_rank = Sound::Rank<float>::fromPreset(
         osc.sound, osc_freq, sample_rate, sample_rate);
-    
+
     // Generate samples and add to combined waveform
-    // We need to show how this oscillator's waveform looks over one reference cycle
+    // We need to show how this oscillator's waveform looks over one reference
+    // cycle
     for (int i = 0; i < num_samples; i++) {
       // Calculate the phase (0 to freq_ratio) for this sample
       // If freq_ratio = 2, we go through 2 complete cycles
       float normalized_phase = (float)i / (num_samples - 1); // 0 to 1
-      float phase_in_cycles = normalized_phase * freq_ratio;  // 0 to freq_ratio
-      
+      float phase_in_cycles = normalized_phase * freq_ratio; // 0 to freq_ratio
+
       // Convert phase to sample index in the oscillator's waveform
       // One cycle = sample_rate / osc_freq samples
       float samples_per_cycle = sample_rate / osc_freq;
-      float sample_index = fmod(phase_in_cycles * samples_per_cycle, samples_per_cycle);
-      
+      float sample_index =
+          fmod(phase_in_cycles * samples_per_cycle, samples_per_cycle);
+
       float sample = temp_rank.generateRankSampleIndex((int)sample_index);
       combined_waveform[i] += sample * osc.volume;
     }
-    
-    oscillator_info.push_back({
-      {"id", osc_idx},
-      {"volume", osc.volume},
-      {"octave", osc.octave},
-      {"detune", osc.detune},
-      {"sound", Sound::Rank<float>::presetStr(osc.sound)},
-      {"active", true},
-      {"frequency", osc_freq}
-    });
+
+    oscillator_info.push_back(
+        {{"id", osc_idx},
+         {"volume", osc.volume},
+         {"octave", osc.octave},
+         {"detune", osc.detune},
+         {"sound", Sound::Rank<float>::presetStr(osc.sound)},
+         {"active", true},
+         {"frequency", osc_freq}});
   }
-  
+
   // Convert combined waveform to JSON
   for (float sample : combined_waveform) {
     waveform_data.push_back(sample);
   }
 
-  json response = {
-    {"samples", num_samples},
-    {"waveform", waveform_data},
-    {"oscillators", oscillator_info},
-    {"reference_frequency", reference_freq},
-    {"base_octave", min_octave}
-  };
+  json response = {{"samples", num_samples},
+                   {"waveform", waveform_data},
+                   {"oscillators", oscillator_info},
+                   {"reference_frequency", reference_freq},
+                   {"base_octave", min_octave}};
 
   kbs->unlock();
 
@@ -929,6 +928,6 @@ int waveform_combined_api_handler(struct mg_connection *conn, void *cbdata) {
             "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
             "Content-Length: %zu\r\n\r\n%s",
             body.size(), body.c_str());
-  
+
   return 200;
 }

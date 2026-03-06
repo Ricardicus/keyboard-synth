@@ -29,8 +29,6 @@ inline void from_json(const nlohmann::json &j, TuningSystem &t) {
     t = TuningSystem::EqualTemperament;
   } else if (s == "WerckmeisterIII") {
     t = TuningSystem::WerckmeisterIII;
-  } else {
-    throw std::invalid_argument("Invalid TuningSystem: " + s);
   }
 }
 
@@ -42,7 +40,7 @@ inline std::string tuning_to_string(TuningSystem ts) {
   case TuningSystem::WerckmeisterIII:
     return "WerckmeisterIII";
   }
-  throw std::invalid_argument("Invalid TuningSystem enum");
+  return "Invalid TuningSystem";
 }
 
 double getFrequency(const std::string &note, TuningSystem ts);

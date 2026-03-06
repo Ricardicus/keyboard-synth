@@ -5,17 +5,6 @@
 #include <string>
 #include <vector>
 
-#ifdef USE_OPENAL_PREFIX
-#include <OpenAL/al.h>
-#include <OpenAL/alc.h>
-#elif USE_AL_PREFIX
-#include <AL/al.h>
-#include <AL/alc.h>
-#else
-#include <OpenAL/al.h>  // Guessing. Use the definitions above for compilation.
-#include <OpenAL/alc.h> // Guessing. Use the definitions above for compilation.
-#endif
-
 struct RIFF_Header {
   char chunkID[4];
   long chunkSize; // size not including chunkSize or chunkID

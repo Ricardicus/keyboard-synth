@@ -3,7 +3,6 @@
 #include "note.hpp"
 #include <cmath>
 #include <functional>
-#include <ncurses.h>
 #include <thread>
 #include <type_traits>
 #include <variant>
@@ -292,7 +291,7 @@ template <> float Sound::Rank<float>::generateRankSample() {
     Note &note = pipe.first;
     Sound::WaveForm form = pipe.second;
     float deltaT = 1.0f / Config::instance().getSampleRate();
-    float addition;
+    float addition = 0.0f;
     float frequency = note.frequency;
     if (note.frequencyAltered > 0) {
       frequency = note.frequencyAltered;
@@ -301,7 +300,6 @@ template <> float Sound::Rank<float>::generateRankSample() {
     float t = this->generatorIndex_ * deltaT;
     float phase = 2.0f * PI * frequency * t;
     if (legato_.has_value()) {
-      printf("LEGATO\n");
       if (legato_->targetFrequencies[i] > legato_->currentFrequencies[i]) {
         if (legato_->deltas[i] < 0) {
           legato_->deltas[i] = 0;

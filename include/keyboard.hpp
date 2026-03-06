@@ -28,6 +28,7 @@
 #include "note.hpp"
 #include "notes.hpp"
 #include "sound.hpp"
+#include "term.hpp"
 
 #include "json.hpp"
 

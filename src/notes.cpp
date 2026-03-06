@@ -167,10 +167,8 @@ std::map<std::string, double> &lookupFrequencies(notes::TuningSystem ts) {
   case notes::TuningSystem::WerckmeisterIII:
     return frequenciesWerckmeisterIII;
   }
-  // Fallback — if you ever add new enum values
-  // You cannot return nullptr here because it's a reference
-  // Instead, throw or handle error
-  throw std::invalid_argument("Unknown tuning system");
+  // Default case (should not happen)
+  return frequenciesEqual;
 }
 
 std::vector<std::string> getNotes(TuningSystem ts) {

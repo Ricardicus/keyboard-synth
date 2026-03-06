@@ -55,8 +55,8 @@ public:
   EchoEffect(
       float rateSeconds = 1.0f, float feedback = 0.3f, float mix = 1.0f,
       float sampleRate = static_cast<float>(Config::instance().getSampleRate()))
-      : writeIndex(0), delaySamples(0), feedback(feedback), mix(mix),
-        sampleRate(sampleRate) {
+      : feedback(feedback), mix(mix), sampleRate(sampleRate), writeIndex(0),
+        delaySamples(0) {
     setRate(rateSeconds);
   }
 
@@ -409,6 +409,8 @@ public:
     case PhaseDistortionSin:
       if (!trySetConfig("distphase", EchoEffect<T>::fromJson))
         return std::nullopt;
+      break;
+    default:
       break;
     }
 

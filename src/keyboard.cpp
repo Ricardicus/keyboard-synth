@@ -3,10 +3,10 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
-#include <ncurses.h>
 #include <thread>
 #include <vector>
 
+#include "config.hpp"
 #include "effect.hpp"
 #include "fir.hpp"
 #include "keyboard.hpp"
@@ -43,73 +43,47 @@ void Keyboard::playNote(const std::string &note) {
 }
 
 void Keyboard::printInstructions() {
-  start_color();
-
-  // Define colors
-  init_pair(4, COLOR_WHITE, COLOR_BLACK);  // Labels (White Bold)
-  init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Values (Orange/Yellow)
-  init_pair(6, COLOR_BLACK, COLOR_WHITE);  // Key characters
-  init_pair(7, COLOR_BLUE, COLOR_WHITE);   // Note names
-
-  // Section header
-  attron(COLOR_PAIR(4) | A_BOLD);
-  printw("These keys are available on your keyboard:\n");
-  attroff(COLOR_PAIR(4) | A_BOLD);
-
   std::vector<int> rowNumber = {'1', '2', '3', '4', '5',
                                 '6', '7', '8', '9', '0'};
   std::vector<int> rowQwert = {'q', 'w', 'e', 'r', 't', 'y', 'u', 'i'};
   std::vector<int> rowHome = {'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'};
   std::vector<int> rowBottom = {'z', 'x', 'c', 'v', 'b', 'n', 'm', ','};
 
-  // Helper lambda to print a row.
+  term::print(term::Style::WhiteBold,
+              "These keys are available on your keyboard:\n");
+
   auto printRow = [this](const std::vector<int> &row, const char *prefix) {
-    attron(COLOR_PAIR(4) | A_BOLD);
-    printw("%s| ", prefix);
-    attroff(COLOR_PAIR(4) | A_BOLD);
+    term::print(term::Style::WhiteBold, "%s| ", prefix);
+
     for (int key : row) {
       auto it = this->keyPressToNote.find(key);
       if (it != this->keyPressToNote.end()) {
-        attron(COLOR_PAIR(6));
-        printw("%c ", key);
-        attroff(COLOR_PAIR(6));
-        attron(COLOR_PAIR(7));
-        printw("[%s]", it->second.c_str());
-        attroff(COLOR_PAIR(7));
-        attron(COLOR_PAIR(4) | A_BOLD);
-        printw(" | ");
-        attroff(COLOR_PAIR(4) | A_BOLD);
+        term::print(term::Style::Plain, "%c ", key);
+        term::print(term::Style::BlueBold, "[%s]", it->second.c_str());
+        term::print(term::Style::WhiteBold, " | ");
       }
     }
-    printw("\n");
+
+    term::print(term::Style::Plain, "\n");
   };
 
-  // Print each row in order.
   printRow(rowNumber, "");
   printRow(rowQwert, "  ");
   printRow(rowHome, "    ");
   printRow(rowBottom, "      ");
 
-  // Volume knob display
-  attron(COLOR_PAIR(4) | A_BOLD);
-  printw("\nVolume knob set to: ");
-  attroff(COLOR_PAIR(4) | A_BOLD);
-  attron(COLOR_PAIR(5));
-  printw("%.2f\n", this->volume);
-  attroff(COLOR_PAIR(5));
+  term::print(term::Style::WhiteBold, "\nVolume knob set to: ");
+  term::print(term::Style::Yellow, "%.2f\n", this->volume);
 
-  attron(A_BOLD | COLOR_PAIR(4));
-  printw("  Tuning: ");
-  attroff(A_BOLD | COLOR_PAIR(4));
-  attron(COLOR_PAIR(5));
-  printw("%s\n", notes::tuning_to_string(this->tuning).c_str());
-  attroff(COLOR_PAIR(5));
+  term::print(term::Style::WhiteBold, "  Tuning: ");
+  term::print(term::Style::Yellow, "%s\n",
+              notes::tuning_to_string(this->tuning).c_str());
 
-  attron(COLOR_PAIR(4) | A_BOLD);
-  printw("Press 'p'/'o' to +/- one octave\n");
-  printw("Press 'P'/'O' to +/- preset sounds\n");
-  printw("Press 'W'/'E' to -/+ volume\n");
-  attroff(COLOR_PAIR(4) | A_BOLD);
+  term::print(term::Style::WhiteBold, "Press 'p'/'o' to +/- one octave\n");
+  term::print(term::Style::WhiteBold, "Press 'P'/'O' to +/- preset sounds\n");
+  term::print(term::Style::WhiteBold, "Press 'W'/'E' to -/+ volume\n");
+
+  term::refresh_if_needed();
 }
 
 void Keyboard::prepareSound(int sampleRate, ADSR &adsr, Sound::WaveForm f,

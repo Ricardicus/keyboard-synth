@@ -4,10 +4,10 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
-#include <ncurses.h>
 #include <thread>
 #include <vector>
 
+#include "config.hpp"
 #include "effect.hpp"
 #include "fir.hpp"
 #include "keyboardstream.hpp"
@@ -16,75 +16,60 @@
 #include "waveread.hpp"
 
 void KeyboardStream::printInstructions() {
-  start_color();
-
-  // Define colors
-  init_pair(4, COLOR_WHITE, COLOR_BLACK);  // Labels (White Bold)
-  init_pair(5, COLOR_YELLOW, COLOR_BLACK); // Values (Orange/Yellow)
-  init_pair(6, COLOR_BLACK, COLOR_WHITE);  // Key characters
-  init_pair(7, COLOR_BLUE, COLOR_WHITE);   // Note names
-
-  // Section header
-  attron(COLOR_PAIR(4) | A_BOLD);
-  printw("These keys are available on your keyboard:\n");
-  attroff(COLOR_PAIR(4) | A_BOLD);
-
   std::vector<int> rowNumber = {'1', '2', '3', '4', '5',
                                 '6', '7', '8', '9', '0'};
   std::vector<int> rowQwert = {'q', 'w', 'e', 'r', 't', 'y', 'u', 'i'};
   std::vector<int> rowHome = {'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'};
   std::vector<int> rowBottom = {'z', 'x', 'c', 'v', 'b', 'n', 'm', ','};
 
-  // Helper lambda to print a row.
-  auto printRow = [this](const std::vector<int> &row, const char *prefix) {
-    attron(COLOR_PAIR(4) | A_BOLD);
-    printw("%s| ", prefix);
+  term::print(term::Style::WhiteBold,
+              "These keys are available on your keyboard:\n");
 
-    attroff(COLOR_PAIR(4) | A_BOLD);
+  auto printRow = [this](const std::vector<int> &row, const char *prefix) {
+    term::print(term::Style::WhiteBold, "%s| ", prefix);
+
     for (int key : row) {
       auto it = this->keyPressToNote.find(key);
       if (it != this->keyPressToNote.end()) {
-        attron(COLOR_PAIR(6));
-        printw("%c ", key);
-        attroff(COLOR_PAIR(6));
-        attron(COLOR_PAIR(7));
-        printw("[%s]", it->second.c_str());
-        attroff(COLOR_PAIR(7));
-        attron(COLOR_PAIR(4) | A_BOLD);
-        printw(" | ");
-        attroff(COLOR_PAIR(4) | A_BOLD);
+        // In ncurses, you used a special style for the key character.
+        // Without ncurses, styles become no-ops and this still prints fine.
+        term::print(term::Style::Plain, "%c ", key);
+
+        // Note name style (blue-ish in ncurses)
+        term::print(term::Style::BlueBold, "[%s]", it->second.c_str());
+
+        term::print(term::Style::WhiteBold, " | ");
       }
     }
-    printw("\n");
+
+    term::print(term::Style::Plain, "\n");
   };
 
-  // Print each row in order.
   printRow(rowNumber, "");
   printRow(rowQwert, "  ");
   printRow(rowHome, "    ");
   printRow(rowBottom, "      ");
 
-  // Volume knob display
-  attron(COLOR_PAIR(4) | A_BOLD);
-  printw("\nVolume knob set to: ");
-  attroff(COLOR_PAIR(4) | A_BOLD);
-  attron(COLOR_PAIR(5));
-  printw("%.2f\n", this->volume);
-  attroff(COLOR_PAIR(5));
+  term::print(term::Style::WhiteBold, "\nVolume knob set to: ");
+  term::print(term::Style::Yellow, "%.2f\n", this->volume);
 
-  attron(COLOR_PAIR(4) | A_BOLD);
-
-  printw("Recorder number of bars: %d\n", Config::instance().getNumBars());
-  printw("Press 'p'/'o' to +/- one octave\n");
-  printw("Press 'P'/'O' to +/- keyboard preset sounds\n");
-  printw(
+  term::print(term::Style::WhiteBold, "Recorder number of bars: %d\n",
+              Config::instance().getNumBars());
+  term::print(term::Style::WhiteBold, "Press 'p'/'o' to +/- one octave\n");
+  term::print(term::Style::WhiteBold,
+              "Press 'P'/'O' to +/- keyboard preset sounds\n");
+  term::print(
+      term::Style::WhiteBold,
       "Press ',' to switch recording track (there are %d). Current track: %d\n",
       Config::instance().getNumTracks(), this->looper.getActiveTrack() + 1);
-  printw("Press SPACE to toggle recording. Recording active: %s\n",
-         (this->looper.isRecording() ? "Yes" : "No"));
-  printw("Press '.' to toggle metronome. Metronome active: %s\n",
-         (this->looper.isMetronomeEnabled() ? "Yes" : "No"));
-  attroff(COLOR_PAIR(4) | A_BOLD);
+  term::print(term::Style::WhiteBold,
+              "Press SPACE to toggle recording. Recording active: %s\n",
+              (this->looper.isRecording() ? "Yes" : "No"));
+  term::print(term::Style::WhiteBold,
+              "Press '.' to toggle metronome. Metronome active: %s\n",
+              (this->looper.isMetronomeEnabled() ? "Yes" : "No"));
+
+  term::refresh_if_needed();
 }
 
 void KeyboardStream::prepareSound(int sampleRate, ADSR &adsr,
@@ -282,7 +267,7 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
 
   // Optionally keep this if debugging:
   // printw(" %f (%zu) -", duration.count(), notesPressed.size());
-  refresh();
+  // refresh();
 }
 
 float KeyboardStream::generateSample(std::string note, float phase, int index) {
@@ -478,14 +463,16 @@ std::string KeyboardStream::Oscillator::printSynthConfig() const {
 
 void KeyboardStream::printSynthConfig() const {
   int synthIndex = 1;
-  for (const Oscillator &oscillator : this->synth) {
-    // Section header
-    attron(COLOR_PAIR(7) | A_BOLD);
-    printw("======== Oscillator %d ========\n", synthIndex);
-    attroff(COLOR_PAIR(7) | A_BOLD);
 
-    attron(COLOR_PAIR(4));
-    printw("%s", oscillator.printSynthConfig().c_str());
-    attroff(COLOR_PAIR(4));
+  for (const Oscillator &oscillator : this->synth) {
+    term::print(term::Style::BlueBold, "======== Oscillator %d ========\n",
+                synthIndex);
+
+    term::print(term::Style::WhiteBold, "%s",
+                oscillator.printSynthConfig().c_str());
+
+    ++synthIndex;
   }
+
+  term::refresh_if_needed();
 }

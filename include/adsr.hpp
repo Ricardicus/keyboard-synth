@@ -1,7 +1,6 @@
 #ifndef KEYBOARD_ADSR_HPP
 #define KEYBOARD_ADSR_HPP
 #include <json.hpp>
-#include <ncurses.h>
 #include <optional>
 #include <stdio.h>
 #include <string>

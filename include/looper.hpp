@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cmath>
 #include <mutex>
+#include <string>
 #include <vector>
 
 // -----------------------------------------------------------------------------

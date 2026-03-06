@@ -1,6 +1,14 @@
 // config.hpp
 #pragma once
+#include <cstdarg>
 #include <cstddef>
+
+// These are compile-time constants that determine the default build
+// configuration. Feel free to change these values if needed.
+namespace defaults {
+constexpr int sampleRate = 44100;
+constexpr int sampleBufferSize = 206;
+} // namespace defaults
 
 class Config {
 public:
@@ -38,8 +46,8 @@ public:
 private:
   // Private constructor initializes defaults
   Config()
-      : sampleRate_(44100), // default = 44100 Hz
-        bufferSize_(206),   // default = 512 frames
+      : sampleRate_(defaults::sampleRate),       // default = 44100 Hz
+        bufferSize_(defaults::sampleBufferSize), // default = 512 frames
         metronomeBpm_(100), metronomeVolume_(0.25f), numTracks_(4) {}
 
   int sampleRate_;
