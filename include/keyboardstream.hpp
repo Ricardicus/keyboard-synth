@@ -77,6 +77,8 @@ public:
   void prepareSound(int sampleRate, ADSR &adsr,
                     std::vector<Effect<float>> &effects);
   void fillBuffer(float *buffer, const int len);
+  template <typename T>
+  void fillBufferType(T *buffer, const int len);
   void registerNote(const std::string &note);
   void registerNoteRelease(const std::string &note);
   void registerButtonPress(int note);

@@ -270,6 +270,129 @@ void KeyboardStream::fillBuffer(float *buffer, const int len) {
   // refresh();
 }
 
+template <>
+void KeyboardStream::fillBufferType<int16_t>(int16_t *buffer, const int len) {
+  float deltaT = 1.0f / this->sampleRate;
+
+  for (int i = 0; i < len; i++) {
+    float sample = 0.0f;
+    buffer[i] = 0;
+
+    for (auto it = notesPressed.begin(); it != notesPressed.end();) {
+      NotePress &note = it->second;
+      int index = note.index;
+      float adsr;
+      double freq = note.frequency;
+
+      // Use ADSR envelope
+      if (note.adsr.reached_sustain(index) && !note.release) {
+        adsr = static_cast<float>(note.adsr.sustain());
+      } else {
+        adsr = static_cast<float>(note.adsr.response(index));
+        note.index++;
+      }
+
+      if (this->legatoMode) {
+        if (it->first.find("--") == std::string::npos) {
+          sample += adsr * generateSample(note.note, note.phase,
+                                          this->legatoRankIndex);
+          this->legatoRankIndex++;
+        }
+      } else {
+        sample += adsr * generateSample(note.note, note.phase, note.rankIndex);
+        note.rankIndex++;
+      }
+
+      // Advance phase
+      note.phase += 2.0f * M_PI * freq * deltaT;
+      if (note.phase > 2.0f * M_PI)
+        note.phase -= 2.0f * M_PI;
+
+      // Remove if done
+      if (note.index >= note.adsr.getLength()) {
+        it = notesPressed.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    // Output sample
+    float entry = sample * this->gain;
+    // Apply global post effects
+    entry = Sound::applyPostEffects(entry, this->effects);
+    // Apply global iir filters
+    for (int e = 0; e < this->effects.size(); e++) {
+      for (int i = 0; i < this->effects[e].iirs.size(); i++) {
+        entry = this->effects[e].iirs[i].process(entry);
+      }
+    }
+    // Write to buffer
+    buffer[i] += static_cast<int16_t>(this->looper.update(entry)*32767.0f);
+  }
+}
+
+template <>
+void KeyboardStream::fillBufferType<int32_t>(int32_t *buffer, const int len) {
+  float deltaT = 1.0f / this->sampleRate;
+
+  for (int i = 0; i < len; i++) {
+    float sample = 0.0f;
+    buffer[i] = 0;
+
+    for (auto it = notesPressed.begin(); it != notesPressed.end();) {
+      NotePress &note = it->second;
+      int index = note.index;
+      float adsr;
+      double freq = note.frequency;
+
+      // Use ADSR envelope
+      if (note.adsr.reached_sustain(index) && !note.release) {
+        adsr = static_cast<float>(note.adsr.sustain());
+      } else {
+        adsr = static_cast<float>(note.adsr.response(index));
+        note.index++;
+      }
+
+      if (this->legatoMode) {
+        if (it->first.find("--") == std::string::npos) {
+          sample += adsr * generateSample(note.note, note.phase,
+                                          this->legatoRankIndex);
+          this->legatoRankIndex++;
+        }
+      } else {
+        sample += adsr * generateSample(note.note, note.phase, note.rankIndex);
+        note.rankIndex++;
+      }
+
+      // Advance phase
+      note.phase += 2.0f * M_PI * freq * deltaT;
+      if (note.phase > 2.0f * M_PI)
+        note.phase -= 2.0f * M_PI;
+
+      // Remove if done
+      if (note.index >= note.adsr.getLength()) {
+        it = notesPressed.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    // Output sample
+    float entry = sample * this->gain;
+    // Apply global post effects
+    entry = Sound::applyPostEffects(entry, this->effects);
+    // Apply global iir filters
+    for (int e = 0; e < this->effects.size(); e++) {
+      for (int i = 0; i < this->effects[e].iirs.size(); i++) {
+        entry = this->effects[e].iirs[i].process(entry);
+      }
+    }
+    // Write to buffer
+    buffer[i] += static_cast<int32_t>(this->looper.update(entry)*2147483647.0f);
+  }
+}
+
+
 float KeyboardStream::generateSample(std::string note, float phase, int index) {
   float result = 0;
   float min = static_cast<float>(std::numeric_limits<short>::min());
